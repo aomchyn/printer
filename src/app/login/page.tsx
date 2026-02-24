@@ -20,7 +20,7 @@ export default function LoginPage() {
 
         // Explicit validation to enforce email-only login
         if (!email.trim().includes("@") || !email.trim().includes(".")) {
-            setError("กรุณากรอก 'อีเมล' ให้ถูกต้อง (ห้ามใช้ชื่อพนักงานหรือรหัสพนักงาน)");
+            setError("กรุณากรอก 'อีเมล' ให้ถูกต้อง ");
             setLoading(false);
             return;
         }
@@ -36,7 +36,7 @@ export default function LoginPage() {
         } catch (err: any) {
             let errorMessage = err.message || "Failed to login";
             if (errorMessage === "Email not confirmed") {
-                errorMessage = "กรุณายืนยันอีเมลของคุณก่อนเข้าใช้งาน (ตรวจสอบกล่องข้อความหรือกล่องจดหมายขยะ)";
+                errorMessage = "กรุณายืนยันอีเมลของคุณก่อนเข้าใช้งาน ";
             } else if (errorMessage === "Invalid login credentials") {
                 errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
             }
@@ -66,7 +66,7 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin} className="flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
                         <label className="form-label-dark" htmlFor="email">
-                            อีเมล (เท่านั้น)
+                            อีเมล
                         </label>
                         <input
                             id="email"
