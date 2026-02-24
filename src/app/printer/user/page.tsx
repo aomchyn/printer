@@ -366,7 +366,7 @@ export default function UserManagement() {
                         </div>
 
                         <div className="mb-4">
-                            <label className="block mb-2 font-semibold text-gray-700">Username / ชื่อพนักงาน (ใช้ลงชื่อเข้าใช้)</label>
+                            <label className="block mb-2 font-semibold text-gray-700">ชื่อพนักงาน</label>
                             <input
                                 type="text"
                                 className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
