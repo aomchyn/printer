@@ -18,9 +18,16 @@ export default function LoginPage() {
         setLoading(true);
         setError(null);
 
+        // Explicit validation to enforce email-only login
+        if (!email.trim().includes("@") || !email.trim().includes(".")) {
+            setError("กรุณากรอก 'อีเมล' ให้ถูกต้อง (ห้ามใช้ชื่อพนักงานหรือรหัสพนักงาน)");
+            setLoading(false);
+            return;
+        }
+
         try {
             const { error } = await supabase.auth.signInWithPassword({
-                email,
+                email: email.trim(),
                 password,
             });
 
@@ -46,7 +53,7 @@ export default function LoginPage() {
                     ยินดีต้อนรับ
                 </h1>
                 <h2 className="text-gray-400 text-center mb-8 text-lg">
-                    เข้าสู่ระบบเพื่อดำเนินการสั่งพิมพ์ฉลากสินค้า
+                    เข้าสู่ระบบด้วยอีเมลเพื่อสั่งพิมพ์ฉลากสินค้า
                 </h2>
 
                 {error && (
@@ -59,14 +66,14 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin} className="flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
                         <label className="form-label-dark" htmlFor="email">
-                            อีเมล
+                            อีเมล (เท่านั้น)
                         </label>
                         <input
                             id="email"
                             type="email"
                             required
                             className="form-input-dark"
-                            placeholder="you@example.com"
+                            placeholder="เช่น name@example.com (ไม่ใช่ชื่อพนักงาน)"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
