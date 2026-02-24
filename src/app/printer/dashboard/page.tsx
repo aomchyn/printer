@@ -517,7 +517,7 @@ export default function DashboardPage() {
                                                 <div className="flex items-center gap-2">
                                                     <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
                                                     <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest">
-                                                        ID: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
+                                                        รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
                                                     </span>
                                                 </div>
                                             ) : (
