@@ -73,7 +73,7 @@ export default function LoginPage() {
                             type="email"
                             required
                             className="form-input-dark"
-                            placeholder="เช่น name@example.com (ไม่ใช่ชื่อพนักงาน)"
+                            placeholder="เช่น name@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
