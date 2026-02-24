@@ -1,0 +1,447 @@
+'use client'
+
+import { useState, useEffect } from "react"
+import Swal from "sweetalert2"
+import Modal from "../components/Modal"
+import { supabase, supabaseUrl, supabaseAnonKey } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
+
+interface User {
+    id: string
+    email: string
+    name: string
+    role: string
+    employee_id?: string
+    job_title?: string
+    department?: string
+}
+
+export default function UserManagement() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [email, setEmail] = useState('');
+    const [name, setName] = useState('');
+    const [employeeId, setEmployeeId] = useState('');
+    const [jobTitle, setJobTitle] = useState('');
+    const [department, setDepartment] = useState('');
+    const [password, setPassword] = useState('');
+    const [role, setRole] = useState('user');
+    const [isAdmin, setIsAdmin] = useState(false); // only admins should see this
+
+    useEffect(() => {
+        checkAdminStatus();
+    }, [])
+
+    const checkAdminStatus = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+            if (data?.role?.includes('admin')) {
+                setIsAdmin(true);
+                fetchUsers();
+            } else if (!data) {
+                // Auto-recovery to sync with Sidebar's recovery
+                const fallbackName = session.user.email?.split('@')[0] || 'User';
+                const fallbackRole = fallbackName.toLowerCase().includes('aom') || fallbackName.toLowerCase().includes('admin') ? 'admin' : 'user';
+
+                if (fallbackRole === 'admin') {
+                    setIsAdmin(true);
+                    fetchUsers();
+                    return; // exit early, as they are effectively an admin
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่มีสิทธิ์เข้าถึง',
+                        text: 'เฉพาะแอดมินเท่านั้น',
+                    });
+                }
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'เฉพาะแอดมินเท่านั้น',
+                });
+            }
+        }
+    }
+
+    const fetchUsers = async () => {
+        try {
+            const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (data) {
+                setUsers(data);
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'error',
+                text: 'Failed to fetch users'
+            })
+        }
+    }
+
+    const isDuplicateName = (checkName: string, excludeUserId?: string): boolean => {
+        return users.some(user =>
+            user.name.toLowerCase() === checkName.toLowerCase() &&
+            user.id !== excludeUserId
+        );
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (editingUser) {
+            if (isDuplicateName(name, editingUser.id)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ชื่อผู้ใช้ซ้ำ',
+                    text: 'มีชื่อผู้ใช้นี้ในระบบแล้ว กรุณาใช้ชื่ออื่น'
+                });
+                return;
+            }
+        } else {
+            if (isDuplicateName(name)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ชื่อผู้ใช้ซ้ำ',
+                    text: 'มีชื่อผู้ใช้นี้ในระบบแล้ว กรุณาใช้ชื่ออื่น'
+                });
+                return;
+            }
+
+            if (password.length < 6) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'รหัสผ่านอ่อนเกินไป',
+                    text: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
+                });
+                return;
+            }
+        }
+
+        try {
+            if (editingUser) {
+                const { error } = await supabase.from('users').update({
+                    name: name,
+                    role: role,
+                    employee_id: employeeId || null,
+                    job_title: jobTitle || null,
+                    department: department || null
+                }).eq('id', editingUser.id);
+
+                if (error) throw error;
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: `User updated successfully`,
+                    timer: 1000
+                })
+
+                setShowModal(false);
+                setEditingUser(null);
+                setEmail('');
+                setName('');
+                setEmployeeId('');
+                setJobTitle('');
+                setDepartment('');
+                setPassword('');
+                setRole('user');
+                fetchUsers();
+            } else {
+                // ADD NEW USER
+                Swal.fire({ title: 'กำลังสร้างบัญชี...', didOpen: () => { Swal.showLoading() } });
+
+                // Create a temporary client so it doesn't log the admin out out our current session
+                const tempSupabase = createClient(
+                    supabaseUrl,
+                    supabaseAnonKey,
+                    { auth: { persistSession: false, autoRefreshToken: false } }
+                );
+
+                const { data, error: signupError } = await tempSupabase.auth.signUp({
+                    email,
+                    password
+                });
+
+                if (signupError) throw signupError;
+
+                if (data?.user) {
+                    const { error: insertError } = await supabase.from('users').insert({
+                        id: data.user.id,
+                        email: email,
+                        name: name,
+                        role: role,
+                        employee_id: employeeId || null,
+                        job_title: jobTitle || null,
+                        department: department || null
+                    });
+
+                    if (insertError) throw insertError;
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: `สร้างบัญชีผู้ใช้ใหม่เรียบร้อยแล้ว`,
+                    timer: 1500
+                });
+
+                setShowModal(false);
+                setEmail('');
+                setName('');
+                setEmployeeId('');
+                setJobTitle('');
+                setDepartment('');
+                setPassword('');
+                setRole('user');
+                fetchUsers();
+            }
+        } catch (error: any) {
+            console.error(error);
+            let errorMessage = error.message;
+            if (errorMessage && errorMessage.includes('users_id_fkey')) {
+                errorMessage = 'ไม่สามารถสร้างผู้ใช้ได้ เนื่องจากอีเมลนี้ถูกใช้งานไปแล้ว หรือกำลังรอการยืนยันทางอีเมลอยู่';
+            }
+
+            Swal.fire({
+                icon: 'error',
+                title: 'ข้อผิดพลาด',
+                text: errorMessage || `Failed to save user`
+            })
+        }
+    }
+
+    const handleDelete = async (user: User) => {
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Are You Sure ?',
+            text: `Do you want to delete user ${user.name}? (This only removes their profile, they can still log in if they didn't delete their auth account)`,
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            cancelButtonText: 'Cancel'
+        })
+
+        if (result.isConfirmed) {
+            try {
+                const { error } = await supabase.from('users').delete().eq('id', user.id);
+                if (error) throw error;
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'User Deleted Successfully',
+                    timer: 1000
+                })
+
+                fetchUsers()
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to delete user'
+                })
+            }
+        }
+    }
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user)
+        setEmail(user.email)
+        setName(user.name)
+        setEmployeeId(user.employee_id || '');
+        setJobTitle(user.job_title || '');
+        setDepartment(user.department || '');
+        setRole(user.role ?? 'user');
+        setPassword('');
+        setShowModal(true)
+    }
+
+    const handleAdd = () => {
+        setEditingUser(null);
+        setEmail('');
+        setName('');
+        setEmployeeId('');
+        setJobTitle('');
+        setDepartment('');
+        setPassword('');
+        setRole('user');
+        setShowModal(true);
+    }
+
+    if (!isAdmin) {
+        return <div className="p-8 text-center text-xl text-yellow-200">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (Restricted)</div>
+    }
+
+    return (
+        <div className="container mx-auto px-1 sm:px-4 text-gray-800 w-full max-w-full overflow-hidden">
+            <h1 className="text-2xl sm:text-4xl font-extrabold mb-4 sm:mb-6 text-blue-900 tracking-tight text-center sm:text-left drop-shadow-sm">
+                จัดการบัญชีผู้ใช้
+            </h1>
+            <div className="flex justify-center sm:justify-start mb-6">
+                <button
+                    className="bg-green-600 text-white hover:bg-green-700 px-4 py-3 sm:px-5 sm:py-3 rounded-lg transition-all font-bold shadow-md text-base w-full sm:w-auto flex items-center justify-center"
+                    onClick={handleAdd}>
+                    <i className="fas fa-user-plus mr-2 text-lg"></i> สร้างบัญชีใหม่
+                </button>
+            </div>
+
+            <div className="bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden border border-white/20">
+                <div className="overflow-x-auto w-full">
+                    <table className="w-full min-w-max text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gradient-to-r from-blue-100 to-indigo-50 border-b border-blue-200">
+                                <th className="p-4 font-semibold text-blue-900 border-r border-blue-200/50 w-[120px]">รหัสพนักงาน</th>
+                                <th className="p-4 font-semibold text-blue-900 border-r border-blue-200/50">Email</th>
+                                <th className="p-4 font-semibold text-blue-900 border-r border-blue-200/50 w-[200px]">ชื่อพนักงาน</th>
+                                <th className="p-4 font-semibold text-blue-900 border-r border-blue-200/50 w-[150px]">ตำแหน่ง</th>
+                                <th className="p-4 font-semibold text-blue-900 border-r border-blue-200/50 w-[150px]">หน่วยงาน</th>
+                                <th className="p-4 font-semibold text-blue-900 border-r border-blue-200/50 w-[100px]">Role</th>
+                                <th className="p-4 text-center font-semibold text-blue-900 w-[120px]">
+                                    จัดการ
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {users.map((user, index) => (
+                                <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50 hover:bg-blue-50/50 transition-colors'}>
+                                    <td className="p-4 text-gray-700">{user.employee_id || '-'}</td>
+                                    <td className="p-4 text-sm text-gray-500">{user.email}</td>
+                                    <td className="p-4 font-medium text-gray-900">{user.name}</td>
+                                    <td className="p-4 text-sm text-gray-500">{user.job_title || '-'}</td>
+                                    <td className="p-4 text-sm text-gray-800">{user.department || '-'}</td>
+                                    <td className="p-4">
+                                        <span className={`px-3 py-1 text-xs font-bold rounded-full ${user.role?.includes('admin') ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                                            {user.role}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <button
+                                            className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-full transition-colors mr-2 shadow-sm"
+                                            onClick={() => handleEdit(user)} >
+                                            <i className="fas fa-edit"></i>
+                                        </button>
+                                        <button
+                                            className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-full transition-colors shadow-sm"
+                                            onClick={() => handleDelete(user)}>
+                                            <i className="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {users.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="p-8 text-center text-gray-500 italic">No users found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {showModal && (
+                <Modal
+                    id="user-modal"
+                    title={editingUser ? 'แก้ไขผู้ใช้งาน' : 'เพิ่มผู้ใช้งาน'}
+                    onClose={() => setShowModal(false)}
+                    size="md">
+                    <form onSubmit={handleSubmit}>
+                        <div className="mb-4">
+                            <label className="block mb-2 font-semibold text-gray-700">Email</label>
+                            <input
+                                type="email"
+                                className={`w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300 ${editingUser ? '!bg-gray-100' : ''}`}
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                disabled={!!editingUser}
+                                required />
+                            {editingUser && <small className="text-gray-500 mt-1 block">อีเมลไม่สามารถแก้ไขได้</small>}
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block mb-2 font-semibold text-gray-700">Username / ชื่อพนักงาน (ใช้ลงชื่อเข้าใช้)</label>
+                            <input
+                                type="text"
+                                className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                required />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className="block mb-2 font-semibold text-gray-700">รหัสพนักงาน</label>
+                                <input
+                                    type="text"
+                                    className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                    value={employeeId}
+                                    placeholder="เช่น EMP001"
+                                    onChange={e => setEmployeeId(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block mb-2 font-semibold text-gray-700">ตำแหน่งงาน</label>
+                                <input
+                                    type="text"
+                                    className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                    value={jobTitle}
+                                    placeholder="เช่น หัวหน้าแผนก"
+                                    onChange={e => setJobTitle(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block mb-2 font-semibold text-gray-700">หน่วยงาน / แผนก</label>
+                            <input
+                                type="text"
+                                className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                value={department}
+                                placeholder="เช่น ฝ่ายผลิต"
+                                onChange={e => setDepartment(e.target.value)}
+                            />
+                        </div>
+
+                        {!editingUser && (
+                            <div className="mb-4">
+                                <label className="block mb-2 font-semibold text-gray-700">Password</label>
+                                <input
+                                    type="password"
+                                    className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                    value={password}
+                                    placeholder="รหัสผ่านสำหรับเข้าสู่ระบบ"
+                                    onChange={e => setPassword(e.target.value)}
+                                    required={!editingUser} />
+                            </div>
+                        )}
+
+                        <div className="mb-6">
+                            <label className="block mb-2 font-semibold text-gray-700">ระดับสิทธิ์ (Role)</label>
+                            <select className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300" value={role}
+                                onChange={e => setRole(e.target.value)}>
+                                <option value="admin">Admin</option>
+                                <option value="user">User</option>
+                            </select>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowModal(false)}
+                                className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors">
+                                <i className="fas fa-times mr-2"></i> ยกเลิก
+                            </button>
+                            <button
+                                type="submit"
+                                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg transition-transform hover:scale-105">
+                                <i className="fas fa-check mr-2"></i> บันทึก
+                            </button>
+                        </div>
+                    </form>
+                </Modal>
+            )}
+        </div>
+    );
+}
