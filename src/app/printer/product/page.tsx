@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import Modal from "../components/Modal"
 import { supabase } from "@/lib/supabase"
+import { Search, Plus, X, Check, Edit2, Trash2 } from "lucide-react"
 
 export interface FgcodeInterface {
     id: string; // e.g. FG-1001
@@ -164,7 +165,7 @@ export default function FgcodeManagement() {
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                 <div className="relative w-full sm:w-1/2 md:w-1/3">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i className="fas fa-search text-gray-400"></i>
+                        <Search className="text-gray-400 w-5 h-5 absolute left-3 top-3.5" />
                     </div>
                     <input
                         type="text"
@@ -178,7 +179,7 @@ export default function FgcodeManagement() {
                             onClick={() => setSearchTerm('')}
                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                         >
-                            <i className="fas fa-times"></i>
+                            <X className="w-5 h-5" />
                         </button>
                     )}
                 </div>
@@ -193,7 +194,7 @@ export default function FgcodeManagement() {
                     }}
                     className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-200 flex items-center justify-center shadow-lg transform hover:scale-105 shrink-0"
                 >
-                    <i className="fas fa-plus mr-2"></i> เพิ่มรายการสินค้า
+                    <Plus className="mr-2 w-5 h-5" /> เพิ่มรายการสินค้า
                 </button>
             </div>
 
@@ -244,17 +245,17 @@ export default function FgcodeManagement() {
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
                                             onClick={() => handleEdit(fgcode)}
-                                            className="text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-full transition-colors mr-2 shadow-sm"
+                                            className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
                                             title="แก้ไข"
                                         >
-                                            <i className="fas fa-edit w-4 h-4"></i>
+                                            <Edit2 className="w-4 h-4" />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(fgcode.id)}
-                                            className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2.5 rounded-full transition-colors shadow-sm"
+                                            className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
                                             title="ลบ"
                                         >
-                                            <i className="fas fa-trash w-4 h-4"></i>
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </td>
                                 </tr>
@@ -336,13 +337,13 @@ export default function FgcodeManagement() {
                                     setExp('')
                                 }}
                                 className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors">
-                                <i className="fas fa-times mr-2"></i> ยกเลิก
+                                <X className="mr-2 w-4 h-4" /> ยกเลิก
                             </button>
 
                             <button
                                 type="submit"
                                 className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-lg transition-transform hover:scale-105">
-                                <i className="fas fa-check mr-2"></i>
+                                <Check className="mr-2 w-4 h-4" />
                                 {editingFgcode ? 'บันทึกการแก้ไข' : 'สร้างสินค้า'}
                             </button>
                         </div>

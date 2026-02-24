@@ -5,6 +5,7 @@ import Swal from "sweetalert2"
 import Modal from "../components/Modal"
 import { supabase, supabaseUrl, supabaseAnonKey } from "@/lib/supabase"
 import { createClient } from "@supabase/supabase-js"
+import { UserPlus, Edit2, Trash2, X, Check } from "lucide-react"
 
 interface User {
     id: string
@@ -319,14 +320,18 @@ export default function UserManagement() {
                                     </td>
                                     <td className="p-4 text-center">
                                         <button
-                                            className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-full transition-colors mr-2 shadow-sm"
-                                            onClick={() => handleEdit(user)} >
-                                            <i className="fas fa-edit"></i>
+                                            onClick={() => handleEdit(user)}
+                                            className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
+                                            title="แก้ไข"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
                                         </button>
                                         <button
-                                            className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-full transition-colors shadow-sm"
-                                            onClick={() => handleDelete(user)}>
-                                            <i className="fas fa-trash"></i>
+                                            onClick={() => handleDelete(user)}
+                                            className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
+                                            title="ลบ"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </td>
                                 </tr>
@@ -431,12 +436,12 @@ export default function UserManagement() {
                                 type="button"
                                 onClick={() => setShowModal(false)}
                                 className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors">
-                                <i className="fas fa-times mr-2"></i> ยกเลิก
+                                <X className="mr-2 w-4 h-4" /> ยกเลิก
                             </button>
                             <button
                                 type="submit"
                                 className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg transition-transform hover:scale-105">
-                                <i className="fas fa-check mr-2"></i> บันทึก
+                                <Check className="mr-2 w-4 h-4" /> บันทึก
                             </button>
                         </div>
                     </form>

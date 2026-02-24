@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Sidebar from "./Sidebar";
-import { Menu } from "lucide-react";
+import { Menu, TreePine } from "lucide-react";
 
 type PrinterLayoutProps = {
     children: React.ReactNode;
@@ -17,8 +17,8 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
             {/* Mobile Header (Visible only on small screens) */}
             <div className="md:hidden flex items-center justify-between bg-blue-900/90 text-white p-4 sticky top-0 z-40 shadow-lg backdrop-blur-md">
                 <div className="font-bold text-lg flex items-center">
-                    <i className="fas fa-tree mr-2 text-green-300"></i>
-                    Printer OP
+                    <TreePine className="mr-2 text-green-300 w-5 h-5 inline" />
+                    {"<Printer OP />"}
                 </div>
                 <button
                     onClick={() => setIsSidebarOpen(true)}

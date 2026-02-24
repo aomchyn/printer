@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart3, PieChart as PieChartIcon, Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X } from 'lucide-react';
 
 export interface OrderInterface {
     id: number;
@@ -448,19 +449,19 @@ export default function DashboardPage() {
                                 {role?.includes('admin') && (
                                     <div className="flex gap-1 shrink-0">
                                         {!order.is_verified ? (
-                                            <button onClick={() => verifyOrder(order)} className="w-8 h-8 rounded-full bg-green-50 text-green-600 hover:bg-green-100 flex items-center justify-center transition-colors" title="ตรวจสอบ">
-                                                <i className="fas fa-check text-sm"></i>
+                                            <button onClick={() => verifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ตรวจสอบ">
+                                                <Check className="w-4 h-4" />
                                             </button>
                                         ) : (
-                                            <button onClick={() => unverifyOrder(order)} className="w-8 h-8 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 flex items-center justify-center transition-colors" title="ยกเลิกการตรวจสอบ">
-                                                <i className="fas fa-undo text-sm"></i>
+                                            <button onClick={() => unverifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการตรวจสอบ">
+                                                <Undo className="w-4 h-4" />
                                             </button>
                                         )}
-                                        <button onClick={() => startEdit(order)} className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors" title="แก้ไข">
-                                            <i className="fas fa-pen text-sm"></i>
+                                        <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
+                                            <Edit2 className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => deleteOrder(order.id)} className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors" title="ลบ">
-                                            <i className="fas fa-trash text-sm"></i>
+                                        <button onClick={() => deleteOrder(order.id)} className="w-9 h-9 rounded-xl text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ลบ">
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 )}
@@ -475,7 +476,7 @@ export default function DashboardPage() {
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-500">ผู้สั่ง:</span>
                                     <span className="font-semibold text-gray-900 flex items-center gap-1 text-right">
-                                        <i className="fas fa-user-circle text-gray-400"></i> {order.created_by || '-'}
+                                        <UserCircle className="w-4 h-4 text-gray-400 inline" /> {order.created_by || '-'}
                                         <span className="text-xs text-gray-500 ml-1">({order.created_by_department || 'ไม่ระบุ'})</span>
                                     </span>
                                 </div>
@@ -511,7 +512,7 @@ export default function DashboardPage() {
                                 {order.is_verified ? (
                                     <div className="flex flex-col items-center justify-center gap-1.5">
                                         <span className="text-base font-bold flex items-center gap-2">
-                                            <i className="fas fa-check-circle text-lg"></i> ชื่อและนามสกุลผู้ปฏิบัติงาน: {order.verified_by}
+                                            <CheckCircle2 className="w-5 h-5 inline mr-1" /> ชื่อและนามสกุลผู้ปฏิบัติงาน: {order.verified_by}
                                         </span>
                                         <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full">
                                             เวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
@@ -519,7 +520,7 @@ export default function DashboardPage() {
                                     </div>
                                 ) : (
                                     <span className="flex items-center justify-center gap-2 text-sm font-bold uppercase">
-                                        <i className="fas fa-clock"></i> รอการจัดทำชิ้นงาน
+                                        <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
                                     </span>
                                 )}
                             </div>
@@ -534,7 +535,7 @@ export default function DashboardPage() {
                     <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-slide-up">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-bold text-gray-800">✏️ แก้ไขคำสั่งซื้อ</h2>
-                            <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600"><i className="fas fa-times text-xl"></i></button>
+                            <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
                         </div>
 
                         <div className="space-y-4">

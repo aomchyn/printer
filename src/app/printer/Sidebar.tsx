@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -144,10 +144,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             `}>
                 <div className="sidebar-container h-full flex flex-col">
                     <div className="sidebar-title mb-6 text-center relative border-b border-b-white/10 pb-4">
-                        <h1 className="text-3xl font-bold text-white tracking-wider flex items-center justify-center">
-                            <i className="fas fa-print mr-3 text-blue-400"></i>Printer OP
-                        </h1>
-
+                        <div className="flex items-center justify-between text-2xl font-bold p-6 border-b border-blue-800/50 text-white tracking-widest bg-gradient-to-r from-blue-900 to-indigo-900">
+                            <span className="flex items-center"><Printer className="mr-3 text-blue-400 w-6 h-6" />Printer OP</span>
+                            {/* Close button for mobile */}
+                        </div>
                         {/* Mobile close button inside sidebar */}
                         <button
                             className="md:hidden absolute -top-2 -right-2 p-2 text-white/70 hover:text-white bg-white/10 rounded-full"
@@ -156,8 +156,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             <X size={20} />
                         </button>
                         <div className="text-sm font-medium mt-6 mb-4 text-white bg-white/10 p-4 rounded-xl shadow-inner border border-white/5 text-left flex flex-col gap-2">
-                            <div className="flex items-center text-blue-300 font-bold text-base mb-1">
-                                <i className="fas fa-user-circle mr-2 text-xl shrink-0"></i>
+                            <div className="p-4 bg-indigo-800/40 rounded-xl mb-4 text-sm border border-indigo-700 hover:bg-indigo-700/40 transition flex items-center shadow-inner">
+                                <UserCircle className="mr-2 w-5 h-5 shrink-0" />
                                 <span className="truncate">{name || 'Loading...'}</span>
                             </div>
 
@@ -191,7 +191,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         </div>
                         <div className="flex gap-1 justify-center">
                             <button className="bg-red-500/80 hover:bg-red-600 text-white px-4 py-2 rounded w-full font-semibold transition" onClick={handleLogout}>
-                                <i className="fas fa-sign-out-alt mr-2"></i>Logout
+                                <LogOut className="mr-2 w-4 h-4" />Logout
                             </button>
                         </div>
                     </div>
@@ -200,7 +200,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             <li>
                                 <button onClick={() => navigate('/printer/dashboard')}
                                     className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('dashboard') ? 'bg-blue-600 text-white shadow-md' : 'text-gray-200 hover:bg-white/10'}`}>
-                                    <i className="fas fa-chart-line mr-3 w-5"></i>
+                                    <LineChart className="mr-3 w-5 h-5" />
                                     <span>Dashboard</span>
                                 </button>
                             </li>
@@ -208,7 +208,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             <li>
                                 <button onClick={() => navigate('/printer/product')}
                                     className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('product') ? 'bg-blue-600 text-white shadow-md' : 'text-gray-200 hover:bg-white/10'}`}>
-                                    <i className="fas fa-box mr-3 w-5"></i>
+                                    <Package className="mr-3 w-5 h-5" />
                                     <span>Product</span>
                                 </button>
                             </li>
@@ -216,7 +216,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             <li>
                                 <button onClick={() => navigate('/printer/order')}
                                     className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('order') ? 'bg-blue-600 text-white shadow-md' : 'text-gray-200 hover:bg-white/10'}`}>
-                                    <i className="fas fa-shopping-cart mr-3 w-5"></i>
+                                    <ShoppingCart className="mr-3 w-5 h-5" />
                                     <span>Orders</span>
                                 </button>
                             </li>
@@ -226,7 +226,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">Admin Tools</div>
                                     <button onClick={() => navigate('/printer/user')}
                                         className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('user') ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200 hover:bg-white/10'}`}>
-                                        <i className="fas fa-users mr-3 w-5"></i>
+                                        <Users className="mr-3 w-5 h-5" />
                                         <span>Manage Users</span>
                                     </button>
                                 </li>
