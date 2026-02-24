@@ -513,7 +513,7 @@ export default function DashboardPage() {
                                     <div className="flex flex-col items-center justify-center gap-2 py-1">
                                         <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base font-bold text-center">
                                             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
-                                            {order.verified_by.includes('(') ? (
+                                            {order.verified_by && order.verified_by.includes('(') ? (
                                                 <div className="flex items-center gap-2">
                                                     <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
                                                     <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest">
@@ -521,7 +521,7 @@ export default function DashboardPage() {
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <span>{order.verified_by}</span>
+                                                <span>{order.verified_by || '-'}</span>
                                             )}
                                         </div>
                                         <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
