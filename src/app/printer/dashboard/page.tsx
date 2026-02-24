@@ -510,11 +510,21 @@ export default function DashboardPage() {
                             {/* Card Footer Status */}
                             <div className={`p-4 text-center tracking-wide ${order.is_verified ? 'bg-emerald-600 text-white shadow-inner' : 'bg-gray-100 text-gray-400 font-bold uppercase tracking-widest'}`}>
                                 {order.is_verified ? (
-                                    <div className="flex flex-col items-center justify-center gap-1.5">
-                                        <span className="text-base font-bold flex items-center gap-2">
-                                            <CheckCircle2 className="w-5 h-5 inline mr-1" /> ชื่อและนามสกุลผู้ปฏิบัติงาน: {order.verified_by}
-                                        </span>
-                                        <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full">
+                                    <div className="flex flex-col items-center justify-center gap-2 py-1">
+                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base font-bold text-center">
+                                            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
+                                            {order.verified_by?.includes('(') ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
+                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-mono">
+                                                        {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span>{order.verified_by}</span>
+                                            )}
+                                        </div>
+                                        <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
                                             เวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
                                         </span>
                                     </div>
