@@ -116,7 +116,7 @@ export default function UserManagement() {
                 Swal.fire({
                     icon: 'error',
                     title: 'รหัสผ่านอ่อนเกินไป',
-                    text: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
+                    text: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'
                 });
                 return;
             }

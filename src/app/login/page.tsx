@@ -83,7 +83,7 @@ export default function LoginPage() {
                             type="password"
                             required
                             className="form-input-dark"
-                            placeholder="••••••••"
+                            placeholder="••••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
@@ -104,10 +104,6 @@ export default function LoginPage() {
                         )}
                     </button>
                 </form>
-
-                <p className="mt-8 text-center text-sm text-gray-500">
-                    ติดต่อผู้ดูแลระบบเพื่อขอเปิดบัญชีเข้าใช้งาน
-                </p>
             </div>
         </div>
     );

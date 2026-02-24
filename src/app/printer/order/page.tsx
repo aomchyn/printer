@@ -208,7 +208,7 @@ export default function OrderPage() {
             Swal.fire({
                 icon: 'success',
                 title: 'บันทึกสำเร็จ',
-                text: `บันทึกคำสั่งชิ้นงานสำเร็จแล้ว`
+                text: `บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว`
             });
 
             const resetNow = new Date();

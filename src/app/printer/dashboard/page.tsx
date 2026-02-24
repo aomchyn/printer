@@ -122,7 +122,7 @@ export default function DashboardPage() {
 
         const result = await Swal.fire({
             title: 'ยืนยันการลบ?',
-            text: 'คุณต้องการลบคำสั่งซื้อนี้หรือไม่?',
+            text: 'คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -195,7 +195,7 @@ export default function DashboardPage() {
 
         const result = await Swal.fire({
             title: 'ยืนยันการตรวจสอบ',
-            text: `คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งซื้อนี้แล้วหรือไม่?`,
+            text: `คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#10b981',
@@ -243,7 +243,7 @@ export default function DashboardPage() {
 
         const result = await Swal.fire({
             title: 'ยกเลิกการตรวจสอบ?',
-            text: 'คุณต้องการยกเลิกการตรวจสอบคำสั่งซื้อนี้หรือไม่?',
+            text: 'คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ef4444',
@@ -426,7 +426,7 @@ export default function DashboardPage() {
                 <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-white/20">
                     <div className="text-6xl mb-4 opacity-50">📦</div>
                     <h2 className="text-2xl font-semibold text-gray-600">
-                        {searchTerm ? `ไม่พบเลขลอต "${searchTerm}"` : 'ไม่มีคำสั่งซื้อในขณะนี้'}
+                        {searchTerm ? `ไม่พบเลขลอต "${searchTerm}"` : 'ไม่มีคำสั่งฉลากในขณะนี้'}
                     </h2>
                 </div>
             ) : (
@@ -513,11 +513,11 @@ export default function DashboardPage() {
                                     <div className="flex flex-col items-center justify-center gap-2 py-1">
                                         <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base font-bold text-center">
                                             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
-                                            {order.verified_by?.includes('(') ? (
+                                            {order.verified_by.includes('(') ? (
                                                 <div className="flex items-center gap-2">
                                                     <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-mono">
-                                                        {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
+                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest">
+                                                        ID: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -525,7 +525,7 @@ export default function DashboardPage() {
                                             )}
                                         </div>
                                         <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
-                                            เวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
+                                            วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
                                         </span>
                                     </div>
                                 ) : (
@@ -544,7 +544,7 @@ export default function DashboardPage() {
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-slide-up">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">✏️ แก้ไขคำสั่งซื้อ</h2>
+                            <h2 className="text-2xl font-bold text-gray-800">✏️ แก้ไขคำสั่งพิมพ์ฉลาก</h2>
                             <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
                         </div>
 
