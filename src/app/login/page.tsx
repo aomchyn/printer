@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -33,8 +32,9 @@ export default function LoginPage() {
 
             if (error) throw error;
             router.push("/printer/dashboard");
-        } catch (err: any) {
-            let errorMessage = err.message || "Failed to login";
+        } catch (err) {
+            const errorObj = err as Error;
+            let errorMessage = errorObj.message || "Failed to login";
             if (errorMessage === "Email not confirmed") {
                 errorMessage = "กรุณายืนยันอีเมลของคุณก่อนเข้าใช้งาน ";
             } else if (errorMessage === "Invalid login credentials") {

@@ -9,6 +9,7 @@ export interface OrderInterface {
     orderDate: string;
     orderTime: string;
     orderDateTime: string;
+    orderType: string;
     lotNumber: string;
     productId: string;
     productName: string;
@@ -36,6 +37,7 @@ export default function OrderPage() {
         orderDate: '',
         orderTime: '',
         orderDateTime: '',
+        orderType: 'พิมพ์ฉลาก',
         lotNumber: '',
         productId: '',
         productName: '',
@@ -82,7 +84,7 @@ export default function OrderPage() {
             if (data) {
                 setProducts(data);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า:', err);
         }
     };
@@ -184,10 +186,11 @@ export default function OrderPage() {
                 return;
             }
 
-            const { data, error } = await supabase.from('orders').insert({
+            const { error } = await supabase.from('orders').insert({
                 order_date: orderData.orderDate,
                 order_time: orderData.orderTime,
                 order_datetime: orderData.orderDateTime,
+                order_type: orderData.orderType,
                 lot_number: orderData.lotNumber,
                 product_id: orderData.productId,
                 product_name: orderData.productName,
@@ -216,6 +219,7 @@ export default function OrderPage() {
                 orderDate: resetNow.toISOString().split('T')[0],
                 orderTime: resetNow.toTimeString().split(' ')[0].substring(0, 5),
                 orderDateTime: resetNow.toISOString(),
+                orderType: 'พิมพ์ฉลาก',
                 lotNumber: '',
                 productId: '',
                 productName: '',
@@ -225,11 +229,12 @@ export default function OrderPage() {
                 quantity: 0,
                 notes: '',
             });
-        } catch (error: any) {
+        } catch (error) {
+            const errorObj = error as Error;
             Swal.fire({
                 icon: 'error',
                 title: 'เกิดข้อผิดพลาด',
-                text: error.message || 'กรุณาลองใหม่อีกครั้ง'
+                text: errorObj.message || 'กรุณาลองใหม่อีกครั้ง'
             });
         }
     };
@@ -241,7 +246,7 @@ export default function OrderPage() {
             const [hours, minutes] = orderData.orderTime.split(':');
             const thaiYear = parseInt(year) + 543;
             return `${day}/${month}/${thaiYear}, ${hours}:${minutes}`;
-        } catch (error) {
+        } catch {
             return `${orderData.orderDate}, ${orderData.orderTime}`;
         }
     };
@@ -260,6 +265,36 @@ export default function OrderPage() {
                         </label>
                         <div className="w-full px-4 py-3 bg-blue-50/50 border border-blue-200 rounded-lg text-gray-800 font-medium shadow-inner">
                             {formatThaiDateTime()}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                            ประเภทคำสั่ง
+                        </label>
+                        <div className="flex gap-4">
+                            <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-medium transition-all ${orderData.orderType === 'พิมพ์ฉลาก' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100 hover:border-blue-400'}`}>
+                                <input
+                                    type="radio"
+                                    name="orderType"
+                                    value="พิมพ์ฉลาก"
+                                    checked={orderData.orderType === 'พิมพ์ฉลาก'}
+                                    onChange={(e) => setOrderData(prev => ({ ...prev, orderType: e.target.value }))}
+                                    className="hidden"
+                                />
+                                🖨️ พิมพ์ฉลาก
+                            </label>
+                            <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-medium transition-all ${orderData.orderType === 'ปั๊มถุง' ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100 hover:border-purple-400'}`}>
+                                <input
+                                    type="radio"
+                                    name="orderType"
+                                    value="ปั๊มถุง"
+                                    checked={orderData.orderType === 'ปั๊มถุง'}
+                                    onChange={(e) => setOrderData(prev => ({ ...prev, orderType: e.target.value }))}
+                                    className="hidden"
+                                />
+                                🛍️ ปั๊มถุง
+                            </label>
                         </div>
                     </div>
 
@@ -390,7 +425,7 @@ export default function OrderPage() {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            บันทึกคำสั่งพิมพ์ฉลาก
+                            บันทึกคำสั่ง{orderData.orderType}
                         </button>
                     </div>
                 </form>

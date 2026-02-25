@@ -49,7 +49,7 @@ export default function StatisticsPage() {
             }
 
             // Route Protection: "User" role is not allowed on Statistics page
-            const { data, error } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+            const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
             if (data?.role === 'user') {
                 Swal.fire({
                     icon: 'error',
@@ -66,6 +66,7 @@ export default function StatisticsPage() {
 
     useEffect(() => {
         loadHistoricalOrders();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedMonth, selectedYear]);
 
     const loadHistoricalOrders = async () => {

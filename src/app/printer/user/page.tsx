@@ -5,7 +5,7 @@ import Swal from "sweetalert2"
 import Modal from "../components/Modal"
 import { supabase, supabaseUrl, supabaseAnonKey } from "@/lib/supabase"
 import { createClient } from "@supabase/supabase-js"
-import { UserPlus, Edit2, Trash2, X, Check } from "lucide-react"
+import { Edit2, Trash2, X, Check } from "lucide-react"
 
 interface User {
     id: string
@@ -32,6 +32,7 @@ export default function UserManagement() {
 
     useEffect(() => {
         checkAdminStatus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const checkAdminStatus = async () => {
@@ -74,7 +75,7 @@ export default function UserManagement() {
             if (data) {
                 setUsers(data);
             }
-        } catch (error) {
+        } catch {
             Swal.fire({
                 icon: 'error',
                 title: 'error',
@@ -223,9 +224,9 @@ export default function UserManagement() {
                 setRole('user');
                 fetchUsers();
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
-            let errorMessage = error.message;
+            let errorMessage = (error as Error).message;
             if (errorMessage && errorMessage.includes('users_id_fkey')) {
                 errorMessage = 'ไม่สามารถสร้างผู้ใช้ได้ เนื่องจากอีเมลนี้ถูกใช้งานไปแล้ว หรือกำลังรอการยืนยันทางอีเมลอยู่';
             }
@@ -273,7 +274,7 @@ export default function UserManagement() {
                 })
 
                 fetchUsers()
-            } catch (error) {
+            } catch {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',

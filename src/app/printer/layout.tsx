@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Sidebar from "./Sidebar";
-import { Menu, TreePine, Printer } from "lucide-react";
+import { Menu, Printer } from "lucide-react";
 
 type PrinterLayoutProps = {
     children: React.ReactNode;

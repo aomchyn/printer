@@ -5,13 +5,14 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { BarChart3, PieChart as PieChartIcon, Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X } from 'lucide-react';
 
 export interface OrderInterface {
     id: number;
     order_date: string;
     order_time: string;
     order_datetime: string;
+    order_type?: string;
     lot_number: string;
     product_id: string;
     product_name: string;
@@ -51,7 +52,7 @@ export default function DashboardPage() {
                     schema: 'public',
                     table: 'orders',
                 },
-                (payload) => {
+                () => {
                     // Refresh orders on any change
                     loadOrders();
                 }
@@ -61,6 +62,7 @@ export default function DashboardPage() {
         return () => {
             supabase.removeChannel(channel);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchUserInfo = async () => {
@@ -71,7 +73,7 @@ export default function DashboardPage() {
                 return;
             }
 
-            const { data, error } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+            const { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
             if (data) {
                 setRole(data.role);
                 setUserName(data.name);
@@ -313,7 +315,7 @@ export default function DashboardPage() {
                     <span className="text-sm opacity-75">{day}/{month}/{yearCE}</span>
                 </>
             );
-        } catch (error) {
+        } catch {
             return dateString;
         }
     };
@@ -500,8 +502,13 @@ export default function DashboardPage() {
                             {/* Card Header */}
                             <div className={`p-5 border-b border-blue-100 flex justify-between items-start ${index % 2 === 0 ? 'bg-blue-100/80' : 'bg-indigo-100/80'}`}>
                                 <div className="pr-4 pointer-events-none">
-                                    <div className="flex gap-2 items-center mb-1">
-                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{order.product_name}</h3>
+                                    <div className="flex gap-2 items-center mb-1 flex-wrap">
+                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1 break-all">{order.product_name}</h3>
+                                        {order.order_type && (
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                                                {order.order_type}
+                                            </span>
+                                        )}
                                         {index === 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm">New</span>}
                                     </div>
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{order.product_id} • ลอต {order.lot_number}</p>

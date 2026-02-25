@@ -10,6 +10,7 @@ export interface FgcodeInterface {
     id: string; // e.g. FG-1001
     name: string;
     exp: string;
+    category?: string;
 }
 
 export default function FgcodeManagement() {
@@ -19,6 +20,7 @@ export default function FgcodeManagement() {
     const [id, setId] = useState('');
     const [name, setName] = useState('');
     const [exp, setExp] = useState('');
+    const [category, setCategory] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
@@ -32,7 +34,7 @@ export default function FgcodeManagement() {
             if (data) {
                 setFgcodes(data);
             }
-        } catch (error) {
+        } catch {
             Swal.fire({
                 icon: 'error',
                 title: 'ผิดพลาด',
@@ -58,7 +60,8 @@ export default function FgcodeManagement() {
                 // แก้ไข
                 const { error } = await supabase.from('fgcode').update({
                     name: name,
-                    exp: exp
+                    exp: exp,
+                    category: category || null
                 }).eq('id', editingFgcode.id);
 
                 if (error) throw error;
@@ -77,7 +80,8 @@ export default function FgcodeManagement() {
                 const { error } = await supabase.from('fgcode').insert({
                     id: id,
                     name: name,
-                    exp: exp
+                    exp: exp,
+                    category: category || null
                 });
 
                 if (error) throw error;
@@ -97,14 +101,16 @@ export default function FgcodeManagement() {
             setId('');
             setName('');
             setExp('');
+            setCategory('');
 
             fetchFgcodes();
 
-        } catch (error: any) {
+        } catch (error) {
+            const errorObj = error as Error;
             Swal.fire({
                 icon: 'error',
                 title: 'ผิดพลาด',
-                text: error.message || `ไม่สามารถ${editingFgcode ? 'แก้ไข' : 'สร้าง'}รหัสสินค้าได้`
+                text: errorObj.message || `ไม่สามารถ${editingFgcode ? 'แก้ไข' : 'สร้าง'}รหัสสินค้าได้`
             });
         }
     };
@@ -114,6 +120,7 @@ export default function FgcodeManagement() {
         setId(fgcode.id || '');
         setName(fgcode.name || '');
         setExp(fgcode.exp || '');
+        setCategory(fgcode.category || '');
         setShowModal(true);
     };
 
@@ -142,7 +149,7 @@ export default function FgcodeManagement() {
                 })
 
                 fetchFgcodes()
-            } catch (error: any) {
+            } catch {
                 Swal.fire({
                     icon: 'error',
                     title: 'ผิดพลาด',
@@ -156,6 +163,44 @@ export default function FgcodeManagement() {
         fgcode.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fgcode.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const getCategoryBadge = (cat?: string) => {
+        if (!cat) return null;
+
+        let bgColor = '';
+        let textColor = '';
+        let borderColor = '';
+
+        switch (cat) {
+            case 'มีทะเบียน / FAMI-QS':
+            case 'มีทะเบียน':
+            case 'มีทะเบียน / GHPs-HACCP':
+                bgColor = 'bg-green-100';
+                textColor = 'text-green-800';
+                borderColor = 'border-green-200';
+                break;
+            case 'สินค้าภายใน / สินค้าคุณหมอเอ':
+                bgColor = 'bg-red-100';
+                textColor = 'text-red-800';
+                borderColor = 'border-red-200';
+                break;
+            case 'วัตถุดิบ':
+                bgColor = 'bg-purple-100';
+                textColor = 'text-purple-800';
+                borderColor = 'border-purple-200';
+                break;
+            default:
+                bgColor = 'bg-gray-100';
+                textColor = 'text-gray-800';
+                borderColor = 'border-gray-200';
+        }
+
+        return (
+            <span className={`px-3 py-1 ${bgColor} ${textColor} rounded-full text-xs font-bold border ${borderColor}`}>
+                {cat}
+            </span>
+        );
+    };
 
     return (
         <div className="container mx-auto p-4 text-gray-800">
@@ -190,6 +235,7 @@ export default function FgcodeManagement() {
                         setId('')
                         setName('')
                         setExp('')
+                        setCategory('')
                         setShowModal(true)
                     }}
                     className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-200 flex items-center justify-center shadow-lg transform hover:scale-105 shrink-0"
@@ -204,6 +250,7 @@ export default function FgcodeManagement() {
                         <tr>
                             <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">รหัสสินค้า</th>
                             <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">รายการสินค้า</th>
+                            <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">กลุ่มสินค้า</th>
                             <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">อายุผลิตภัณฑ์</th>
                             <th className="px-6 py-4 text-right text-sm font-bold text-white uppercase tracking-wider">
                                 จัดการ
@@ -236,6 +283,9 @@ export default function FgcodeManagement() {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         {fgcode.name}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                        {getCategoryBadge(fgcode.category)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold border border-blue-200">
@@ -275,6 +325,7 @@ export default function FgcodeManagement() {
                         setId('')
                         setName('')
                         setExp('')
+                        setCategory('')
                     }}
                     size="md">
                     <form onSubmit={handleSubmit}>
@@ -326,6 +377,24 @@ export default function FgcodeManagement() {
                             />
                         </div>
 
+                        <div className="mb-6">
+                            <label className="block mb-2 font-semibold text-gray-700">
+                                กลุ่มสินค้า <span className="text-gray-400 text-sm font-normal">(ไม่บังคับ)</span>
+                            </label>
+                            <select
+                                className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                value={category}
+                                onChange={e => setCategory(e.target.value)}
+                            >
+                                <option value="">ไม่ได้ระบุ</option>
+                                <option value="มีทะเบียน / FAMI-QS">มีทะเบียน / FAMI-QS</option>
+                                <option value="มีทะเบียน">มีทะเบียน</option>
+                                <option value="สินค้าภายใน / สินค้าคุณหมอเอ">สินค้าภายใน / สินค้าคุณหมอเอ</option>
+                                <option value="มีทะเบียน / GHPs-HACCP">มีทะเบียน / GHPs-HACCP</option>
+                                <option value="วัตถุดิบ">วัตถุดิบ</option>
+                            </select>
+                        </div>
+
                         <div className="flex justify-end gap-3 mt-4">
                             <button
                                 type="button"
@@ -335,6 +404,7 @@ export default function FgcodeManagement() {
                                     setId('')
                                     setName('')
                                     setExp('')
+                                    setCategory('')
                                 }}
                                 className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors">
                                 <X className="mr-2 w-4 h-4" /> ยกเลิก

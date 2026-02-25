@@ -20,35 +20,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const router = useRouter();
     const pathname = usePathname();
 
-    useEffect(() => {
-        fetchData();
-
-        // Listen for changes to the user's role in real-time
-        const channel = supabase.channel('sidebar-roles')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'users'
-                },
-                (payload) => {
-                    // Update role immediately if it's the current user
-                    supabase.auth.getSession().then(({ data: { session } }) => {
-                        if (session?.user.id === payload.new.id) {
-                            setRole(payload.new.role);
-                        }
-                    });
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
-
-    const fetchData = async () => {
+    async function fetchData() {
         try {
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -57,7 +29,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 return;
             }
 
-            const { data: userData, error } = await supabase
+            const { data: userData } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', session.user.id)
@@ -92,6 +64,37 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         }
     }
 
+    useEffect(() => {
+        fetchData();
+
+        // Listen for changes to the user's role in real-time
+        const channel = supabase.channel('sidebar-roles')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'users'
+                },
+                (payload) => {
+                    // Update role immediately if it's the current user
+                    supabase.auth.getSession().then(({ data: { session } }) => {
+                        if (session?.user.id === payload.new.id) {
+                            setRole(payload.new.role);
+                        }
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+
+
     const handleLogout = async () => {
         try {
             const button = await Swal.fire({
@@ -118,10 +121,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const navigate = (path: string) => {
         router.push(path);
         setIsOpen(false); // Close sidebar on mobile after navigation
-    }
-
-    const isActive = (path: string) => {
-        return pathname === path ? 'sidebar-nav-link-active' : 'sidebar-nav-link';
     }
 
     return (

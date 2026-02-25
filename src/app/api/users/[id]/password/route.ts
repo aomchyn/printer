@@ -43,6 +43,7 @@ export async function PUT(
                     },
                     setAll(cookiesToSet) {
                         try {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             cookiesToSet.forEach((cookie: any) => {
                                 cookieStore.set(cookie.name, cookie.value, cookie.options)
                             })
@@ -100,7 +101,7 @@ export async function PUT(
 
         return NextResponse.json({ message: 'Password updated successfully', user: data.user }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Unexpected error during password update:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }

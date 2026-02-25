@@ -37,6 +37,7 @@ export async function DELETE(
                     },
                     setAll(cookiesToSet) {
                         try {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             cookiesToSet.forEach((cookie: any) => {
                                 cookieStore.set(cookie.name, cookie.value, cookie.options)
                             })
@@ -88,7 +89,7 @@ export async function DELETE(
 
         return NextResponse.json({ message: 'User deleted successfully', data }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Unexpected error during user deletion:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
