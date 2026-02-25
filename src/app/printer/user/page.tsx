@@ -274,11 +274,11 @@ export default function UserManagement() {
                 })
 
                 fetchUsers()
-            } catch {
+            } catch (error) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Failed to delete user'
+                    text: error instanceof Error ? error.message : 'Failed to delete user'
                 })
             }
         }
