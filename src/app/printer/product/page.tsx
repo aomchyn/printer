@@ -22,10 +22,22 @@ export default function FgcodeManagement() {
     const [exp, setExp] = useState('');
     const [category, setCategory] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [userRole, setUserRole] = useState<string>('user');
 
     useEffect(() => {
         fetchFgcodes()
+        fetchUserRole()
     }, [])
+
+    const fetchUserRole = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+            if (data) {
+                setUserRole(data.role || 'user');
+            }
+        }
+    }
 
     const fetchFgcodes = async () => {
         try {
@@ -293,20 +305,24 @@ export default function FgcodeManagement() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleEdit(fgcode)}
-                                            className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
-                                            title="แก้ไข"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(fgcode.id)}
-                                            className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
-                                            title="ลบ"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        {userRole !== 'user' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleEdit(fgcode)}
+                                                    className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
+                                                    title="แก้ไข"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(fgcode.id)}
+                                                    className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
+                                                    title="ลบ"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        )}
                                     </td>
                                 </tr>
                             ))
