@@ -9,7 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
+    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.0.1",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
     "react": "19.2.3",

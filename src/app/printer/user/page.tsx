@@ -38,15 +38,15 @@ export default function UserManagement() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
             const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-            if (data?.role?.includes('admin')) {
+            if (data?.role === 'moderator' || data?.role === 'assistant_moderator') {
                 setIsAdmin(true);
                 fetchUsers();
             } else if (!data) {
                 // Auto-recovery to sync with Sidebar's recovery
                 const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = fallbackName.toLowerCase().includes('aom') || fallbackName.toLowerCase().includes('admin') ? 'admin' : 'user';
+                const fallbackRole = fallbackName.toLowerCase().includes('admin') ? 'moderator' : 'user';
 
-                if (fallbackRole === 'admin') {
+                if (fallbackRole === 'moderator') {
                     setIsAdmin(true);
                     fetchUsers();
                     return; // exit early, as they are effectively an admin
@@ -54,14 +54,14 @@ export default function UserManagement() {
                     Swal.fire({
                         icon: 'error',
                         title: 'ไม่มีสิทธิ์เข้าถึง',
-                        text: 'เฉพาะแอดมินเท่านั้น',
+                        text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
                     });
                 }
             } else {
                 Swal.fire({
                     icon: 'error',
                     title: 'ไม่มีสิทธิ์เข้าถึง',
-                    text: 'เฉพาะแอดมินเท่านั้น',
+                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
                 });
             }
         }
@@ -349,8 +349,16 @@ export default function UserManagement() {
                                     <td className="p-4 text-sm text-gray-500">{user.job_title || '-'}</td>
                                     <td className="p-4 text-sm text-gray-800">{user.department || '-'}</td>
                                     <td className="p-4">
-                                        <span className={`px-3 py-1 text-xs font-bold rounded-full ${user.role?.includes('admin') ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
-                                            {user.role}
+                                        <span className={`px-3 py-1 text-xs font-bold rounded-full ${user.role === 'moderator' ? 'bg-purple-100 text-purple-700' :
+                                            user.role === 'assistant_moderator' ? 'bg-indigo-100 text-indigo-700' :
+                                                user.role === 'operator' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-green-100 text-green-700'
+                                            }`}>
+                                            {
+                                                user.role === 'moderator' ? 'Moderator' :
+                                                    user.role === 'assistant_moderator' ? 'Assistant Moderator' :
+                                                        user.role === 'operator' ? 'Operator' : 'User'
+                                            }
                                         </span>
                                     </td>
                                     <td className="p-4 text-center">
@@ -461,7 +469,9 @@ export default function UserManagement() {
                             <label className="block mb-2 font-semibold text-gray-700">ระดับสิทธิ์ (Role)</label>
                             <select className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300" value={role}
                                 onChange={e => setRole(e.target.value)}>
-                                <option value="admin">Admin</option>
+                                <option value="moderator">Moderator</option>
+                                <option value="assistant_moderator">Assistant Moderator</option>
+                                <option value="operator">Operator</option>
                                 <option value="user">User</option>
                             </select>
                         </div>

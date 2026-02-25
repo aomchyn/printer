@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function PUT(
@@ -29,8 +31,55 @@ export async function PUT(
             );
         }
 
-        // Initialize Supabase client with the Service Role Key
-        // This key has admin privileges and bypasses RLS
+        // 1. Verify caller session using cookies
+        const cookieStore = await cookies();
+        const supabaseUserClient = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return cookieStore.getAll()
+                    },
+                    setAll(cookiesToSet) {
+                        try {
+                            cookiesToSet.forEach((cookie: any) => {
+                                cookieStore.set(cookie.name, cookie.value, cookie.options)
+                            })
+                        } catch {
+                            // Ignored (Server Component)
+                        }
+                    },
+                },
+            }
+        )
+
+        const { data: { session }, error: sessionError } = await supabaseUserClient.auth.getSession();
+        if (sessionError || !session) {
+            return NextResponse.json({ error: 'Unauthorized: No active session' }, { status: 401 });
+        }
+
+        // 2. Verify caller role (Must be moderator, assistant_moderator, or changing their OWN password)
+        const isSelf = session.user.id === id;
+
+        const { data: callerData, error: roleError } = await supabaseUserClient
+            .from('users')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (roleError || !callerData) {
+            return NextResponse.json({ error: 'Unauthorized: Cannot verify user role' }, { status: 403 });
+        }
+
+        const isModerator = callerData.role === 'moderator' || callerData.role === 'assistant_moderator';
+
+        if (!isSelf && !isModerator) {
+            return NextResponse.json({ error: 'Forbidden: Insufficient privileges to change another user\'s password' }, { status: 403 });
+        }
+
+
+        // 3. Initialize Supabase Admin client with the Service Role Key to bypass Auth restrictions
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
             auth: {
                 autoRefreshToken: false,
@@ -38,7 +87,7 @@ export async function PUT(
             }
         });
 
-        // Update the user's password in auth.users
+        // 4. Update the user's password in auth.users
         const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
             id,
             { password: newPassword }

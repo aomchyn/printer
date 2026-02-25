@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -73,7 +73,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 // AUTO RECOVERY: If a user was created directly in Supabase Dashboard,
                 // their public.users row will be missing. Let's create it automatically.
                 const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = fallbackName.toLowerCase().includes('aom') || fallbackName.toLowerCase().includes('admin') ? 'admin' : 'user';
+                const fallbackRole = fallbackName.toLowerCase().includes('admin') ? 'moderator' : 'user';
 
                 // Insert missing profile
                 await supabase.from('users').insert({
@@ -184,8 +184,16 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
                             <div className="flex justify-between items-center text-xs pt-1">
                                 <span className="text-white/60">สิทธิ์ (Role)</span>
-                                <span className={`uppercase tracking-wider font-bold ${role === 'admin' ? 'text-purple-400' : 'text-emerald-400'}`}>
-                                    {role || '...'}
+                                <span className={`uppercase tracking-wider font-bold ${role === 'moderator' ? 'text-purple-400' :
+                                    role === 'assistant_moderator' ? 'text-indigo-400' :
+                                        role === 'operator' ? 'text-blue-400' :
+                                            'text-emerald-400'
+                                    }`}>
+                                    {
+                                        role === 'moderator' ? 'Moderator' :
+                                            role === 'assistant_moderator' ? 'Asst. Moderator' :
+                                                role === 'operator' ? 'Operator' : 'User'
+                                    }
                                 </span>
                             </div>
                         </div>
@@ -205,6 +213,16 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                 </button>
                             </li>
 
+                            {(role === 'moderator' || role === 'assistant_moderator' || role === 'operator') && (
+                                <li>
+                                    <button onClick={() => navigate('/printer/statistics')}
+                                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('statistics') ? 'bg-blue-600 text-white shadow-md' : 'text-gray-200 hover:bg-white/10'}`}>
+                                        <History className="mr-3 w-5 h-5" />
+                                        <span>สถิติย้อนหลัง</span>
+                                    </button>
+                                </li>
+                            )}
+
                             <li>
                                 <button onClick={() => navigate('/printer/product')}
                                     className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('product') ? 'bg-blue-600 text-white shadow-md' : 'text-gray-200 hover:bg-white/10'}`}>
@@ -221,7 +239,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                 </button>
                             </li>
 
-                            {role?.includes('admin') && (
+                            {(role === 'moderator' || role === 'assistant_moderator') && (
                                 <li className="pt-4 border-t border-white/10 mt-4">
                                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">Admin Tools</div>
                                     <button onClick={() => navigate('/printer/user')}
