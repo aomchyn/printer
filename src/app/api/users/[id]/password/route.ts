@@ -51,16 +51,25 @@ export async function PUT(
             return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
         }
 
-        // 2. Verify caller role (Must be moderator, assistant_moderator, or changing their OWN password)
+        // 2. Initialize Supabase Admin client with the Service Role Key to bypass Auth/RLS restrictions
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        });
+
+        // 3. Verify caller role (Must be moderator, assistant_moderator, or changing their OWN password)
         const isSelf = user.id === id;
 
-        const { data: callerData, error: roleError } = await supabaseUserClient
+        const { data: callerData, error: roleError } = await supabaseAdmin
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single();
 
         if (roleError || !callerData) {
+            console.error('Error fetching caller role:', roleError);
             return NextResponse.json({ error: 'Unauthorized: Cannot verify user role' }, { status: 403 });
         }
 
@@ -69,15 +78,6 @@ export async function PUT(
         if (!isSelf && !isModerator) {
             return NextResponse.json({ error: 'Forbidden: Insufficient privileges to change another user\'s password' }, { status: 403 });
         }
-
-
-        // 3. Initialize Supabase Admin client with the Service Role Key to bypass Auth restrictions
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        });
 
         // 4. Update the user's password in auth.users
         const { data, error } = await supabaseAdmin.auth.admin.updateUserById(

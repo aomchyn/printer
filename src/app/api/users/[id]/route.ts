@@ -45,14 +45,23 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
         }
 
-        // 2. Verify caller role (Must be moderator or assistant_moderator)
-        const { data: callerData, error: roleError } = await supabaseUserClient
+        // 2. Initialize Supabase Admin client with the Service Role Key to bypass Auth/RLS restrictions
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        });
+
+        // 3. Verify caller role (Must be moderator or assistant_moderator)
+        const { data: callerData, error: roleError } = await supabaseAdmin
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single();
 
         if (roleError || !callerData) {
+            console.error('Error fetching caller role:', roleError);
             return NextResponse.json({ error: 'Unauthorized: Cannot verify user role' }, { status: 403 });
         }
 
@@ -60,13 +69,6 @@ export async function DELETE(
             return NextResponse.json({ error: 'Forbidden: Insufficient privileges' }, { status: 403 });
         }
 
-        // 3. Initialize Supabase client with the Service Role Key to bypass RLS for deletion
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        });
 
         // 4. Delete the user from auth.users
         const { data, error } = await supabaseAdmin.auth.admin.deleteUser(id);
