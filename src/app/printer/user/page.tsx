@@ -134,11 +134,34 @@ export default function UserManagement() {
 
                 if (error) throw error;
 
+                // If admin provided a new password, reset it using the API
+                if (password && password.trim().length > 0) {
+                    if (password.length < 8) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'รหัสผ่านอ่อนเกินไป',
+                            text: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'
+                        });
+                        return;
+                    }
+
+                    const res = await fetch(`/api/users/${editingUser.id}/password`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ newPassword: password })
+                    });
+
+                    if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.error || 'Failed to update user password');
+                    }
+                }
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Success',
-                    text: `User updated successfully`,
-                    timer: 1000
+                    text: password ? `User updated and password reset successfully` : `User updated successfully`,
+                    timer: 1500
                 })
 
                 setShowModal(false);
@@ -421,18 +444,18 @@ export default function UserManagement() {
                             />
                         </div>
 
-                        {!editingUser && (
-                            <div className="mb-4">
-                                <label className="block mb-2 font-semibold text-gray-700">Password</label>
-                                <input
-                                    type="password"
-                                    className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
-                                    value={password}
-                                    placeholder="รหัสผ่านสำหรับเข้าสู่ระบบ"
-                                    onChange={e => setPassword(e.target.value)}
-                                    required={!editingUser} />
-                            </div>
-                        )}
+                        <div className="mb-4">
+                            <label className="block mb-2 font-semibold text-gray-700">
+                                {editingUser ? 'ตั้งรหัสผ่านใหม่ (ไม่บังคับ)' : 'Password'}
+                            </label>
+                            <input
+                                type="password"
+                                className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                value={password}
+                                placeholder={editingUser ? 'ปล่อยว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน' : 'รหัสผ่านสำหรับเข้าสู่ระบบ'}
+                                onChange={e => setPassword(e.target.value)}
+                                required={!editingUser} />
+                        </div>
 
                         <div className="mb-6">
                             <label className="block mb-2 font-semibold text-gray-700">ระดับสิทธิ์ (Role)</label>
