@@ -227,8 +227,20 @@ export default function UserManagement() {
 
         if (result.isConfirmed) {
             try {
-                const { error } = await supabase.from('users').delete().eq('id', user.id);
-                if (error) throw error;
+                // Call the API route to delete from auth.users (requires service_role key on the server)
+                const res = await fetch(`/api/users/${user.id}`, {
+                    method: 'DELETE',
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Failed to delete user via API');
+                }
+
+                // Note: If the api route deleted the user from auth.users, 
+                // it might cascade to public.users if configured.
+                // Just in case, we also try to delete from public.users here.
+                await supabase.from('users').delete().eq('id', user.id);
 
                 Swal.fire({
                     icon: 'success',
@@ -382,7 +394,7 @@ export default function UserManagement() {
                                     type="text"
                                     className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
                                     value={employeeId}
-                                    placeholder="เช่น EMP001"
+                                    placeholder="เช่น 0001"
                                     onChange={e => setEmployeeId(e.target.value)}
                                 />
                             </div>
@@ -392,14 +404,14 @@ export default function UserManagement() {
                                     type="text"
                                     className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
                                     value={jobTitle}
-                                    placeholder="เช่น หัวหน้าแผนก"
+                                    placeholder="โปรดกรอกตำแหน่งงาน"
                                     onChange={e => setJobTitle(e.target.value)}
                                 />
                             </div>
                         </div>
 
                         <div className="mb-4">
-                            <label className="block mb-2 font-semibold text-gray-700">หน่วยงาน / แผนก</label>
+                            <label className="block mb-2 font-semibold text-gray-700">หน่วยงาน</label>
                             <input
                                 type="text"
                                 className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
