@@ -146,9 +146,13 @@ export default function UserManagement() {
                         return;
                     }
 
+                    const { data: { session } } = await supabase.auth.getSession();
                     const res = await fetch(`/api/users/${editingUser.id}/password`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session?.access_token || ''}`
+                        },
                         body: JSON.stringify({ newPassword: password })
                     });
 
@@ -251,9 +255,14 @@ export default function UserManagement() {
 
         if (result.isConfirmed) {
             try {
+                const { data: { session } } = await supabase.auth.getSession();
+
                 // Call the API route to delete from auth.users (requires service_role key on the server)
                 const res = await fetch(`/api/users/${user.id}`, {
                     method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${session?.access_token || ''}`
+                    }
                 });
 
                 if (!res.ok) {

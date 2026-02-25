@@ -1,6 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function PUT(
@@ -31,42 +29,35 @@ export async function PUT(
             );
         }
 
-        // 1. Verify caller session using cookies
-        const cookieStore = await cookies();
-        const supabaseUserClient = createServerClient(
+        // 1. Verify caller session using the Authorization header
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.replace('Bearer ', '');
+
+        if (!token) {
+            return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
+        }
+
+        const supabaseUserClient = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
-                cookies: {
-                    getAll() {
-                        return cookieStore.getAll()
-                    },
-                    setAll(cookiesToSet) {
-                        try {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            cookiesToSet.forEach((cookie: any) => {
-                                cookieStore.set(cookie.name, cookie.value, cookie.options)
-                            })
-                        } catch {
-                            // Ignored (Server Component)
-                        }
-                    },
-                },
+                auth: { persistSession: false }
             }
-        )
+        );
 
-        const { data: { session }, error: sessionError } = await supabaseUserClient.auth.getSession();
-        if (sessionError || !session) {
-            return NextResponse.json({ error: 'Unauthorized: No active session' }, { status: 401 });
+        const { data: { user }, error: userError } = await supabaseUserClient.auth.getUser(token);
+
+        if (userError || !user) {
+            return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
         }
 
         // 2. Verify caller role (Must be moderator, assistant_moderator, or changing their OWN password)
-        const isSelf = session.user.id === id;
+        const isSelf = user.id === id;
 
         const { data: callerData, error: roleError } = await supabaseUserClient
             .from('users')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (roleError || !callerData) {
