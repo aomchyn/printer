@@ -305,7 +305,8 @@ export default function DashboardPage() {
             const day = date.getDate().toString().padStart(2, '0');
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const yearCE = date.getFullYear();
-            return `${day}/${month}/${yearCE}`;
+            const yearBE = yearCE + 543;
+            return `${day}/${month}/${yearBE} (ค.ศ.${yearCE})`;
         } catch (error) {
             return dateString;
         }
