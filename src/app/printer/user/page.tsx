@@ -6,6 +6,7 @@ import Modal from "../components/Modal"
 import { supabase, supabaseUrl, supabaseAnonKey } from "@/lib/supabase"
 import { createClient } from "@supabase/supabase-js"
 import { Edit2, Trash2, X, Check } from "lucide-react"
+import { logAction } from "@/lib/logger"
 
 interface User {
     id: string
@@ -162,6 +163,13 @@ export default function UserManagement() {
                     }
                 }
 
+                await logAction('UPDATE_USER', {
+                    id: editingUser.id,
+                    name: name,
+                    role: role,
+                    password_changed: !!(password && password.trim().length > 0)
+                });
+
                 Swal.fire({
                     icon: 'success',
                     title: 'Success',
@@ -210,6 +218,8 @@ export default function UserManagement() {
 
                     if (insertError) throw insertError;
                 }
+
+                await logAction('CREATE_USER', { email, name, role });
 
                 Swal.fire({
                     icon: 'success',
@@ -274,6 +284,8 @@ export default function UserManagement() {
                 // it might cascade to public.users if configured.
                 // Just in case, we also try to delete from public.users here.
                 await supabase.from('users').delete().eq('id', user.id);
+
+                await logAction('DELETE_USER', { id: user.id, email: user.email, name: user.name });
 
                 Swal.fire({
                     icon: 'success',

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
+import { logAction } from '@/lib/logger';
 
 export interface OrderInterface {
     id?: number;
@@ -207,6 +208,12 @@ export default function OrderPage() {
             }).select('id');
 
             if (error) throw new Error(error.message);
+
+            await logAction('CREATE_ORDER', {
+                product_id: orderData.productId,
+                lot_number: orderData.lotNumber,
+                quantity: orderData.quantity
+            });
 
             Swal.fire({
                 icon: 'success',

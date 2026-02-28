@@ -5,6 +5,7 @@ import Swal from "sweetalert2"
 import Modal from "../components/Modal"
 import { supabase } from "@/lib/supabase"
 import { Search, Plus, X, Check, Edit2, Trash2 } from "lucide-react"
+import { logAction } from "@/lib/logger"
 
 export interface FgcodeInterface {
     id: string; // e.g. FG-1001
@@ -77,6 +78,7 @@ export default function FgcodeManagement() {
                 }).eq('id', editingFgcode.id);
 
                 if (error) throw error;
+                await logAction('UPDATE_PRODUCT', { id: editingFgcode.id, name, exp, category });
             } else {
                 // เพิ่มใหม่ (ตรวจสอบซ้ำ)
                 const { data: existing } = await supabase.from('fgcode').select('id').eq('id', id).single();
@@ -97,6 +99,7 @@ export default function FgcodeManagement() {
                 });
 
                 if (error) throw error;
+                await logAction('CREATE_PRODUCT', { id, name, exp, category });
             }
 
             Swal.fire({
@@ -152,6 +155,8 @@ export default function FgcodeManagement() {
             try {
                 const { error } = await supabase.from('fgcode').delete().eq('id', rowId);
                 if (error) throw error;
+
+                await logAction('DELETE_PRODUCT', { id: rowId });
 
                 Swal.fire({
                     icon: 'success',
@@ -384,11 +389,12 @@ export default function FgcodeManagement() {
                                 อายุผลิตภัณฑ์ <span className="text-red-500">*</span>
                             </label>
                             <input
-                                type="text"
+                                type="number"
+                                min="0"
                                 className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
                                 value={exp}
                                 onChange={e => setExp(e.target.value)}
-                                placeholder="เช่น 12 เดือนหรือ 2 ปี"
+                                placeholder="เช่น 12 (ใส่เฉพาะตัวเลขจำนวนเดือน)"
                                 required
                             />
                         </div>

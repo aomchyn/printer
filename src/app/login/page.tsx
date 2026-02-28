@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { logAction } from "@/lib/logger";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -31,6 +32,9 @@ export default function LoginPage() {
             });
 
             if (error) throw error;
+
+            await logAction('LOGIN', { email: email.trim() });
+
             router.push("/printer/dashboard");
         } catch (err) {
             const errorObj = err as Error;

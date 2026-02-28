@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -242,10 +242,17 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                 <li className="pt-4 border-t border-white/10 mt-4">
                                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">Admin Tools</div>
                                     <button onClick={() => navigate('/printer/user')}
-                                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('user') ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200 hover:bg-white/10'}`}>
+                                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('user') ? 'bg-purple-600 text-white shadow-md' : 'text-purple-200 hover:bg-white/10'} mb-2`}>
                                         <Users className="mr-3 w-5 h-5" />
                                         <span>Manage Users</span>
                                     </button>
+                                    {role === 'moderator' && (
+                                        <button onClick={() => navigate('/printer/logs')}
+                                            className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${pathname.includes('logs') ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-200 hover:bg-white/10'}`}>
+                                            <ShieldAlert className="mr-3 w-5 h-5" />
+                                            <span>Audit Logs</span>
+                                        </button>
+                                    )}
                                 </li>
                             )}
                         </ul>
