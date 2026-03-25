@@ -45,7 +45,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 // AUTO RECOVERY: If a user was created directly in Supabase Dashboard,
                 // their public.users row will be missing. Let's create it automatically.
                 const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = fallbackName.toLowerCase().includes('admin') ? 'moderator' : 'user';
+                const fallbackRole = 'user'; // SECURITY: Always default to 'user' — never auto-grant admin
 
                 // Insert missing profile
                 await supabase.from('users').insert({
@@ -53,7 +53,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     email: session.user.email,
                     name: fallbackName,
                     role: fallbackRole,
-                    department: 'Admin'
+                    department: 'ไม่ระบุ'
                 });
 
                 setName(fallbackName);

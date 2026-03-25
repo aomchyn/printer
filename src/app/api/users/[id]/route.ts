@@ -12,6 +12,12 @@ export async function DELETE(
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
         }
 
+        // SECURITY: Validate UUID format to prevent malformed input
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!UUID_REGEX.test(id)) {
+            return NextResponse.json({ error: 'Invalid user ID format' }, { status: 400 });
+        }
+
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

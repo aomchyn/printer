@@ -44,21 +44,13 @@ export default function UserManagement() {
                 setIsAdmin(true);
                 fetchUsers();
             } else if (!data) {
-                // Auto-recovery to sync with Sidebar's recovery
-                const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = fallbackName.toLowerCase().includes('admin') ? 'moderator' : 'user';
-
-                if (fallbackRole === 'moderator') {
-                    setIsAdmin(true);
-                    fetchUsers();
-                    return; // exit early, as they are effectively an admin
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ไม่มีสิทธิ์เข้าถึง',
-                        text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
-                    });
-                }
+                // Auto-recovery: always default to 'user' role for safety
+                // SECURITY: Never auto-grant admin based on email content
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
+                });
             } else {
                 Swal.fire({
                     icon: 'error',

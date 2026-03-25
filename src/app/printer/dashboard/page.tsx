@@ -79,9 +79,9 @@ export default function DashboardPage() {
                 setUserName(data.name);
                 setEmployeeId(data.employee_id || '');
             } else {
-                // Auto-recovery to sync with Sidebar's recovery
+                // Auto-recovery: always default to 'user' role for safety
                 const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = fallbackName.toLowerCase().includes('admin') ? 'moderator' : 'user';
+                const fallbackRole = 'user'; // SECURITY: Never auto-grant admin
                 setRole(fallbackRole);
                 setUserName(fallbackName);
             }

@@ -14,6 +14,12 @@ export async function PUT(
             return NextResponse.json({ error: 'User ID and new password are required' }, { status: 400 });
         }
 
+        // SECURITY: Validate UUID format to prevent malformed input
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!UUID_REGEX.test(id)) {
+            return NextResponse.json({ error: 'Invalid user ID format' }, { status: 400 });
+        }
+
         if (newPassword.length < 8) {
             return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
         }
