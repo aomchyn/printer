@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
             "default-src 'self'",
             "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
             "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-            "img-src 'self' data: blob:",
+            "img-src 'self' data: blob: https://*.supabase.co",
             "style-src 'self' 'unsafe-inline'",
             "font-src 'self'",
             "frame-ancestors 'none'"

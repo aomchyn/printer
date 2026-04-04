@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer } from 'lucide-react';
 
 export interface OrderInterface {
     id: number;
@@ -24,8 +24,10 @@ export interface OrderInterface {
     created_by: string;
     created_by_department?: string;
     is_verified: boolean;
+    is_printed?: boolean;
     verified_by?: string | null;
     verified_at?: string | null;
+    image_url?: string | null;
     created_at: string;
 }
 
@@ -157,19 +159,32 @@ export default function DashboardPage() {
         }
     };
 
+    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
+
     const saveEdit = async () => {
         if (!editingOrder) return;
         try {
-            const { error } = await supabase.from('orders').update({
-                lot_number: editingOrder.lot_number,
-                quantity: editingOrder.quantity,
-                notes: editingOrder.notes
-            }).eq('id', editingOrder.id);
+            // user role: only quantity, production_date, notes
+            // admin role: all editable fields
+            const updateData = isAdmin
+                ? {
+                    lot_number: editingOrder.lot_number,
+                    quantity: editingOrder.quantity,
+                    production_date: editingOrder.production_date,
+                    notes: editingOrder.notes
+                }
+                : {
+                    quantity: editingOrder.quantity,
+                    production_date: editingOrder.production_date,
+                    notes: editingOrder.notes
+                };
+
+            const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
 
             if (error) throw error;
 
             setOrders(prev => prev.map(order =>
-                order.id === editingOrder.id ? editingOrder : order
+                order.id === editingOrder.id ? { ...order, ...updateData } : order
             ));
             setEditingOrder(null);
 
@@ -186,10 +201,6 @@ export default function DashboardPage() {
     };
 
     const startEdit = (order: OrderInterface) => {
-        if (role !== 'moderator' && role !== 'assistant_moderator') {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้นที่สามารถแก้ไขข้อมูลได้' });
-            return;
-        }
         setEditingOrder({ ...order });
     };
 
@@ -241,6 +252,42 @@ export default function DashboardPage() {
         }
     };
 
+    const markPrinted = async (order: OrderInterface) => {
+        if (!isAdmin) return;
+        try {
+            const { error } = await supabase.from('orders').update({
+                is_printed: true
+            }).eq('id', order.id);
+
+            if (error) throw error;
+
+            setOrders(prev => prev.map(o =>
+                o.id === order.id ? { ...o, is_printed: true } : o
+            ));
+        } catch (error) {
+            console.error('Error marking printed:', error);
+            Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        }
+    };
+
+    const unmarkPrinted = async (order: OrderInterface) => {
+        if (!isAdmin) return;
+        try {
+            const { error } = await supabase.from('orders').update({
+                is_printed: false
+            }).eq('id', order.id);
+
+            if (error) throw error;
+
+            setOrders(prev => prev.map(o =>
+                o.id === order.id ? { ...o, is_printed: false } : o
+            ));
+        } catch (error) {
+            console.error('Error unmarking printed:', error);
+            Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        }
+    };
+
     const unverifyOrder = async (order: OrderInterface) => {
         if (role !== 'moderator' && role !== 'assistant_moderator') {
             Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
@@ -276,6 +323,51 @@ export default function DashboardPage() {
             } catch (error) {
                 console.error('Error unverifying order:', error);
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
+        }
+    };
+
+    const deleteImage = async (order: OrderInterface) => {
+        if (!isAdmin || !order.image_url) return;
+
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบรูปภาพ?',
+            text: 'รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ใช่, ลบเลย!',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                // Extract file path from URL
+                // URL format: .../storage/v1/object/public/order-images/labels/170062_test.jpg
+                const urlParts = order.image_url.split('/order-images/');
+                if (urlParts.length > 1) {
+                    const filePath = urlParts[1];
+                    const { error: storageError } = await supabase.storage.from('order-images').remove([filePath]);
+                    if (storageError) throw storageError;
+                }
+
+                // Update database
+                const { error: dbError } = await supabase.from('orders').update({
+                    image_url: null
+                }).eq('id', order.id);
+
+                if (dbError) throw dbError;
+
+                // Update local state
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, image_url: null } : o
+                ));
+
+                Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
@@ -513,26 +605,44 @@ export default function DashboardPage() {
                                     </div>
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{order.product_id} • ลอต {order.lot_number}</p>
                                 </div>
-                                {/* Admin Actions */}
-                                {(role === 'moderator' || role === 'assistant_moderator') && (
-                                    <div className="flex gap-1 shrink-0">
-                                        {!order.is_verified ? (
-                                            <button onClick={() => verifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ตรวจสอบ">
-                                                <Check className="w-4 h-4" />
-                                            </button>
-                                        ) : (
-                                            <button onClick={() => unverifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการตรวจสอบ">
-                                                <Undo className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                        <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
+                                {/* Actions */}
+                                <div className="flex gap-1 shrink-0">
+                                    {/* Admin-only: Status actions */}
+                                    {isAdmin && (
+                                        <>
+                                            {!order.is_verified ? (
+                                                <>
+                                                    {!order.is_printed ? (
+                                                        <button onClick={() => markPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="พิมพ์แล้ว">
+                                                            <Printer className="w-4 h-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={() => unmarkPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-gray-400 hover:bg-gray-500 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการพิมพ์">
+                                                            <Undo className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => verifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ตรวจสอบเสร็จและตัดงานจบ">
+                                                        <Check className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button onClick={() => unverifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการตรวจสอบ">
+                                                    <Undo className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+                                    {/* All roles: Edit button */}
+                                    <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    {/* Admin-only: Delete */}
+                                    {isAdmin && (
                                         <button onClick={() => deleteOrder(order.id)} className="w-9 h-9 rounded-xl text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ลบ">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
 
                             {/* Card Body */}
@@ -573,18 +683,46 @@ export default function DashboardPage() {
                                         <span className="text-yellow-900">{order.notes}</span>
                                     </div>
                                 )}
+
+                                {order.image_url && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100 relative">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-sm font-semibold text-gray-700">📷 ภาพตัวอย่างฉลาก:</span>
+                                            {isAdmin && (
+                                                <button 
+                                                    onClick={() => deleteImage(order)}
+                                                    className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded border border-red-200 transition-colors flex items-center gap-1"
+                                                >
+                                                    <Trash2 className="w-3 h-3" /> ลบรูป
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex justify-center">
+                                            <img
+                                                src={order.image_url}
+                                                alt={`ตัวอย่างฉลาก ${order.lot_number}`}
+                                                className="max-h-48 object-contain w-full hover:scale-105 transition-transform duration-300 cursor-pointer"
+                                                onClick={() => window.open(order.image_url || '', '_blank')}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Card Footer Status */}
-                            <div className={`p-4 text-center tracking-wide ${order.is_verified ? 'bg-emerald-600 text-white shadow-inner' : 'bg-gray-100 text-gray-400 font-bold uppercase tracking-widest'}`}>
+                            <div className={`p-4 text-center tracking-wide font-bold 
+                                ${order.is_verified ? 'bg-emerald-600 text-white shadow-inner' 
+                                : order.is_printed ? 'bg-blue-500 text-white shadow-inner uppercase' 
+                                : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
+                            >
                                 {order.is_verified ? (
                                     <div className="flex flex-col items-center justify-center gap-2 py-1">
-                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base font-bold text-center">
+                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
                                             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
                                             {order.verified_by && order.verified_by.includes('(') ? (
                                                 <div className="flex items-center gap-2">
                                                     <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest">
+                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-bold">
                                                         รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
                                                     </span>
                                                 </div>
@@ -596,8 +734,12 @@ export default function DashboardPage() {
                                             วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
                                         </span>
                                     </div>
+                                ) : order.is_printed ? (
+                                    <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
+                                        <Printer className="w-5 h-5 inline mr-1" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
+                                    </span>
                                 ) : (
-                                    <span className="flex items-center justify-center gap-2 text-sm font-bold uppercase">
+                                    <span className="flex items-center justify-center gap-2 text-sm">
                                         <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
                                     </span>
                                 )}
@@ -617,15 +759,19 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="space-y-4">
+                            {/* เลขลอต — เฉพาะ Admin เท่านั้น */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">เลขลอต</label>
                                 <input
                                     type="text"
                                     value={editingOrder.lot_number}
                                     onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
+                                    disabled={!isAdmin}
+                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${!isAdmin ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                                 />
+                                {!isAdmin && <p className="text-xs text-gray-400 mt-1">🔒 เฉพาะผู้ดูแลระบบเท่านั้น</p>}
                             </div>
+                            {/* จำนวน — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">จำนวน</label>
                                 <input
@@ -635,6 +781,17 @@ export default function DashboardPage() {
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
                                 />
                             </div>
+                            {/* วันที่ผลิต — ทุก role แก้ได้ */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">วันที่ผลิต</label>
+                                <input
+                                    type="date"
+                                    value={editingOrder.production_date || ''}
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, production_date: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
+                                />
+                            </div>
+                            {/* หมายเหตุ — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">หมายเหตุ</label>
                                 <textarea

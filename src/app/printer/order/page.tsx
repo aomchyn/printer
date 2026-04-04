@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { logAction } from '@/lib/logger';
+import { ImagePlus, X } from 'lucide-react';
 
 export interface OrderInterface {
     id?: number;
@@ -52,6 +53,10 @@ export default function OrderPage() {
     const [products, setProducts] = useState<FgcodeInterface[]>([]);
     const [username, setUsername] = useState('Unknown User');
     const [department, setDepartment] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchUserInfo();
@@ -176,6 +181,32 @@ export default function OrderPage() {
         }));
     }, []);
 
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            Swal.fire({ icon: 'error', title: 'ไฟล์ไม่ถูกต้อง', text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WEBP)' });
+            return;
+        }
+
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            Swal.fire({ icon: 'error', title: 'ไฟล์ใหญ่เกินไป', text: 'ขนาดไฟล์ต้องไม่เกิน 2 MB' });
+            return;
+        }
+
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+    };
+
+    const removeImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -185,6 +216,28 @@ export default function OrderPage() {
             if (missingFields.length > 0) {
                 alert(`กรุณากรอกข้อมูลให้ครบถ้วน: ${missingFields.join(', ')}`);
                 return;
+            }
+
+            setUploading(true);
+
+            // Upload image if selected
+            let imageUrl: string | null = null;
+            if (imageFile) {
+                const fileExt = imageFile.name.split('.').pop();
+                const fileName = `${Date.now()}_${orderData.lotNumber}.${fileExt}`;
+                const filePath = `labels/${fileName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('order-images')
+                    .upload(filePath, imageFile);
+
+                if (uploadError) throw new Error(`อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError.message}`);
+
+                const { data: urlData } = supabase.storage
+                    .from('order-images')
+                    .getPublicUrl(filePath);
+
+                imageUrl = urlData.publicUrl;
             }
 
             const { error } = await supabase.from('orders').insert({
@@ -204,7 +257,8 @@ export default function OrderPage() {
                 created_by_department: department || 'ไม่ระบุหน่วยงาน',
                 is_verified: false,
                 verified_by: null,
-                verified_at: null
+                verified_at: null,
+                image_url: imageUrl
             }).select('id');
 
             if (error) throw new Error(error.message);
@@ -221,6 +275,8 @@ export default function OrderPage() {
                 text: `บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว`
             });
 
+            // Reset form
+            removeImage();
             const resetNow = new Date();
             setOrderData({
                 orderDate: resetNow.toISOString().split('T')[0],
@@ -243,6 +299,8 @@ export default function OrderPage() {
                 title: 'เกิดข้อผิดพลาด',
                 text: errorObj.message || 'กรุณาลองใหม่อีกครั้ง'
             });
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -423,16 +481,69 @@ export default function OrderPage() {
                         />
                     </div>
 
+                    {/* Image Upload */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            📷 ภาพตัวอย่างฉลาก <span className="text-gray-400 font-normal">(ไม่บังคับ, สูงสุด 2 MB)</span>
+                        </label>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                            id="label-image-input"
+                        />
+                        {!imagePreview ? (
+                            <label
+                                htmlFor="label-image-input"
+                                className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group"
+                            >
+                                <ImagePlus className="w-10 h-10 text-gray-300 group-hover:text-blue-400 transition-colors mb-2" />
+                                <span className="text-sm text-gray-400 group-hover:text-blue-500 transition-colors">คลิกเพื่อเลือกรูปภาพ</span>
+                                <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP (สูงสุด 2 MB)</span>
+                            </label>
+                        ) : (
+                            <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                                <img
+                                    src={imagePreview}
+                                    alt="ตัวอย่างฉลาก"
+                                    className="w-full max-h-60 object-contain bg-gray-50"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={removeImage}
+                                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors"
+                                    title="ลบรูปภาพ"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1.5 px-3 text-center">
+                                    {imageFile?.name} ({(imageFile?.size ?? 0 / 1024 / 1024).toFixed(2)} bytes)
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="pt-4">
                         <button
                             type="submit"
                             className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold py-4 px-6 rounded-lg hover:from-blue-700 hover:to-indigo-800 transform transition duration-200 hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
-                            disabled={!orderData.lotNumber || !orderData.productId || !orderData.productionDate || !orderData.quantity}
+                            disabled={!orderData.lotNumber || !orderData.productId || !orderData.productionDate || !orderData.quantity || uploading}
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            บันทึกคำสั่ง{orderData.orderType}
+                            {uploading ? (
+                                <>
+                                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                    กำลังบันทึก...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    บันทึกคำสั่ง{orderData.orderType}
+                                </>
+                            )}
                         </button>
                     </div>
                 </form>
