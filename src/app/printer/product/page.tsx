@@ -358,8 +358,8 @@ export default function FgcodeManagement() {
                                 type="text"
                                 className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300 disabled:bg-gray-100 disabled:text-gray-500"
                                 value={id}
-                                onChange={e => setId(e.target.value)}
-                                placeholder="เช่น 01-1-001"
+                                onChange={e => setId(e.target.value.toUpperCase())}
+                                placeholder="เช่น 01-1-001 หรือ FG-001"
                                 required
                                 disabled={!!editingFgcode}
                             />
@@ -378,8 +378,8 @@ export default function FgcodeManagement() {
                                 type="text"
                                 className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
                                 value={name}
-                                onChange={e => setName(e.target.value)}
-                                placeholder="เช่น Test 25Kg."
+                                onChange={e => setName(e.target.value.toUpperCase())}
+                                placeholder="เช่น TEST 25KG."
                                 required
                             />
                         </div>
