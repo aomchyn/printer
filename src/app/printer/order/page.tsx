@@ -85,11 +85,29 @@ export default function OrderPage() {
 
     const fetchProducts = async () => {
         try {
-            const { data, error } = await supabase.from('fgcode').select('*');
-            if (error) throw error;
-            if (data) {
-                setProducts(data);
+            let allData: FgcodeInterface[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('fgcode')
+                    .select('*')
+                    .range(from, from + pageSize - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    from += pageSize;
+                    hasMore = data.length === pageSize;
+                } else {
+                    hasMore = false;
+                }
             }
+
+            setProducts(allData);
         } catch (err) {
             console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า:', err);
         }
