@@ -42,7 +42,7 @@ export default function FgcodeManagement() {
 
     const fetchFgcodes = async () => {
         try {
-            const { data, error } = await supabase.from('fgcode').select('*').order('created_at', { ascending: false });
+            const { data, error } = await supabase.from('fgcode').select('*').order('created_at', { ascending: false }).limit(10000);
             if (error) throw error;
             if (data) {
                 setFgcodes(data);
@@ -59,7 +59,11 @@ export default function FgcodeManagement() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!id.trim() || !name.trim() || !exp.trim()) {
+        const cleanId = id.trim();
+        const cleanName = name.trim();
+        const cleanExp = exp.trim();
+
+        if (!cleanId || !cleanName || !cleanExp) {
             Swal.fire({
                 icon: 'warning',
                 title: 'ข้อมูลไม่ครบ',
@@ -72,16 +76,16 @@ export default function FgcodeManagement() {
             if (editingFgcode) {
                 // แก้ไข
                 const { error } = await supabase.from('fgcode').update({
-                    name: name,
-                    exp: exp,
+                    name: cleanName,
+                    exp: cleanExp,
                     category: category || null
                 }).eq('id', editingFgcode.id);
 
                 if (error) throw error;
-                await logAction('UPDATE_PRODUCT', { id: editingFgcode.id, name, exp, category });
+                await logAction('UPDATE_PRODUCT', { id: editingFgcode.id, name: cleanName, exp: cleanExp, category });
             } else {
                 // เพิ่มใหม่ (ตรวจสอบซ้ำ)
-                const { data: existing } = await supabase.from('fgcode').select('id').eq('id', id).single();
+                const { data: existing } = await supabase.from('fgcode').select('id').eq('id', cleanId).single();
                 if (existing) {
                     Swal.fire({
                         icon: 'error',
@@ -92,14 +96,14 @@ export default function FgcodeManagement() {
                 }
 
                 const { error } = await supabase.from('fgcode').insert({
-                    id: id,
-                    name: name,
-                    exp: exp,
+                    id: cleanId,
+                    name: cleanName,
+                    exp: cleanExp,
                     category: category || null
                 });
 
                 if (error) throw error;
-                await logAction('CREATE_PRODUCT', { id, name, exp, category });
+                await logAction('CREATE_PRODUCT', { id: cleanId, name: cleanName, exp: cleanExp, category });
             }
 
             Swal.fire({
