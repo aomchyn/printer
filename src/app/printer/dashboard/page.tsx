@@ -97,16 +97,32 @@ export default function DashboardPage() {
         try {
             const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
             const startOfMonthIso = startOfMonth.toISOString();
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .gte('created_at', startOfMonthIso)
-                .order('created_at', { ascending: false });
+            
+            let allOrders: OrderInterface[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
 
-            if (error) throw error;
-            if (data) {
-                setOrders(data as OrderInterface[]);
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .gte('created_at', startOfMonthIso)
+                    .order('created_at', { ascending: false })
+                    .range(from, from + pageSize - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allOrders = [...allOrders, ...(data as OrderInterface[])];
+                    from += pageSize;
+                    hasMore = data.length === pageSize;
+                } else {
+                    hasMore = false;
+                }
             }
+
+            setOrders(allOrders);
         } catch (error) {
             console.error('Error loading orders:', error);
             Swal.fire({
