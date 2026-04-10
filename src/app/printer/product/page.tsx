@@ -42,11 +42,30 @@ export default function FgcodeManagement() {
 
     const fetchFgcodes = async () => {
         try {
-            const { data, error } = await supabase.from('fgcode').select('*').order('created_at', { ascending: false }).limit(10000);
-            if (error) throw error;
-            if (data) {
-                setFgcodes(data);
+            let allData: FgcodeInterface[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('fgcode')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .range(from, from + pageSize - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    from += pageSize;
+                    hasMore = data.length === pageSize;
+                } else {
+                    hasMore = false;
+                }
             }
+
+            setFgcodes(allData);
         } catch {
             Swal.fire({
                 icon: 'error',
