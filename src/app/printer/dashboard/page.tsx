@@ -215,28 +215,43 @@ export default function DashboardPage() {
             const now = new Date().toISOString();
             const original = orders.find(o => o.id === editingOrder.id);
 
-            // Determine what fields were changed with detailed comparison
-            const changeDetails = [];
+            // Determine what fields were changed with robust comparison
+            const changeDetails: string[] = [];
             if (original) {
-                if (original.lot_number !== editingOrder.lot_number) {
-                    changeDetails.push(`เลขลอต: ${original.lot_number || '-'} ➡️ ${editingOrder.lot_number}`);
+                // Helper to get presentable value
+                const displayVal = (val: any) => (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
+
+                // 1. เลขลอต
+                const oldLot = displayVal(original.lot_number);
+                const newLot = displayVal(editingOrder.lot_number);
+                if (oldLot !== newLot) {
+                    changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
                 }
-                if (original.quantity !== editingOrder.quantity) {
-                    changeDetails.push(`จำนวน: ${original.quantity} ➡️ ${editingOrder.quantity}`);
+
+                // 2. จำนวน
+                const oldQty = Number(original.quantity) || 0;
+                const newQty = Number(editingOrder.quantity) || 0;
+                if (oldQty !== newQty) {
+                    changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
                 }
-                if (original.production_date !== editingOrder.production_date) {
-                    const oldDate = original.production_date ? original.production_date.split('-').reverse().join('/') : '-';
-                    const newDate = editingOrder.production_date.split('-').reverse().join('/');
-                    changeDetails.push(`วันที่ผลิต: ${oldDate} ➡️ ${newDate}`);
+
+                // 3. วันที่ผลิต
+                const oldDateRaw = original.production_date || '';
+                const newDateRaw = editingOrder.production_date || '';
+                if (oldDateRaw !== newDateRaw) {
+                    const formatDate = (dateStr: string) => dateStr ? dateStr.split('-').reverse().join('/') : 'ไม่มี';
+                    changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
                 }
-                if ((original.notes || '') !== (editingOrder.notes || '')) {
-                    const oldNotes = original.notes && original.notes !== '-' ? original.notes : 'ไม่มี';
-                    const newNotes = editingOrder.notes && editingOrder.notes !== '-' ? editingOrder.notes : 'ไม่มี';
+
+                // 4. หมายเหตุ
+                const oldNotes = displayVal(original.notes);
+                const newNotes = displayVal(editingOrder.notes);
+                if (oldNotes !== newNotes) {
                     changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
                 }
             }
 
-            const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล (ไม่มีการเปลี่ยนค่า)';
+            const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล';
             const editorName = employeeId ? `${userName} (${employeeId})` : userName;
 
             const updateData = {
