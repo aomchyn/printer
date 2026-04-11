@@ -215,14 +215,28 @@ export default function DashboardPage() {
             const now = new Date().toISOString();
             const original = orders.find(o => o.id === editingOrder.id);
 
-            // Determine what fields were changed
-            const changes = [];
-            if (original?.lot_number !== editingOrder.lot_number) changes.push('เลขลอต');
-            if (original?.quantity !== editingOrder.quantity) changes.push('จำนวน');
-            if (original?.production_date !== editingOrder.production_date) changes.push('วันที่ผลิต');
-            if (original?.notes !== editingOrder.notes) changes.push('หมายเหตุ');
+            // Determine what fields were changed with detailed comparison
+            const changeDetails = [];
+            if (original) {
+                if (original.lot_number !== editingOrder.lot_number) {
+                    changeDetails.push(`เลขลอต: ${original.lot_number || '-'} ➡️ ${editingOrder.lot_number}`);
+                }
+                if (original.quantity !== editingOrder.quantity) {
+                    changeDetails.push(`จำนวน: ${original.quantity} ➡️ ${editingOrder.quantity}`);
+                }
+                if (original.production_date !== editingOrder.production_date) {
+                    const oldDate = original.production_date ? original.production_date.split('-').reverse().join('/') : '-';
+                    const newDate = editingOrder.production_date.split('-').reverse().join('/');
+                    changeDetails.push(`วันที่ผลิต: ${oldDate} ➡️ ${newDate}`);
+                }
+                if ((original.notes || '') !== (editingOrder.notes || '')) {
+                    const oldNotes = original.notes && original.notes !== '-' ? original.notes : 'ไม่มี';
+                    const newNotes = editingOrder.notes && editingOrder.notes !== '-' ? editingOrder.notes : 'ไม่มี';
+                    changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
+                }
+            }
 
-            const summary = changes.length > 0 ? `แก้ไข: ${changes.join(', ')}` : 'อัปเดตข้อมูล';
+            const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล (ไม่มีการเปลี่ยนค่า)';
             const editorName = employeeId ? `${userName} (${employeeId})` : userName;
 
             const updateData = {
