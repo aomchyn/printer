@@ -851,7 +851,13 @@ export default function DashboardPage() {
                                             );
                                         })()}
                                     </div>
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{order.product_id} • ลอต {order.lot_number}</p>
+                                    <div className="flex flex-col gap-0.5">
+                                        <h4 className="text-lg font-extrabold text-indigo-700 tracking-tight flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 italic">LOT</span>
+                                            {order.lot_number}
+                                        </h4>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{order.product_id}</p>
+                                    </div>
                                 </div>
                                 {/* Actions */}
                                 <div className="flex gap-1 shrink-0">
