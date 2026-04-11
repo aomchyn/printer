@@ -29,6 +29,10 @@ export interface OrderInterface {
     verified_at?: string | null;
     image_url?: string | null;
     created_at: string;
+    updated_at?: string | null;
+    updated_by?: string | null;
+    edit_summary?: string | null;
+    is_cancelled?: boolean;
 }
 
 export default function DashboardPage() {
@@ -97,7 +101,7 @@ export default function DashboardPage() {
         try {
             const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
             const startOfMonthIso = startOfMonth.toISOString();
-            
+
             let allOrders: OrderInterface[] = [];
             let from = 0;
             const pageSize = 1000;
@@ -133,9 +137,37 @@ export default function DashboardPage() {
         }
     };
 
-    const filteredOrders = orders.filter(order => {
+    const sortedOrders = React.useMemo(() => {
+        return [...orders].sort((a, b) => {
+            const getPriority = (order: OrderInterface) => {
+                // Priority 0: Active/Updated items (New, Edited, or Cancelled)
+                if (!order.is_verified) {
+                    if (order.is_cancelled || order.updated_at || (!order.is_printed && !order.is_verified)) {
+                        return 0;
+                    }
+                }
+
+                if (order.is_printed && !order.is_verified) return 1; // Printed
+                if (order.is_verified) return 2;                       // Verified
+                return 3;
+            };
+
+            const pA = getPriority(a);
+            const pB = getPriority(b);
+
+            if (pA !== pB) return pA - pB;
+
+            // Same priority? Sort by latest timestamp
+            const timeA = new Date(a.updated_at || a.created_at).getTime();
+            const timeB = new Date(b.updated_at || b.created_at).getTime();
+            return timeB - timeA;
+        });
+    }, [orders]);
+
+    const filteredOrders = sortedOrders.filter(order => {
         return searchTerm.trim() === '' ||
-            order.lot_number.toLowerCase().includes(searchTerm.toLowerCase());
+            order.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            order.product_name.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
     const deleteOrder = async (id: number) => {
@@ -180,20 +212,29 @@ export default function DashboardPage() {
     const saveEdit = async () => {
         if (!editingOrder) return;
         try {
-            // user role: only quantity, production_date, notes
-            // admin role: all editable fields
-            const updateData = isAdmin
-                ? {
-                    lot_number: editingOrder.lot_number,
-                    quantity: editingOrder.quantity,
-                    production_date: editingOrder.production_date,
-                    notes: editingOrder.notes
-                }
-                : {
-                    quantity: editingOrder.quantity,
-                    production_date: editingOrder.production_date,
-                    notes: editingOrder.notes
-                };
+            const now = new Date().toISOString();
+            const original = orders.find(o => o.id === editingOrder.id);
+
+            // Determine what fields were changed
+            const changes = [];
+            if (original?.lot_number !== editingOrder.lot_number) changes.push('เลขลอต');
+            if (original?.quantity !== editingOrder.quantity) changes.push('จำนวน');
+            if (original?.production_date !== editingOrder.production_date) changes.push('วันที่ผลิต');
+            if (original?.notes !== editingOrder.notes) changes.push('หมายเหตุ');
+
+            const summary = changes.length > 0 ? `แก้ไข: ${changes.join(', ')}` : 'อัปเดตข้อมูล';
+            const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+
+            const updateData = {
+                lot_number: editingOrder.lot_number,
+                quantity: editingOrder.quantity,
+                production_date: editingOrder.production_date,
+                expiry_date: editingOrder.expiry_date,
+                notes: editingOrder.notes,
+                updated_at: now,
+                updated_by: editorName,
+                edit_summary: summary
+            };
 
             const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
 
@@ -283,6 +324,110 @@ export default function DashboardPage() {
         } catch (error) {
             console.error('Error marking printed:', error);
             Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        }
+    };
+
+    const handleCancelOrder = async (order: OrderInterface) => {
+        const result = await Swal.fire({
+            title: 'ยืนยันการยกเลิกสั่งพิมพ์?',
+            text: 'กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้',
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'ใส่เหตุผลการยกเลิกที่นี่...',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ยืนยันยกเลิก',
+            cancelButtonText: 'ไม่ยกเลิก',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'คุณต้องระบุเหตุผลในการยกเลิก!';
+                }
+            }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const reason = result.value;
+                const now = new Date().toISOString();
+                const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+                const summary = `ยกเลิกเพราะ: ${reason}`;
+
+                const updateData = {
+                    is_printed: false,
+                    is_verified: false,
+                    is_cancelled: true,
+                    updated_at: now,
+                    updated_by: editorName,
+                    edit_summary: summary
+                };
+
+                const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
+
+                if (error) throw error;
+
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, ...updateData } : o
+                ));
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ยกเลิกสำเร็จ',
+                    text: 'รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว',
+                    timer: 1500
+                });
+            } catch (error) {
+                console.error('Error cancelling order:', error);
+                Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
+        }
+    };
+
+    const restoreOrder = async (order: OrderInterface) => {
+        const result = await Swal.fire({
+            title: 'กู้คืนคำสั่งผลิต?',
+            text: 'รายการนี้จะถูกดึงกลับมาเป็นรายการใหม่เพื่อให้ดำเนินการต่อได้',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ยืนยันกู้คืน',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const now = new Date().toISOString();
+                const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+                const summary = 'กู้คืนคำสั่งผลิต (จากสถานะยกเลิก)';
+
+                const updateData = {
+                    is_cancelled: false,
+                    is_printed: false,
+                    is_verified: false,
+                    updated_at: now,
+                    updated_by: editorName,
+                    edit_summary: summary
+                };
+
+                const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
+
+                if (error) throw error;
+
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, ...updateData } : o
+                ));
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'กู้คืนสำเร็จ',
+                    text: 'รายการกลับมาเป็นปกติแล้ว',
+                    timer: 1500
+                });
+            } catch (error) {
+                console.error('Error restoring order:', error);
+                Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
         }
     };
 
@@ -425,6 +570,46 @@ export default function DashboardPage() {
             );
         } catch {
             return dateString;
+        }
+    };
+
+    const calculateExpiryDate = (manufactureDate: string, shelfLife: string): string => {
+        if (!manufactureDate || !shelfLife) return '';
+        try {
+            const mfgDate = new Date(manufactureDate);
+            if (isNaN(mfgDate.getTime())) return '';
+
+            const trimmedShelfLife = shelfLife.trim();
+            const spaceIndex = trimmedShelfLife.indexOf(' ');
+            let numValue: number;
+            let unit: string;
+
+            if (spaceIndex === -1) {
+                numValue = parseInt(trimmedShelfLife);
+                unit = 'months';
+            } else {
+                const valueStr = trimmedShelfLife.substring(0, spaceIndex);
+                unit = trimmedShelfLife.substring(spaceIndex + 1).toLowerCase();
+                numValue = parseInt(valueStr);
+            }
+
+            if (isNaN(numValue) || numValue <= 0) return '';
+
+            const newDate = new Date(mfgDate);
+
+            if (unit.includes('day') || unit.includes('วัน')) {
+                newDate.setDate(newDate.getDate() + numValue);
+            } else if (unit.includes('month') || unit.includes('mon') || unit.includes('เดือน')) {
+                newDate.setMonth(newDate.getMonth() + numValue);
+            } else if (unit.includes('year') || unit.includes('yr') || unit.includes('ปี')) {
+                newDate.setFullYear(newDate.getFullYear() + numValue);
+            } else {
+                newDate.setMonth(newDate.getMonth() + numValue);
+            }
+
+            return newDate.toISOString().split('T')[0];
+        } catch {
+            return '';
         }
     };
 
@@ -604,27 +789,45 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredOrders.map((order, index) => (
                         <div key={order.id} className={`
-                            ${index % 2 === 0 ? 'bg-white' : 'bg-blue-50/70'}
-                            rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-blue-200/50 overflow-hidden flex flex-col group relative
+                            ${order.is_cancelled ? 'bg-red-50/80 border-red-300 opacity-80' : index % 2 === 0 ? 'bg-white' : 'bg-blue-50/70'}
+                            rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border overflow-hidden flex flex-col group relative
                         `}>
                             {/* Card Header */}
-                            <div className={`p-5 border-b border-blue-100 flex justify-between items-start ${index % 2 === 0 ? 'bg-blue-100/80' : 'bg-indigo-100/80'}`}>
+                            <div className={`p-5 border-b flex justify-between items-start ${order.is_cancelled ? 'bg-red-100 border-red-200' : index % 2 === 0 ? 'bg-blue-100/80 border-blue-100' : 'bg-indigo-100/80 border-blue-100'}`}>
                                 <div className="pr-4 pointer-events-none">
                                     <div className="flex gap-2 items-center mb-1 flex-wrap">
                                         <h3 className="text-lg font-bold text-gray-900 line-clamp-1 break-all">{order.product_name}</h3>
                                         {order.order_type && (
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-red-200 text-red-800 border-red-300' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
                                                 {order.order_type}
                                             </span>
                                         )}
-                                        {index === 0 && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm">New</span>}
+                                        {order.is_cancelled && (
+                                            <span className="bg-red-600 text-white text-[10px] px-3 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-md">
+                                                ยกเลิกแล้ว
+                                            </span>
+                                        )}
+                                        {order.updated_at && !order.is_verified && !order.is_cancelled && (
+                                            <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
+                                                แก้ไขแล้ว
+                                            </span>
+                                        )}
+                                        {(() => {
+                                            const isPending = !order.is_printed && !order.is_verified && !order.is_cancelled;
+                                            const isRecent = new Date().getTime() - new Date(order.created_at).getTime() < 5 * 60 * 1000;
+                                            return isPending && isRecent && (
+                                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
+                                                    New
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{order.product_id} • ลอต {order.lot_number}</p>
                                 </div>
                                 {/* Actions */}
                                 <div className="flex gap-1 shrink-0">
-                                    {/* Admin-only: Status actions */}
-                                    {isAdmin && (
+                                    {/* Admin-only: Verify actions (only if not cancelled) */}
+                                    {isAdmin && !order.is_cancelled && (
                                         <>
                                             {!order.is_verified ? (
                                                 <>
@@ -648,10 +851,28 @@ export default function DashboardPage() {
                                             )}
                                         </>
                                     )}
-                                    {/* All roles: Edit button */}
-                                    <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
+                                    {/* All roles: Edit button (only if not cancelled) */}
+                                    {!order.is_cancelled && (
+                                        <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {/* User-only/Cancel feature for all: Cancel order button (only if not cancelled) */}
+                                    {!order.is_cancelled && (
+                                        <button onClick={() => handleCancelOrder(order)} className="w-9 h-9 rounded-xl text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการสั่งพิมพ์">
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                    {/* Admin-only: Restore button for cancelled orders */}
+                                    {isAdmin && order.is_cancelled && (
+                                        <button
+                                            onClick={() => restoreOrder(order)}
+                                            className="w-9 h-9 rounded-xl text-white bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg animate-bounce"
+                                            title="กู้คืนคำสั่งพิมพ์"
+                                        >
+                                            <Undo className="w-4 h-4" />
+                                        </button>
+                                    )}
                                     {/* Admin-only: Delete */}
                                     {isAdmin && (
                                         <button onClick={() => deleteOrder(order.id)} className="w-9 h-9 rounded-xl text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ลบ">
@@ -693,6 +914,26 @@ export default function DashboardPage() {
                                     <span className="font-bold text-xl text-green-600">{order.quantity}</span>
                                 </div>
 
+                                {order.updated_at && (
+                                    <div className="mt-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-[11px] space-y-1 shadow-sm">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-blue-800 flex items-center gap-1">
+                                                ✏️ แก้ไขล่าสุด:
+                                            </span>
+                                            <span className="text-blue-700 font-medium">{formatThaiDateTimeFromISO(order.updated_at)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-500">โดย:</span>
+                                            <span className="font-bold text-gray-800">{order.updated_by || 'ไม่ระบุ'}</span>
+                                        </div>
+                                        {order.edit_summary && (
+                                            <div className="pt-1 border-t border-blue-100/50 mt-1">
+                                                <span className="text-blue-600 font-semibold italic">{order.edit_summary}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {order.notes && order.notes !== '-' && (
                                     <div className="mt-3 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">
                                         <span className="font-semibold text-yellow-800 block mb-1">หมายเหตุ:</span>
@@ -705,7 +946,7 @@ export default function DashboardPage() {
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-sm font-semibold text-gray-700">📷 ภาพตัวอย่างฉลาก:</span>
                                             {isAdmin && (
-                                                <button 
+                                                <button
                                                     onClick={() => deleteImage(order)}
                                                     className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded border border-red-200 transition-colors flex items-center gap-1"
                                                 >
@@ -727,11 +968,16 @@ export default function DashboardPage() {
 
                             {/* Card Footer Status */}
                             <div className={`p-4 text-center tracking-wide font-bold 
-                                ${order.is_verified ? 'bg-emerald-600 text-white shadow-inner' 
-                                : order.is_printed ? 'bg-blue-500 text-white shadow-inner uppercase' 
-                                : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
+                                ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
+                                    : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
+                                        : order.is_printed ? 'bg-blue-500 text-white shadow-inner uppercase'
+                                            : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
                             >
-                                {order.is_verified ? (
+                                {order.is_cancelled ? (
+                                    <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
+                                        <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
+                                    </span>
+                                ) : order.is_verified ? (
                                     <div className="flex flex-col items-center justify-center gap-2 py-1">
                                         <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
                                             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
@@ -775,17 +1021,15 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="space-y-4">
-                            {/* เลขลอต — เฉพาะ Admin เท่านั้น */}
+                            {/* เลขลอต — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">เลขลอต</label>
                                 <input
                                     type="text"
                                     value={editingOrder.lot_number}
                                     onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })}
-                                    disabled={!isAdmin}
-                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm ${!isAdmin ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
                                 />
-                                {!isAdmin && <p className="text-xs text-gray-400 mt-1">🔒 เฉพาะผู้ดูแลระบบเท่านั้น</p>}
                             </div>
                             {/* จำนวน — ทุก role แก้ได้ */}
                             <div>
@@ -803,9 +1047,22 @@ export default function DashboardPage() {
                                 <input
                                     type="date"
                                     value={editingOrder.production_date || ''}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, production_date: e.target.value })}
+                                    onChange={(e) => {
+                                        const newDate = e.target.value;
+                                        const newExpiry = calculateExpiryDate(newDate, editingOrder.product_exp);
+                                        setEditingOrder({
+                                            ...editingOrder,
+                                            production_date: newDate,
+                                            expiry_date: newExpiry
+                                        });
+                                    }}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
                                 />
+                                {editingOrder.expiry_date && (
+                                    <p className="mt-1 text-xs text-red-500 font-medium">
+                                        💡 วันหมดอายุใหม่: {formatToThaiDate(editingOrder.expiry_date)}
+                                    </p>
+                                )}
                             </div>
                             {/* หมายเหตุ — ทุก role แก้ได้ */}
                             <div>
