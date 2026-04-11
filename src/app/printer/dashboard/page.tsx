@@ -825,7 +825,12 @@ export default function DashboardPage() {
                             <div className={`p-5 border-b flex justify-between items-start ${order.is_cancelled ? 'bg-red-100 border-red-200' : index % 2 === 0 ? 'bg-blue-100/80 border-blue-100' : 'bg-indigo-100/80 border-blue-100'}`}>
                                 <div className="pr-4 pointer-events-none">
                                     <div className="flex gap-2 items-center mb-1 flex-wrap">
-                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1 break-all">{order.product_name}</h3>
+                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1 break-all flex items-center gap-2">
+                                            {order.product_name}
+                                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 tracking-wider">
+                                                {order.product_id}
+                                            </span>
+                                        </h3>
                                         {order.order_type && (
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-red-200 text-red-800 border-red-300' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
                                                 {order.order_type}
@@ -852,11 +857,10 @@ export default function DashboardPage() {
                                         })()}
                                     </div>
                                     <div className="flex flex-col gap-0.5">
-                                        <h4 className="text-lg font-extrabold text-indigo-700 tracking-tight flex items-center gap-1.5">
-                                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 italic">LOT</span>
+                                        <h4 className="text-base font-extrabold text-indigo-700 tracking-tight flex items-center gap-1.5">
+                                            <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100 italic">LOT</span>
                                             {order.lot_number}
                                         </h4>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{order.product_id}</p>
                                     </div>
                                 </div>
                                 {/* Actions */}
