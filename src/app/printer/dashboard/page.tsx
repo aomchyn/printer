@@ -140,15 +140,13 @@ export default function DashboardPage() {
     const sortedOrders = React.useMemo(() => {
         return [...orders].sort((a, b) => {
             const getPriority = (order: OrderInterface) => {
-                // Priority 0: Active/Updated items (New, Edited, or Cancelled)
-                if (!order.is_verified) {
-                    if (order.is_cancelled || order.updated_at || (!order.is_printed && !order.is_verified)) {
-                        return 0;
-                    }
-                }
-
-                if (order.is_printed && !order.is_verified) return 1; // Printed
-                if (order.is_verified) return 2;                       // Verified
+                // Priority 0: เฉพาะรายการที่ถูกยกเลิกหรือแก้ไข (เด้งขึ้นบนสุด)
+                if (order.is_cancelled || order.updated_at) return 0;
+                // Priority 1: รายการปกติที่รอดำเนินการ (เรียงตามเวลาสั่งพิมพ์)
+                if (!order.is_printed && !order.is_verified) return 1;
+                // Priority 2: พิมพ์แล้วแต่ยังไม่ตรวจสอบ
+                if (order.is_printed && !order.is_verified) return 2;
+                // Priority 3: ตรวจสอบเสร็จแล้ว
                 return 3;
             };
 
@@ -157,9 +155,16 @@ export default function DashboardPage() {
 
             if (pA !== pB) return pA - pB;
 
-            // Same priority? Sort by latest timestamp
-            const timeA = new Date(a.updated_at || a.created_at).getTime();
-            const timeB = new Date(b.updated_at || b.created_at).getTime();
+            // Priority 0 (ยกเลิก/แก้ไข): เรียงตาม updated_at ล่าสุด
+            if (pA === 0) {
+                const timeA = new Date(a.updated_at || a.created_at).getTime();
+                const timeB = new Date(b.updated_at || b.created_at).getTime();
+                return timeB - timeA;
+            }
+
+            // Priority อื่นๆ: เรียงตามเวลาที่สั่งพิมพ์ (created_at) ใหม่สุดก่อน
+            const timeA = new Date(a.created_at).getTime();
+            const timeB = new Date(b.created_at).getTime();
             return timeB - timeA;
         });
     }, [orders]);

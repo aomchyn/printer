@@ -106,7 +106,7 @@ export default function UserManagement() {
                 return;
             }
 
-            if (password.length < 6) {
+            if (password.length < 8) {
                 Swal.fire({
                     icon: 'error',
                     title: 'รหัสผ่านอ่อนเกินไป',
