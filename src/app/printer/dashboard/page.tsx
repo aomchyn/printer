@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion } from 'lucide-react';
 
 export interface OrderInterface {
     id: number;
@@ -33,6 +33,7 @@ export interface OrderInterface {
     updated_by?: string | null;
     edit_summary?: string | null;
     is_cancelled?: boolean;
+    is_no_file?: boolean;
 }
 
 export default function DashboardPage() {
@@ -414,6 +415,64 @@ export default function DashboardPage() {
                 console.error('Error cancelling order:', error);
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
+        }
+    };
+
+    const markNoFile = async (order: OrderInterface) => {
+        const result = await Swal.fire({
+            title: 'แจ้งเตือนไม่มีไฟล์?',
+            text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#eab308', // yellow-500
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const now = new Date().toISOString();
+
+                const updateData = {
+                    is_no_file: true
+                };
+
+                const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
+
+                if (error) throw error;
+
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, ...updateData } : o
+                ));
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ทำเครื่องหมายสำเร็จ',
+                    text: 'ระบุว่าไม่มีไฟล์เรียบร้อยแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } catch (error) {
+                console.error('Error marking no file:', error);
+                Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
+        }
+    };
+
+    const unmarkNoFile = async (order: OrderInterface) => {
+        try {
+            const updateData = { is_no_file: false };
+            const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
+
+            if (error) throw error;
+
+            setOrders(prev => prev.map(o =>
+                o.id === order.id ? { ...o, ...updateData } : o
+            ));
+        } catch (error) {
+            console.error('Error unmarking no file:', error);
+            Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
     };
 
@@ -876,9 +935,20 @@ export default function DashboardPage() {
                                             {!order.is_verified ? (
                                                 <>
                                                     {!order.is_printed ? (
-                                                        <button onClick={() => markPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="พิมพ์แล้ว">
-                                                            <Printer className="w-4 h-4" />
-                                                        </button>
+                                                        <>
+                                                            <button onClick={() => markPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="พิมพ์แล้ว">
+                                                                <Printer className="w-4 h-4" />
+                                                            </button>
+                                                            {!order.is_no_file ? (
+                                                                <button onClick={() => markNoFile(order)} className="w-9 h-9 rounded-xl text-white bg-slate-500 hover:bg-slate-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ไม่มีไฟล์">
+                                                                    <FileQuestion className="w-5 h-5" />
+                                                                </button>
+                                                            ) : (
+                                                                <button onClick={() => unmarkNoFile(order)} className="w-9 h-9 rounded-xl text-white bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg shadow-amber-500/20" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
+                                                                    <Undo className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <button onClick={() => unmarkPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-gray-400 hover:bg-gray-500 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการพิมพ์">
                                                             <Undo className="w-4 h-4" />
@@ -1050,6 +1120,15 @@ export default function DashboardPage() {
                                     </span>
                                 )}
                             </div>
+
+                            {/* "No File" Banner (Displays below the main status if true) */}
+                            {order.is_no_file && !order.is_cancelled && !order.is_verified && (
+                                <div className="p-3 text-center tracking-wide font-bold bg-amber-500 text-white shadow-inner">
+                                    <span className="flex items-center justify-center gap-2 text-sm">
+                                        <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
