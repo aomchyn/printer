@@ -139,9 +139,9 @@ export default function DashboardPage() {
 
     const sortedOrders = React.useMemo(() => {
         return [...orders].sort((a, b) => {
-            const getPriority = (order: OrderInterface) => {
-                // Priority 0: เฉพาะรายการที่ถูกยกเลิกหรือแก้ไข (เด้งขึ้นบนสุด)
-                if (order.is_cancelled || order.updated_at) return 0;
+             const getPriority = (order: OrderInterface) => {
+                // Priority 0: เฉพาะรายการที่ถูกยกเลิก หรือมีการแก้ไขเนื้อหาจริง (มี edit_summary)
+                if (order.is_cancelled || order.edit_summary) return 0;
                 // Priority 1: รายการปกติที่รอดำเนินการ (เรียงตามเวลาสั่งพิมพ์)
                 if (!order.is_printed && !order.is_verified) return 1;
                 // Priority 2: พิมพ์แล้วแต่ยังไม่ตรวจสอบ
