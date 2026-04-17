@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion } from 'lucide-react';
 
 export interface OrderInterface {
@@ -492,7 +491,7 @@ export default function DashboardPage() {
             try {
                 const now = new Date().toISOString();
                 const editorName = employeeId ? `${userName} (${employeeId})` : userName;
-                const summary = 'กู้คืนคำสั่งผลิต (จากสถานะยกเลิก)';
+                const summary = 'กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)';
 
                 const updateData = {
                     is_cancelled: false,
@@ -706,35 +705,6 @@ export default function DashboardPage() {
         }
     };
 
-    const getChartData = () => {
-        const departmentOrders: { [key: string]: number } = {};
-
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        orders.forEach(order => {
-            const orderDate = new Date(order.created_at);
-            let include = true;
-            if (timeFilter === 'week') {
-                include = orderDate >= startOfWeek;
-            } else if (timeFilter === 'month') {
-                include = orderDate >= startOfMonth;
-            }
-
-            if (include) {
-                const dept = order.created_by_department || 'ไม่ระบุหน่วยงาน';
-                departmentOrders[dept] = (departmentOrders[dept] || 0) + 1;
-            }
-        });
-        return Object.entries(departmentOrders).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
-    };
-
-    const chartData = getChartData();
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d', '#ffc658'];
 
     return (
         <div className="text-gray-800">
@@ -744,112 +714,10 @@ export default function DashboardPage() {
                         <h1 className="text-4xl font-bold text-gray-800 mb-2 gradient-title tracking-tight pt-2 leading-relaxed">
                             📊 Dashboard คำสั่งฉลากสินค้า
                         </h1>
-                        {userName && (
-                            <p className="text-gray-600">
-                                ผู้ใช้งาน: <span className="font-semibold">{userName}</span>
-                                {(role === 'moderator' || role === 'assistant_moderator') && (
-                                    <span className="ml-3 bg-purple-100/80 text-purple-800 border border-purple-200 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                        {role === 'moderator' ? 'Moderator' : 'Assistant Moderator'}
-                                    </span>
-                                )}
-                            </p>
-                        )}
+                        
                     </div>
                 </div>
 
-                {role !== 'user' && (
-                    <>
-                        <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50/80 p-2 rounded-2xl border border-gray-100 mb-6 gap-2">
-                            <h2 className="text-xl font-bold text-gray-700 px-4 flex items-center gap-2">
-                                <i className="fas fa-chart-line text-blue-500"></i> สรุปยอดการสั่งพิมพ์ฉลาก
-                            </h2>
-                            <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 p-1 w-full sm:w-auto">
-                                <button
-                                    onClick={() => setTimeFilter('week')}
-                                    className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ${timeFilter === 'week'
-                                        ? 'bg-blue-600 text-white shadow-md'
-                                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
-                                        }`}
-                                >
-                                    ประจำสัปดาห์
-                                </button>
-                                <button
-                                    onClick={() => setTimeFilter('month')}
-                                    className={`flex-1 sm:flex-none px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 ${timeFilter === 'month'
-                                        ? 'bg-purple-600 text-white shadow-md'
-                                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
-                                        }`}
-                                >
-                                    ประจำเดือน
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="w-full bg-transparent p-4 -m-4 rounded-2xl">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                    <p className="text-sm font-semibold text-blue-800/70 mb-1 tracking-wider relative z-10">คำสั่งทั้งหมด ({timeFilter === 'week' ? 'สัปดาห์นี้' : 'เดือนนี้'})</p>
-                                    <p className="text-5xl font-extrabold text-blue-600 relative z-10">{chartData.reduce((sum, item) => sum + item.count, 0)}</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-green-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                    <p className="text-sm font-semibold text-green-800/70 mb-1 tracking-wider relative z-10">จำนวนหน่วยงานที่สั่ง ({timeFilter === 'week' ? 'สัปดาห์นี้' : 'เดือนนี้'})</p>
-                                    <p className="text-5xl font-extrabold text-green-600 relative z-10">{chartData.length}</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-orange-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                    <p className="text-sm font-semibold text-orange-800/70 mb-1 tracking-wider relative z-10">หน่วยงานที่สั่งมากที่สุด ({timeFilter === 'week' ? 'สัปดาห์นี้' : 'เดือนนี้'})</p>
-                                    <p className="text-3xl font-extrabold text-orange-600 truncate relative z-10">{chartData.length > 0 ? chartData[0]?.name : '-'}</p>
-                                    <p className="text-sm font-medium text-orange-700/80 mt-1 relative z-10">{chartData.length > 0 ? `(${chartData[0]?.count || 0} คำสั่ง)` : 'ยังไม่มีข้อมูล'}</p>
-                                </div>
-                            </div>
-
-                            {chartData.length > 0 && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                            <i className="fas fa-chart-bar text-blue-500"></i> ยอดการสั่งแบ่งตามหน่วยงาน ({timeFilter === 'week' ? 'สัปดาห์นี้' : 'เดือนนี้'})
-                                        </h3>
-                                        <ResponsiveContainer width="100%" height={300}>
-                                            <BarChart data={chartData}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                                <YAxis axisLine={false} tickLine={false} />
-                                                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                                <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={40} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                            <i className="fas fa-chart-pie text-purple-500"></i> สัดส่วนการสั่งตามหน่วยงาน ({timeFilter === 'week' ? 'สัปดาห์นี้' : 'เดือนนี้'})
-                                        </h3>
-                                        <ResponsiveContainer width="100%" height={300}>
-                                            <PieChart>
-                                                <Pie
-                                                    data={chartData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={5}
-                                                    dataKey="count"
-                                                >
-                                                    {chartData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                                <Legend iconType="circle" />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </>
-                )}
 
                 <div className="mb-2 max-w-md">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
