@@ -324,19 +324,40 @@ export default function DashboardPage() {
 
     const markPrinted = async (order: OrderInterface) => {
         if (!isAdmin) return;
-        try {
-            const { error } = await supabase.from('orders').update({
-                is_printed: true
-            }).eq('id', order.id);
 
-            if (error) throw error;
+        const result = await Swal.fire({
+            title: 'ยืนยันพิมพ์ฉลากแล้ว?',
+            text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} พิมพ์เสร็จแล้วหรือไม่?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3b82f6',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '✓ ยืนยันพิมพ์แล้ว',
+            cancelButtonText: 'ยกเลิก'
+        });
 
-            setOrders(prev => prev.map(o =>
-                o.id === order.id ? { ...o, is_printed: true } : o
-            ));
-        } catch (error) {
-            console.error('Error marking printed:', error);
-            Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        if (result.isConfirmed) {
+            try {
+                const { error } = await supabase.from('orders').update({
+                    is_printed: true
+                }).eq('id', order.id);
+
+                if (error) throw error;
+
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, is_printed: true } : o
+                ));
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } catch (error) {
+                console.error('Error marking printed:', error);
+                Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
         }
     };
 
@@ -504,19 +525,40 @@ export default function DashboardPage() {
 
     const unmarkPrinted = async (order: OrderInterface) => {
         if (!isAdmin) return;
-        try {
-            const { error } = await supabase.from('orders').update({
-                is_printed: false
-            }).eq('id', order.id);
 
-            if (error) throw error;
+        const result = await Swal.fire({
+            title: 'ยกเลิกการพิมพ์?',
+            text: 'คุณต้องการยกเลิกสถานะ "พิมพ์ฉลากแล้ว" ใช่หรือไม่?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ใช่, ยกเลิกการพิมพ์',
+            cancelButtonText: 'ปิด'
+        });
 
-            setOrders(prev => prev.map(o =>
-                o.id === order.id ? { ...o, is_printed: false } : o
-            ));
-        } catch (error) {
-            console.error('Error unmarking printed:', error);
-            Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        if (result.isConfirmed) {
+            try {
+                const { error } = await supabase.from('orders').update({
+                    is_printed: false
+                }).eq('id', order.id);
+
+                if (error) throw error;
+
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, is_printed: false } : o
+                ));
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ยกเลิกการพิมพ์สำเร็จ',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } catch (error) {
+                console.error('Error unmarking printed:', error);
+                Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
         }
     };
 
