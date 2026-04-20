@@ -49,7 +49,34 @@ export default function DashboardPage() {
         fetchUserInfo();
         loadOrders();
 
-        // Optional: you can turn on real-time subscriptions here with Supabase:
+        const playNotificationSound = () => {
+            try {
+                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                if (!AudioContext) return;
+                const audioCtx = new AudioContext();
+                
+                const playTone = (freq: number, startTime: number, duration: number) => {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration);
+                    oscillator.start(audioCtx.currentTime + startTime);
+                    oscillator.stop(audioCtx.currentTime + startTime + duration);
+                };
+
+                // Play a pleasant "Ding-Ding" sound
+                playTone(880, 0, 0.3);        // A5
+                playTone(1108.73, 0.15, 0.5); // C#6
+            } catch (e) {
+                console.error('Audio playback failed', e);
+            }
+        };
+
+        // Real-time subscriptions for Dashboard updates and notifications
         const channel = supabase.channel('schema-db-changes')
             .on(
                 'postgres_changes',
@@ -58,8 +85,49 @@ export default function DashboardPage() {
                     schema: 'public',
                     table: 'orders',
                 },
-                () => {
-                    // Refresh orders on any change
+                (payload) => {
+                    const nowTS = Date.now();
+
+                    if (payload.eventType === 'INSERT') {
+                        playNotificationSound();
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'info',
+                            title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
+                            showConfirmButton: false,
+                            timer: 4000,
+                            timerProgressBar: true,
+                            background: '#eff6ff',
+                            color: '#1e3a8a'
+                        });
+                    } else if (payload.eventType === 'UPDATE' && payload.new) {
+                        const newData = payload.new as any;
+                        
+                        // Check if the update is recent (within 10 seconds)
+                        if (newData.updated_at) {
+                            const updateTS = new Date(newData.updated_at).getTime();
+                            if (nowTS - updateTS < 10000) {
+                                playNotificationSound();
+
+                                const isCancelled = newData.is_cancelled;
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: isCancelled ? 'warning' : 'info',
+                                    title: isCancelled ? '❌ มีคำสั่งพิมพ์ถูกยกเลิก!' : '📝 มีการแก้ไขคำสั่งพิมพ์!',
+                                    text: newData.product_name ? `สินค้า: ${newData.product_name}` : '',
+                                    showConfirmButton: false,
+                                    timer: 4000,
+                                    timerProgressBar: true,
+                                    background: isCancelled ? '#fef2f2' : '#eff6ff',
+                                    color: isCancelled ? '#991b1b' : '#1e3a8a'
+                                });
+                            }
+                        }
+                    }
+
+                    // รีเฟรชข้อมูลทุกครั้งที่มีการเปลี่ยนแปล
                     loadOrders();
                 }
             )
