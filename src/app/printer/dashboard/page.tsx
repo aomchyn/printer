@@ -139,35 +139,14 @@ export default function DashboardPage() {
 
     const sortedOrders = React.useMemo(() => {
         return [...orders].sort((a, b) => {
-             const getPriority = (order: OrderInterface) => {
-                // Priority 0: เฉพาะรายการที่ถูกยกเลิก หรือมีการแก้ไขเนื้อหาจริง (มี edit_summary)
-                if (order.is_cancelled || order.edit_summary) return 0;
-                // Priority 1: รายการปกติที่รอดำเนินการ (เรียงตามเวลาสั่งพิมพ์)
-                if (!order.is_printed && !order.is_verified) return 1;
-                // Priority 2: พิมพ์แล้วแต่ยังไม่ตรวจสอบ
-                if (order.is_printed && !order.is_verified) return 2;
-                // Priority 3: ตรวจสอบเสร็จแล้ว
-                return 3;
-            };
-
-            const pA = getPriority(a);
-            const pB = getPriority(b);
-
-            if (pA !== pB) return pA - pB;
-
-            // Priority 0 (ยกเลิก/แก้ไข): เรียงตาม updated_at ล่าสุด
-            if (pA === 0) {
-                const timeA = new Date(a.updated_at || a.created_at).getTime();
-                const timeB = new Date(b.updated_at || b.created_at).getTime();
-                return timeB - timeA;
-            }
-
-            // Priority อื่นๆ: เรียงตามเวลาที่สั่งพิมพ์ (created_at) ใหม่สุดก่อน
-            const timeA = new Date(a.created_at).getTime();
-            const timeB = new Date(b.created_at).getTime();
+            // เรียงลำดับตามเวลาที่มีความเคลื่อนไหวล่าสุด โดยไม่จัดกลุ่ม (ไม่สนสถานะว่าพิมพ์หรือตรวจสอบแล้ว)
+            const timeA = new Date(a.updated_at || a.created_at).getTime();
+            const timeB = new Date(b.updated_at || b.created_at).getTime();
             return timeB - timeA;
         });
     }, [orders]);
+
+
 
     const filteredOrders = sortedOrders.filter(order => {
         return searchTerm.trim() === '' ||
@@ -714,7 +693,7 @@ export default function DashboardPage() {
                         <h1 className="text-4xl font-bold text-gray-800 mb-2 gradient-title tracking-tight pt-2 leading-relaxed">
                             📊 Dashboard คำสั่งฉลากสินค้า
                         </h1>
-                        
+
                     </div>
                 </div>
 
