@@ -238,6 +238,9 @@ export default function OrderPage() {
                 <p>🏷️ <b>รหัสสินค้า:</b> ${orderData.productId}</p>
                 <p>📝 <b>ชื่อสินค้า:</b> ${orderData.productName}</p>
                 <p>🔢 <b>จำนวน:</b> ${orderData.quantity}</p>
+                <p>📅 <b>วันที่ผลิต:</b> ${orderData.productionDate}</p>
+                <p>📅 <b>วันหมดอายุ:</b> ${orderData.expiryDate}</p>
+                <p>📋 <b>หมายเหตุ:</b> ${orderData.remark}</p>
             </div>
         `,
             showCancelButton: true,
