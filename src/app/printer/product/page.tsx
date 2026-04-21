@@ -24,6 +24,8 @@ export default function FgcodeManagement() {
     const [category, setCategory] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [userRole, setUserRole] = useState<string>('user');
+    const [userName, setUserName] = useState('');
+    const [employeeId, setEmployeeId] = useState('');
 
     useEffect(() => {
         fetchFgcodes()
@@ -33,9 +35,11 @@ export default function FgcodeManagement() {
     const fetchUserRole = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-            const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+            const { data } = await supabase.from('users').select('role, name, employee_id').eq('id', session.user.id).single();
             if (data) {
                 setUserRole(data.role || 'user');
+                setUserName(data.name || '');
+                setEmployeeId(data.employee_id || '');
             }
         }
     }
@@ -102,6 +106,76 @@ export default function FgcodeManagement() {
 
                 if (error) throw error;
                 await logAction('UPDATE_PRODUCT', { id: editingFgcode.id, name: cleanName, exp: cleanExp, category });
+
+                // ถ้าอายุผลิตภัณฑ์เปลี่ยน → อัปเดตคำสั่งพิมพ์ที่ยังไม่ Verify ทั้งหมด
+                if (editingFgcode.exp !== cleanExp) {
+                    try {
+                        // ดึงคำสั่งพิมพ์ทั้งหมดที่ใช้สินค้านี้
+                        const { data: allOrders, error: fetchError } = await supabase
+                            .from('orders')
+                            .select('id, production_date, is_verified, is_cancelled')
+                            .eq('product_id', editingFgcode.id);
+
+                        if (fetchError) {
+                            console.error('Error fetching orders for sync:', fetchError);
+                        }
+
+                        // กรองเฉพาะรายการที่ยังไม่ Verify และยังไม่ยกเลิก
+                        const pendingOrders = (allOrders || []).filter(
+                            o => !o.is_verified && !o.is_cancelled
+                        );
+
+                        console.log(`[Sync] Found ${pendingOrders.length} pending orders for product ${editingFgcode.id}`);
+
+                        if (pendingOrders.length > 0) {
+                            // คำนวณวันหมดอายุใหม่ให้แต่ละ order
+                            const calculateExpiry = (mfgDate: string, shelfLife: string): string => {
+                                if (!mfgDate || !shelfLife) return '';
+                                try {
+                                    const d = new Date(mfgDate);
+                                    if (isNaN(d.getTime())) return '';
+                                    const months = parseInt(shelfLife.trim());
+                                    if (isNaN(months) || months <= 0) return '';
+                                    d.setMonth(d.getMonth() + months);
+                                    return d.toISOString().split('T')[0];
+                                } catch { return ''; }
+                            };
+
+                            let updatedCount = 0;
+                            const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+                            for (const order of pendingOrders) {
+                                const newExpiry = calculateExpiry(order.production_date, cleanExp);
+                                const { error: updateError } = await supabase.from('orders').update({
+                                    product_exp: cleanExp,
+                                    expiry_date: newExpiry,
+                                    updated_at: new Date().toISOString(),
+                                    updated_by: editorName,
+                                    edit_summary: `อัปเดตอายุผลิตภัณฑ์อัตโนมัติ โดย ${editorName}: ${editingFgcode.exp} ➡️ ${cleanExp} เดือน`
+                                }).eq('id', order.id);
+
+                                if (updateError) {
+                                    console.error(`Error updating order ${order.id}:`, updateError);
+                                } else {
+                                    updatedCount++;
+                                }
+                            }
+
+                            if (updatedCount > 0) {
+                                Swal.fire({
+                                    toast: true,
+                                    position: 'top-end',
+                                    icon: 'info',
+                                    title: `📦 อัปเดตอายุผลิตภัณฑ์ในคำสั่งพิมพ์ ${updatedCount} รายการ`,
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    timerProgressBar: true
+                                });
+                            }
+                        }
+                    } catch (syncError) {
+                        console.error('Error syncing orders with new exp:', syncError);
+                    }
+                }
             } else {
                 // เพิ่มใหม่ (ตรวจสอบซ้ำ)
                 const { data: existing } = await supabase.from('fgcode').select('id').eq('id', cleanId).single();
@@ -333,23 +407,23 @@ export default function FgcodeManagement() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        {/* ทุก role สามารถแก้ไขได้ */}
+                                        <button
+                                            onClick={() => handleEdit(fgcode)}
+                                            className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
+                                            title="แก้ไข"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                        {/* เฉพาะ moderator / assistant_moderator เท่านั้นที่ลบได้ */}
                                         {userRole !== 'user' && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleEdit(fgcode)}
-                                                    className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
-                                                    title="แก้ไข"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(fgcode.id)}
-                                                    className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
-                                                    title="ลบ"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </>
+                                            <button
+                                                onClick={() => handleDelete(fgcode.id)}
+                                                className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
+                                                title="ลบ"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         )}
                                     </td>
                                 </tr>
