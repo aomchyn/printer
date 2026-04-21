@@ -227,6 +227,27 @@ export default function OrderPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'ยืนยันการบันทึก?',
+            html: `
+            <div class="text-left text-sm space-y-1">
+                <p>📦 <b>ประเภท:</b> ${orderData.orderType}</p>
+                <p>🔢 <b>ลอต:</b> ${orderData.lotNumber}</p>
+                <p>🏷️ <b>รหัสสินค้า:</b> ${orderData.productId}</p>
+                <p>📝 <b>ชื่อสินค้า:</b> ${orderData.productName}</p>
+                <p>🔢 <b>จำนวน:</b> ${orderData.quantity}</p>
+            </div>
+        `,
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+        });
+
+        if (!confirm.isConfirmed) return;
         try {
             const requiredFields = ['lotNumber', 'productId', 'productionDate', 'quantity'];
             const missingFields = requiredFields.filter(field => !orderData[field as keyof OrderInterface]);
