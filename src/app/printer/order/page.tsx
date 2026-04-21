@@ -240,7 +240,7 @@ export default function OrderPage() {
                 <p>🔢 <b>จำนวน:</b> ${orderData.quantity}</p>
                 <p>📅 <b>วันที่ผลิต:</b> ${orderData.productionDate}</p>
                 <p>📅 <b>วันหมดอายุ:</b> ${orderData.expiryDate}</p>
-                <p>📋 <b>หมายเหตุ:</b> ${orderData.remark}</p>
+                <p>📋 <b>หมายเหตุ:</b> ${orderData.notes}</p>
             </div>
         `,
             showCancelButton: true,
