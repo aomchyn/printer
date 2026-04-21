@@ -479,10 +479,11 @@ export default function OrderPage() {
                                 ...prev,
                                 quantity: Math.max(1, parseInt(e.target.value) || 1)
                             }))}
+                            onWheel={(e) => e.currentTarget.blur()}
                             placeholder="กรอกจำนวนที่ต้องการสั่ง"
                             min="1"
                             required
-                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
+                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                     </div>
 
