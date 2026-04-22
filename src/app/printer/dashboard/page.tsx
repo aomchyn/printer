@@ -33,6 +33,7 @@ export interface OrderInterface {
     edit_summary?: string | null;
     is_cancelled?: boolean;
     is_no_file?: boolean;
+    original_product_name?: string;
 }
 
 export default function DashboardPage() {
@@ -54,7 +55,7 @@ export default function DashboardPage() {
                 const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
                 if (!AudioContext) return;
                 const audioCtx = new AudioContext();
-                
+
                 const playTone = (freq: number, startTime: number, duration: number) => {
                     const oscillator = audioCtx.createOscillator();
                     const gainNode = audioCtx.createGain();
@@ -103,7 +104,7 @@ export default function DashboardPage() {
                         });
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
                         const newData = payload.new as any;
-                        
+
                         // Check if the update is recent (within 10 seconds)
                         if (newData.updated_at) {
                             const updateTS = new Date(newData.updated_at).getTime();
@@ -193,6 +194,27 @@ export default function DashboardPage() {
                     hasMore = false;
                 }
             }
+            // ✅ ดึง fgcode ล่าสุดมา merge ทับ product_name ใน orders
+            const { data: fgcodeData } = await supabase
+                .from('fgcode')
+                .select('id, name');
+
+            if (fgcodeData && fgcodeData.length > 0) {
+                const productMap = Object.fromEntries(
+                    fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
+                );
+                allOrders = allOrders.map(order => {
+                    const currentName = productMap[order.product_id];
+                    const nameChanged = currentName && currentName !== order.product_name;
+                    return {
+                        ...order,
+                        product_name: currentName ?? order.product_name,
+                        // ✅ เก็บชื่อเดิมจาก orders เฉพาะเมื่อมีการเปลี่ยน
+                        original_product_name: nameChanged ? order.product_name : undefined,
+                    };
+                });
+            }
+
 
             setOrders(allOrders);
         } catch (error) {
@@ -852,6 +874,19 @@ export default function DashboardPage() {
                                                 {order.product_id}
                                             </span>
                                         </h3>
+                                        {/* ✅ แสดงเมื่อชื่อสินค้าถูกเปลี่ยน */}
+                                        {order.original_product_name && (
+                                            <div className="mt-1 flex items-center gap-1.5 text-[11px] bg-orange-50 border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg w-fit max-w-full flex-wrap">
+                                                <span className="shrink-0">🔄 ชื่อเปลี่ยน:</span>
+                                                <span className="line-through text-orange-400 truncate max-w-[120px]" title={order.original_product_name}>
+                                                    {order.original_product_name}
+                                                </span>
+                                                <span className="shrink-0">→</span>
+                                                <span className="font-bold truncate max-w-[120px]" title={order.product_name}>
+                                                    {order.product_name}
+                                                </span>
+                                            </div>
+                                        )}
                                         {order.order_type && (
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-red-200 text-red-800 border-red-300' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
                                                 {order.order_type}
