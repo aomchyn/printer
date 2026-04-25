@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion } from 'lucide-react';
+import EditHistory from '../components/EditHistory';
 
 export interface OrderInterface {
     id: number;
@@ -69,15 +70,13 @@ export default function DashboardPage() {
                     oscillator.stop(audioCtx.currentTime + startTime + duration);
                 };
 
-                // Play a pleasant "Ding-Ding" sound
-                playTone(880, 0, 0.3);        // A5
-                playTone(1108.73, 0.15, 0.5); // C#6
+                playTone(880, 0, 0.3);
+                playTone(1108.73, 0.15, 0.5);
             } catch (e) {
                 console.error('Audio playback failed', e);
             }
         };
 
-        // Real-time subscriptions for Dashboard updates and notifications
         const channel = supabase.channel('schema-db-changes')
             .on(
                 'postgres_changes',
@@ -104,13 +103,10 @@ export default function DashboardPage() {
                         });
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
                         const newData = payload.new as any;
-
-                        // Check if the update is recent (within 10 seconds)
                         if (newData.updated_at) {
                             const updateTS = new Date(newData.updated_at).getTime();
                             if (nowTS - updateTS < 10000) {
                                 playNotificationSound();
-
                                 const isCancelled = newData.is_cancelled;
                                 Swal.fire({
                                     toast: true,
@@ -127,8 +123,6 @@ export default function DashboardPage() {
                             }
                         }
                     }
-
-                    // รีเฟรชข้อมูลทุกครั้งที่มีการเปลี่ยนแปล
                     loadOrders();
                 }
             )
@@ -154,9 +148,8 @@ export default function DashboardPage() {
                 setUserName(data.name);
                 setEmployeeId(data.employee_id || '');
             } else {
-                // Auto-recovery: always default to 'user' role for safety
                 const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = 'user'; // SECURITY: Never auto-grant admin
+                const fallbackRole = 'user';
                 setRole(fallbackRole);
                 setUserName(fallbackName);
             }
@@ -194,7 +187,7 @@ export default function DashboardPage() {
                     hasMore = false;
                 }
             }
-            // ✅ ดึง fgcode ล่าสุดมา merge ทับ product_name ใน orders
+
             const { data: fgcodeData } = await supabase
                 .from('fgcode')
                 .select('id, name');
@@ -209,12 +202,10 @@ export default function DashboardPage() {
                     return {
                         ...order,
                         product_name: currentName ?? order.product_name,
-                        // ✅ เก็บชื่อเดิมจาก orders เฉพาะเมื่อมีการเปลี่ยน
                         original_product_name: nameChanged ? order.product_name : undefined,
                     };
                 });
             }
-
 
             setOrders(allOrders);
         } catch (error) {
@@ -227,16 +218,13 @@ export default function DashboardPage() {
         }
     };
 
-    const sortedOrders = React.useMemo(() => {
+    const sortedOrders = useMemo(() => {
         return [...orders].sort((a, b) => {
-            // เรียงลำดับตามเวลาที่มีความเคลื่อนไหวล่าสุด โดยไม่จัดกลุ่ม (ไม่สนสถานะว่าพิมพ์หรือตรวจสอบแล้ว)
             const timeA = new Date(a.updated_at || a.created_at).getTime();
             const timeB = new Date(b.updated_at || b.created_at).getTime();
             return timeB - timeA;
         });
     }, [orders]);
-
-
 
     const filteredOrders = sortedOrders.filter(order => {
         return searchTerm.trim() === '' ||
@@ -283,33 +271,68 @@ export default function DashboardPage() {
 
     const isAdmin = role === 'moderator' || role === 'assistant_moderator';
 
+    // ✅ ปรับปรุงฟังก์ชัน logAuditTrail ให้มี fallback และไม่ใช้ .single()
+    const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: any) => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const userIdentifier = employeeId ? `${userName} (${employeeId})` : userName;
+
+            // ลองบันทึกไปยัง audit_logs ก่อน
+            const { error } = await supabase
+                .from('audit_logs')
+                .insert([{
+                    order_id: orderId,
+                    action: action,
+                    user_name: userIdentifier,
+                    summary: summary,
+                    changes: changes || null,
+                    created_at: new Date().toISOString()
+                }]);
+
+            if (error) {
+                // หาก audit_logs ยังไม่ถูกสร้าง หรือ insert ไม่ได้ → fallback ไปเขียนใน orders.edit_summary
+                console.warn('audit_logs insert failed, falling back to orders.edit_summary:', error);
+                await supabase
+                    .from('orders')
+                    .update({ edit_summary: summary, updated_by: userIdentifier })
+                    .eq('id', orderId);
+            }
+        } catch (err) {
+            console.error('logAuditTrail error:', err);
+            // หากเกิด exception ก็ fallback เช่นกัน
+            try {
+                await supabase
+                    .from('orders')
+                    .update({ edit_summary: summary })
+                    .eq('id', orderId);
+            } catch (e) {
+                console.error('fallback update failed:', e);
+            }
+        }
+    };
+
     const saveEdit = async () => {
         if (!editingOrder) return;
         try {
             const now = new Date().toISOString();
             const original = orders.find(o => o.id === editingOrder.id);
 
-            // Determine what fields were changed with robust comparison
             const changeDetails: string[] = [];
             if (original) {
-                // Helper to get presentable value
                 const displayVal = (val: any) => (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
 
-                // 1. เลขลอต
                 const oldLot = displayVal(original.lot_number);
                 const newLot = displayVal(editingOrder.lot_number);
                 if (oldLot !== newLot) {
                     changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
                 }
 
-                // 2. จำนวน
                 const oldQty = Number(original.quantity) || 0;
                 const newQty = Number(editingOrder.quantity) || 0;
                 if (oldQty !== newQty) {
                     changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
                 }
 
-                // 3. วันที่ผลิต
                 const oldDateRaw = original.production_date || '';
                 const newDateRaw = editingOrder.production_date || '';
                 if (oldDateRaw !== newDateRaw) {
@@ -317,7 +340,6 @@ export default function DashboardPage() {
                     changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
                 }
 
-                // 4. หมายเหตุ
                 const oldNotes = displayVal(original.notes);
                 const newNotes = displayVal(editingOrder.notes);
                 if (oldNotes !== newNotes) {
@@ -342,6 +364,18 @@ export default function DashboardPage() {
             const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
 
             if (error) throw error;
+
+            await logAuditTrail(
+                editingOrder.id,
+                'UPDATE',
+                summary,
+                {
+                    lot_number: original?.lot_number !== editingOrder.lot_number ? { old: original?.lot_number, new: editingOrder.lot_number } : undefined,
+                    quantity: original?.quantity !== editingOrder.quantity ? { old: original?.quantity, new: editingOrder.quantity } : undefined,
+                    production_date: original?.production_date !== editingOrder.production_date ? { old: original?.production_date, new: editingOrder.production_date } : undefined,
+                    notes: original?.notes !== editingOrder.notes ? { old: original?.notes, new: editingOrder.notes } : undefined
+                }
+            );
 
             setOrders(prev => prev.map(order =>
                 order.id === editingOrder.id ? { ...order, ...updateData } : order
@@ -393,6 +427,12 @@ export default function DashboardPage() {
                 }).eq('id', order.id);
 
                 if (error) throw error;
+
+                await logAuditTrail(
+                    order.id,
+                    'VERIFY',
+                    `ตรวจสอบและยืนยันคำสั่งพิมพ์`
+                );
 
                 setOrders(prev => prev.map(o =>
                     o.id === order.id ? { ...o, is_verified: true, verified_by: verifierName, verified_at: now } : o
@@ -490,6 +530,12 @@ export default function DashboardPage() {
 
                 if (error) throw error;
 
+                await logAuditTrail(
+                    order.id,
+                    'CANCEL',
+                    `ยกเลิกเพราะ: ${reason}`
+                );
+
                 setOrders(prev => prev.map(o =>
                     o.id === order.id ? { ...o, ...updateData } : o
                 ));
@@ -513,7 +559,7 @@ export default function DashboardPage() {
             text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#eab308', // yellow-500
+            confirmButtonColor: '#eab308',
             cancelButtonColor: '#6b7280',
             confirmButtonText: 'ยืนยัน',
             cancelButtonText: 'ยกเลิก'
@@ -521,8 +567,6 @@ export default function DashboardPage() {
 
         if (result.isConfirmed) {
             try {
-                const now = new Date().toISOString();
-
                 const updateData = {
                     is_no_file: true
                 };
@@ -707,8 +751,6 @@ export default function DashboardPage() {
 
         if (result.isConfirmed) {
             try {
-                // Extract file path from URL
-                // URL format: .../storage/v1/object/public/order-images/labels/170062_test.jpg
                 const urlParts = order.image_url.split('/order-images/');
                 if (urlParts.length > 1) {
                     const filePath = urlParts[1];
@@ -716,14 +758,12 @@ export default function DashboardPage() {
                     if (storageError) throw storageError;
                 }
 
-                // Update database
                 const { error: dbError } = await supabase.from('orders').update({
                     image_url: null
                 }).eq('id', order.id);
 
                 if (dbError) throw dbError;
 
-                // Update local state
                 setOrders(prev => prev.map(o =>
                     o.id === order.id ? { ...o, image_url: null } : o
                 ));
@@ -816,7 +856,6 @@ export default function DashboardPage() {
         }
     };
 
-
     return (
         <div className="text-gray-800">
             <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-white/20">
@@ -825,10 +864,8 @@ export default function DashboardPage() {
                         <h1 className="text-4xl font-bold text-gray-800 mb-2 gradient-title tracking-tight pt-2 leading-relaxed">
                             📊 Dashboard คำสั่งฉลากสินค้า
                         </h1>
-
                     </div>
                 </div>
-
 
                 <div className="mb-2 max-w-md">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -864,7 +901,6 @@ export default function DashboardPage() {
                             ${order.is_cancelled ? 'bg-red-50/80 border-red-300 opacity-80' : index % 2 === 0 ? 'bg-white' : 'bg-blue-50/70'}
                             rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border overflow-hidden flex flex-col group relative
                         `}>
-                            {/* Card Header */}
                             <div className={`p-5 border-b flex justify-between items-start ${order.is_cancelled ? 'bg-red-100 border-red-200' : index % 2 === 0 ? 'bg-blue-100/80 border-blue-100' : 'bg-indigo-100/80 border-blue-100'}`}>
                                 <div className="pr-4 pointer-events-none">
                                     <div className="flex gap-2 items-center mb-1 flex-wrap">
@@ -874,7 +910,6 @@ export default function DashboardPage() {
                                                 {order.product_id}
                                             </span>
                                         </h3>
-                                        {/* ✅ แสดงเมื่อชื่อสินค้าถูกเปลี่ยน */}
                                         {order.original_product_name && (
                                             <div className="mt-1 flex items-center gap-1.5 text-[11px] bg-orange-50 border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg w-fit max-w-full flex-wrap">
                                                 <span className="shrink-0">🔄 ชื่อเปลี่ยน:</span>
@@ -919,9 +954,7 @@ export default function DashboardPage() {
                                         </h4>
                                     </div>
                                 </div>
-                                {/* Actions */}
                                 <div className="flex gap-1 shrink-0">
-                                    {/* Admin-only: Verify actions (only if not cancelled) */}
                                     {isAdmin && !order.is_cancelled && (
                                         <>
                                             {!order.is_verified ? (
@@ -957,19 +990,16 @@ export default function DashboardPage() {
                                             )}
                                         </>
                                     )}
-                                    {/* All roles: Edit button (only if not cancelled) */}
                                     {!order.is_cancelled && (
                                         <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
                                     )}
-                                    {/* User-only/Cancel feature for all: Cancel order button (only if not cancelled) */}
                                     {!order.is_cancelled && (
                                         <button onClick={() => handleCancelOrder(order)} className="w-9 h-9 rounded-xl text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการสั่งพิมพ์">
                                             <X className="w-5 h-5" />
                                         </button>
                                     )}
-                                    {/* Admin-only: Restore button for cancelled orders */}
                                     {isAdmin && order.is_cancelled && (
                                         <button
                                             onClick={() => restoreOrder(order)}
@@ -979,7 +1009,6 @@ export default function DashboardPage() {
                                             <Undo className="w-4 h-4" />
                                         </button>
                                     )}
-                                    {/* Admin-only: Delete */}
                                     {isAdmin && (
                                         <button onClick={() => deleteOrder(order.id)} className="w-9 h-9 rounded-xl text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ลบ">
                                             <Trash2 className="w-4 h-4" />
@@ -988,7 +1017,6 @@ export default function DashboardPage() {
                                 </div>
                             </div>
 
-                            {/* Card Body */}
                             <div className="p-5 flex-1 space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-500">เวลาสั่ง:</span>
@@ -1020,25 +1048,8 @@ export default function DashboardPage() {
                                     <span className="font-bold text-xl text-green-600">{order.quantity}</span>
                                 </div>
 
-                                {order.updated_at && (
-                                    <div className="mt-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-[11px] space-y-1 shadow-sm">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-bold text-blue-800 flex items-center gap-1">
-                                                ✏️ แก้ไขล่าสุด:
-                                            </span>
-                                            <span className="text-blue-700 font-medium">{formatThaiDateTimeFromISO(order.updated_at)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-500">โดย:</span>
-                                            <span className="font-bold text-gray-800">{order.updated_by || 'ไม่ระบุ'}</span>
-                                        </div>
-                                        {order.edit_summary && (
-                                            <div className="pt-1 border-t border-blue-100/50 mt-1">
-                                                <span className="text-blue-600 font-semibold italic">{order.edit_summary}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                {/* แสดงประวัติการแก้ไข (ใช้ Component ใหม่ที่รองรับ fallback) */}
+                                <EditHistory orderId={order.id} updatedAt={order.updated_at} />
 
                                 {order.notes && order.notes !== '-' && (
                                     <div className="mt-3 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">
@@ -1072,7 +1083,6 @@ export default function DashboardPage() {
                                 )}
                             </div>
 
-                            {/* Card Footer Status */}
                             <div className={`p-4 text-center tracking-wide font-bold 
                                 ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
                                     : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
@@ -1113,7 +1123,6 @@ export default function DashboardPage() {
                                 )}
                             </div>
 
-                            {/* "No File" Banner (Displays below the main status if true) */}
                             {order.is_no_file && !order.is_cancelled && !order.is_verified && (
                                 <div className="p-3 text-center tracking-wide font-bold bg-amber-500 text-white shadow-inner">
                                     <span className="flex items-center justify-center gap-2 text-sm">
@@ -1136,7 +1145,6 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="space-y-4">
-                            {/* เลขลอต — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">เลขลอต</label>
                                 <input
@@ -1146,7 +1154,6 @@ export default function DashboardPage() {
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
                                 />
                             </div>
-                            {/* จำนวน — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">จำนวน</label>
                                 <input
@@ -1156,7 +1163,6 @@ export default function DashboardPage() {
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
                                 />
                             </div>
-                            {/* วันที่ผลิต — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">วันที่ผลิต</label>
                                 <input
@@ -1179,7 +1185,6 @@ export default function DashboardPage() {
                                     </p>
                                 )}
                             </div>
-                            {/* หมายเหตุ — ทุก role แก้ได้ */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">หมายเหตุ</label>
                                 <textarea
