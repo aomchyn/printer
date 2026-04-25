@@ -469,13 +469,14 @@ export default function DashboardPage() {
         if (result.isConfirmed) {
             try {
                 const { error } = await supabase.from('orders').update({
-                    is_printed: true
+                    is_printed: true,
+                    is_no_file: false,
                 }).eq('id', order.id);
 
                 if (error) throw error;
 
                 setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_printed: true } : o
+                    o.id === order.id ? { ...o, is_printed: true, is_no_file: false } : o
                 ));
 
                 Swal.fire({
@@ -1084,52 +1085,51 @@ export default function DashboardPage() {
                             </div>
 
                             <div className={`p-4 text-center tracking-wide font-bold 
-                                ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
-                                    : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
-                                        : order.is_printed ? 'bg-blue-500 text-white shadow-inner uppercase'
-                                            : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
-                            >
-                                {order.is_cancelled ? (
-                                    <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
-                                        <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
-                                    </span>
-                                ) : order.is_verified ? (
-                                    <div className="flex flex-col items-center justify-center gap-2 py-1">
-                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
-                                            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
-                                            {order.verified_by && order.verified_by.includes('(') ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-bold">
-                                                        รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span>{order.verified_by || '-'}</span>
-                                            )}
-                                        </div>
-                                        <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
-                                            วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
-                                        </span>
-                                    </div>
-                                ) : order.is_printed ? (
-                                    <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
-                                        <Printer className="w-5 h-5 inline mr-1" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center justify-center gap-2 text-sm">
-                                        <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
-                                    </span>
-                                )}
-                            </div>
+    ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
+        : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
+            : order.is_no_file ? 'bg-amber-500 text-white shadow-inner'
+                : order.is_printed ? 'bg-blue-500 text-white shadow-inner uppercase'
+                    : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
+>
+    {order.is_cancelled ? (
+        <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
+            <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
+        </span>
+    ) : order.is_verified ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-1">
+            <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
+                {order.verified_by && order.verified_by.includes('(') ? (
+                    <div className="flex items-center gap-2">
+                        <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
+                        <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-bold">
+                            รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
+                        </span>
+                    </div>
+                ) : (
+                    <span>{order.verified_by || '-'}</span>
+                )}
+            </div>
+            <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
+                วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
+            </span>
+        </div>
+    ) : order.is_no_file ? (
+        <span className="flex items-center justify-center gap-2 text-sm">
+            <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
+        </span>
+    ) : order.is_printed ? (
+        <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
+            <Printer className="w-5 h-5 inline mr-1" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
+        </span>
+    ) : (
+        <span className="flex items-center justify-center gap-2 text-sm">
+            <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
+        </span>
+    )}
+</div>
 
-                            {order.is_no_file && !order.is_cancelled && !order.is_verified && (
-                                <div className="p-3 text-center tracking-wide font-bold bg-amber-500 text-white shadow-inner">
-                                    <span className="flex items-center justify-center gap-2 text-sm">
-                                        <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
-                                    </span>
-                                </div>
-                            )}
+{/* ✅ ลบบล็อกเก่าที่เป็น banner "ไม่มีไฟล์" ออกทั้งหมด */}
                         </div>
                     ))}
                 </div>
@@ -1206,3 +1206,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+                    

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { UserCircle } from 'lucide-react';  // อย่าลืม import
 
 interface HistoryEntry {
     id: number;
@@ -19,7 +20,7 @@ interface Props {
 export default function EditHistory({ orderId, updatedAt }: Props) {
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [loading, setLoading] = useState(true);
-    const [expanded, setExpanded] = useState(false); // เริ่มต้นแสดงเฉพาะล่าสุด
+    const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -30,7 +31,8 @@ export default function EditHistory({ orderId, updatedAt }: Props) {
                 .from('audit_logs')
                 .select('*')
                 .eq('order_id', orderId)
-                .order('created_at', { ascending: false }); // เรียงล่าสุดก่อน
+                .neq('action', 'VERIFY')
+                .order('created_at', { ascending: false });
 
             if (!cancelled) {
                 if (error) {
@@ -44,9 +46,7 @@ export default function EditHistory({ orderId, updatedAt }: Props) {
         };
 
         loadHistory();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [orderId, updatedAt]);
 
     if (loading) return <div className="text-sm text-gray-400 mt-2">กำลังโหลดประวัติ...</div>;
@@ -58,45 +58,60 @@ export default function EditHistory({ orderId, updatedAt }: Props) {
     return (
         <div className="mt-2">
             {!expanded ? (
-                // แสดงเฉพาะรายการล่าสุด
-                <div className="text-xs text-gray-600 border-l-2 border-blue-300 pl-2">
-                    <div className="flex items-center gap-1">
-                        <span className="font-semibold">{latestEntry.user_name}</span>
-                        <span>-</span>
-                        <span>{latestEntry.summary}</span>
+                <div className="text-xs bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-lg p-3 shadow-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded-full font-bold tracking-wide">
+                            ✏️ แก้ไขล่าสุด
+                        </span>
+                        <span className="text-gray-400 text-[10px]">
+                            {new Date(latestEntry.created_at).toLocaleString('th-TH', {
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                            })}
+                        </span>
                     </div>
-                    <div className="text-gray-400 text-[10px]">
-                        {new Date(latestEntry.created_at).toLocaleString('th-TH')}
+                    <div className="flex items-start gap-2 mt-1.5">
+                        <UserCircle className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                        <div>
+                            <span className="font-semibold text-gray-700">{latestEntry.user_name}</span>
+                            <span className="text-gray-500 mx-1">·</span>
+                            <span className="text-gray-600">{latestEntry.summary}</span>
+                        </div>
                     </div>
                     {hasMore && (
                         <button
                             onClick={() => setExpanded(true)}
-                            className="text-xs text-blue-600 hover:underline mt-1 block"
+                            className="text-xs text-blue-600 hover:text-blue-800 underline mt-2 block transition-colors"
                         >
                             🔍 ดูประวัติทั้งหมด ({history.length})
                         </button>
                     )}
                 </div>
             ) : (
-                // แสดงทั้งหมด
-                <div>
-                    <ul className="text-xs space-y-1 text-gray-600">
+                <div className="bg-white border border-gray-100 rounded-lg p-3">
+                    <ul className="text-xs space-y-2 text-gray-600">
                         {history.map((entry) => (
-                            <li key={entry.id} className="border-l-2 border-blue-300 pl-2">
-                                <div className="flex items-center gap-1">
-                                    <span className="font-semibold">{entry.user_name}</span>
-                                    <span>-</span>
-                                    <span>{entry.summary}</span>
+                            <li key={entry.id} className="border-l-2 border-blue-200 pl-3">
+                                <div className="flex items-start gap-2">
+                                    <UserCircle className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                                    <div>
+                                        <span className="font-semibold text-gray-700">{entry.user_name}</span>
+                                        <span className="text-gray-500 mx-1">·</span>
+                                        <span>{entry.summary}</span>
+                                    </div>
                                 </div>
-                                <div className="text-gray-400 text-[10px]">
-                                    {new Date(entry.created_at).toLocaleString('th-TH')}
+                                <div className="text-gray-400 text-[10px] mt-0.5 ml-6">
+                                    {new Date(entry.created_at).toLocaleString('th-TH', {
+                                        dateStyle: 'short',
+                                        timeStyle: 'short',
+                                    })}
                                 </div>
                             </li>
                         ))}
                     </ul>
                     <button
                         onClick={() => setExpanded(false)}
-                        className="text-xs text-blue-600 hover:underline mt-1"
+                        className="text-xs text-blue-600 hover:text-blue-800 underline mt-2"
                     >
                         ซ่อนประวัติ
                     </button>
