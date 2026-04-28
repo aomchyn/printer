@@ -35,6 +35,9 @@ export interface OrderInterface {
     is_cancelled?: boolean;
     is_no_file?: boolean;
     original_product_name?: string;
+    printed_by?: string | null;         // ✅ ชื่อผู้พิมพ์
+    printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
+    printed_at?: string | null;         // ✅ เวลาที่พิมพ์
 }
 
 export default function DashboardPage() {
@@ -44,6 +47,7 @@ export default function DashboardPage() {
     const [role, setRole] = useState('');
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
+    const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
     const [timeFilter, setTimeFilter] = useState<'week' | 'month'>('week');
     const router = useRouter();
 
@@ -78,28 +82,16 @@ export default function DashboardPage() {
         };
 
         const channel = supabase.channel('schema-db-changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'orders',
-                },
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
                 (payload) => {
                     const nowTS = Date.now();
-
                     if (payload.eventType === 'INSERT') {
                         playNotificationSound();
                         Swal.fire({
-                            toast: true,
-                            position: 'top-end',
-                            icon: 'info',
+                            toast: true, position: 'top-end', icon: 'info',
                             title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
-                            showConfirmButton: false,
-                            timer: 4000,
-                            timerProgressBar: true,
-                            background: '#eff6ff',
-                            color: '#1e3a8a'
+                            showConfirmButton: false, timer: 4000, timerProgressBar: true,
+                            background: '#eff6ff', color: '#1e3a8a'
                         });
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
                         const newData = payload.new as any;
@@ -109,14 +101,11 @@ export default function DashboardPage() {
                                 playNotificationSound();
                                 const isCancelled = newData.is_cancelled;
                                 Swal.fire({
-                                    toast: true,
-                                    position: 'top-end',
+                                    toast: true, position: 'top-end',
                                     icon: isCancelled ? 'warning' : 'info',
                                     title: isCancelled ? '❌ มีคำสั่งพิมพ์ถูกยกเลิก!' : '📝 มีการแก้ไขคำสั่งพิมพ์!',
                                     text: newData.product_name ? `สินค้า: ${newData.product_name}` : '',
-                                    showConfirmButton: false,
-                                    timer: 4000,
-                                    timerProgressBar: true,
+                                    showConfirmButton: false, timer: 4000, timerProgressBar: true,
                                     background: isCancelled ? '#fef2f2' : '#eff6ff',
                                     color: isCancelled ? '#991b1b' : '#1e3a8a'
                                 });
@@ -125,22 +114,19 @@ export default function DashboardPage() {
                     }
                     loadOrders();
                 }
-            )
-            .subscribe();
+            ).subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchUserInfo = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                router.push('/login');
-                return;
-            }
+            if (!session) { router.push('/login'); return; }
+
+            // ✅ เก็บ UUID ของ user ปัจจุบันไว้ใช้เช็คสิทธิ์
+            setCurrentUserId(session.user.id);
 
             const { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
             if (data) {
@@ -148,10 +134,8 @@ export default function DashboardPage() {
                 setUserName(data.name);
                 setEmployeeId(data.employee_id || '');
             } else {
-                const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = 'user';
-                setRole(fallbackRole);
-                setUserName(fallbackName);
+                setRole('user');
+                setUserName(session.user.email?.split('@')[0] || 'User');
             }
         } catch (error) {
             console.error('Error fetching user info:', error);
@@ -171,14 +155,12 @@ export default function DashboardPage() {
 
             while (hasMore) {
                 const { data, error } = await supabase
-                    .from('orders')
-                    .select('*')
+                    .from('orders').select('*')
                     .gte('created_at', startOfMonthIso)
                     .order('created_at', { ascending: false })
                     .range(from, from + pageSize - 1);
 
                 if (error) throw error;
-
                 if (data && data.length > 0) {
                     allOrders = [...allOrders, ...(data as OrderInterface[])];
                     from += pageSize;
@@ -188,10 +170,7 @@ export default function DashboardPage() {
                 }
             }
 
-            const { data: fgcodeData } = await supabase
-                .from('fgcode')
-                .select('id, name');
-
+            const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
             if (fgcodeData && fgcodeData.length > 0) {
                 const productMap = Object.fromEntries(
                     fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
@@ -210,11 +189,7 @@ export default function DashboardPage() {
             setOrders(allOrders);
         } catch (error) {
             console.error('Error loading orders:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'โหลดข้อมูลไม่สำเร็จ',
-                text: 'กรุณาลองใหม่อีกครั้ง'
-            });
+            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
     };
 
@@ -226,87 +201,49 @@ export default function DashboardPage() {
         });
     }, [orders]);
 
-    const filteredOrders = sortedOrders.filter(order => {
-        return searchTerm.trim() === '' ||
-            order.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            order.product_name.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+    const filteredOrders = sortedOrders.filter(order =>
+        searchTerm.trim() === '' ||
+        order.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
+    const getCurrentUserIdentifier = () => employeeId ? `${userName} (${employeeId})` : userName;
+
+    const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: any) => {
+        try {
+            const userIdentifier = getCurrentUserIdentifier();
+            const { error } = await supabase.from('audit_logs').insert([{
+                order_id: orderId, action, user_name: userIdentifier,
+                summary, changes: changes || null, created_at: new Date().toISOString()
+            }]);
+            if (error) {
+                console.warn('audit_logs insert failed, falling back:', error);
+                await supabase.from('orders').update({ edit_summary: summary, updated_by: userIdentifier }).eq('id', orderId);
+            }
+        } catch (err) {
+            console.error('logAuditTrail error:', err);
+        }
+    };
 
     const deleteOrder = async (id: number) => {
-        if (role !== 'moderator' && role !== 'assistant_moderator') {
+        if (!isAdmin) {
             Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
             return;
         }
-
         const result = await Swal.fire({
-            title: 'ยืนยันการลบ?',
-            text: 'คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!',
-            cancelButtonText: 'ยกเลิก'
+            title: 'ยืนยันการลบ?', text: 'คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?', icon: 'warning',
+            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
         });
-
         if (result.isConfirmed) {
             try {
                 const { error } = await supabase.from('orders').delete().eq('id', id);
                 if (error) throw error;
-
                 setOrders(prev => prev.filter(order => order.id !== id));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ลบสำเร็จ!',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false });
             } catch (error) {
-                console.error('Error deleting order:', error);
                 Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
-
-    // ✅ ปรับปรุงฟังก์ชัน logAuditTrail ให้มี fallback และไม่ใช้ .single()
-    const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: any) => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const userIdentifier = employeeId ? `${userName} (${employeeId})` : userName;
-
-            // ลองบันทึกไปยัง audit_logs ก่อน
-            const { error } = await supabase
-                .from('audit_logs')
-                .insert([{
-                    order_id: orderId,
-                    action: action,
-                    user_name: userIdentifier,
-                    summary: summary,
-                    changes: changes || null,
-                    created_at: new Date().toISOString()
-                }]);
-
-            if (error) {
-                // หาก audit_logs ยังไม่ถูกสร้าง หรือ insert ไม่ได้ → fallback ไปเขียนใน orders.edit_summary
-                console.warn('audit_logs insert failed, falling back to orders.edit_summary:', error);
-                await supabase
-                    .from('orders')
-                    .update({ edit_summary: summary, updated_by: userIdentifier })
-                    .eq('id', orderId);
-            }
-        } catch (err) {
-            console.error('logAuditTrail error:', err);
-            // หากเกิด exception ก็ fallback เช่นกัน
-            try {
-                await supabase
-                    .from('orders')
-                    .update({ edit_summary: summary })
-                    .eq('id', orderId);
-            } catch (e) {
-                console.error('fallback update failed:', e);
             }
         }
     };
@@ -316,259 +253,274 @@ export default function DashboardPage() {
         try {
             const now = new Date().toISOString();
             const original = orders.find(o => o.id === editingOrder.id);
-
             const changeDetails: string[] = [];
+
             if (original) {
-                const displayVal = (val: any) => (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
-
-                const oldLot = displayVal(original.lot_number);
-                const newLot = displayVal(editingOrder.lot_number);
-                if (oldLot !== newLot) {
-                    changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
-                }
-
-                const oldQty = Number(original.quantity) || 0;
-                const newQty = Number(editingOrder.quantity) || 0;
-                if (oldQty !== newQty) {
-                    changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
-                }
-
-                const oldDateRaw = original.production_date || '';
-                const newDateRaw = editingOrder.production_date || '';
+                const displayVal = (val: any) =>
+                    (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
+                const oldLot = displayVal(original.lot_number); const newLot = displayVal(editingOrder.lot_number);
+                if (oldLot !== newLot) changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
+                const oldQty = Number(original.quantity) || 0; const newQty = Number(editingOrder.quantity) || 0;
+                if (oldQty !== newQty) changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
+                const oldDateRaw = original.production_date || ''; const newDateRaw = editingOrder.production_date || '';
                 if (oldDateRaw !== newDateRaw) {
-                    const formatDate = (dateStr: string) => dateStr ? dateStr.split('-').reverse().join('/') : 'ไม่มี';
+                    const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : 'ไม่มี';
                     changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
                 }
-
-                const oldNotes = displayVal(original.notes);
-                const newNotes = displayVal(editingOrder.notes);
-                if (oldNotes !== newNotes) {
-                    changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
-                }
+                const oldNotes = displayVal(original.notes); const newNotes = displayVal(editingOrder.notes);
+                if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
             }
 
             const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล';
-            const editorName = employeeId ? `${userName} (${employeeId})` : userName;
-
+            const editorName = getCurrentUserIdentifier();
             const updateData = {
-                lot_number: editingOrder.lot_number,
-                quantity: editingOrder.quantity,
-                production_date: editingOrder.production_date,
-                expiry_date: editingOrder.expiry_date,
-                notes: editingOrder.notes,
-                updated_at: now,
-                updated_by: editorName,
-                edit_summary: summary
+                lot_number: editingOrder.lot_number, quantity: editingOrder.quantity,
+                production_date: editingOrder.production_date, expiry_date: editingOrder.expiry_date,
+                notes: editingOrder.notes, updated_at: now, updated_by: editorName, edit_summary: summary
             };
 
             const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
-
             if (error) throw error;
 
-            await logAuditTrail(
-                editingOrder.id,
-                'UPDATE',
-                summary,
-                {
-                    lot_number: original?.lot_number !== editingOrder.lot_number ? { old: original?.lot_number, new: editingOrder.lot_number } : undefined,
-                    quantity: original?.quantity !== editingOrder.quantity ? { old: original?.quantity, new: editingOrder.quantity } : undefined,
-                    production_date: original?.production_date !== editingOrder.production_date ? { old: original?.production_date, new: editingOrder.production_date } : undefined,
-                    notes: original?.notes !== editingOrder.notes ? { old: original?.notes, new: editingOrder.notes } : undefined
-                }
-            );
-
-            setOrders(prev => prev.map(order =>
-                order.id === editingOrder.id ? { ...order, ...updateData } : order
-            ));
+            await logAuditTrail(editingOrder.id, 'UPDATE', summary);
+            setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
             setEditingOrder(null);
-
-            Swal.fire({
-                icon: 'success',
-                title: 'บันทึกสำเร็จ',
-                timer: 1500,
-                showConfirmButton: false
-            });
+            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
         } catch (error) {
-            console.error('Error updating order:', error);
             Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
     };
 
-    const startEdit = (order: OrderInterface) => {
-        setEditingOrder({ ...order });
-    };
+    const startEdit = (order: OrderInterface) => setEditingOrder({ ...order });
 
     const verifyOrder = async (order: OrderInterface) => {
-        if (role !== 'moderator' && role !== 'assistant_moderator') {
+        if (!isAdmin) {
             Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
             return;
         }
-
-        // ดักกรณีมีการคลิกตรวจสอบซ้ำ
         if (order.is_verified) {
             Swal.fire({
-                icon:'warning',
-                title:'ตรวจสอบไปแล้ว',
-                html:`
-                      <div class="text-sm text-gray-600 space-y-1 text-left">
-                         <p>คำสั่งรายการนี้ได้รับการตรวจสอบและตัดชิ้นงานเสร็จแล้ว</p>
-                         <p class= "mt-2">✅ <b> ผู้ตรวจสอบ:</b> ${(order.verified_at)}</p>
-                         <p>🕐 <b>เวลา:</b> ${formatThaiDateTimeFromISO(order.verified_at)}</p>
-                         <p class="mt-2 text-orange-500 font-medium">หากต้องการแก้ไข กรุณากดปุ่ม "ยกเลิกการตรวจสอบ" ก่อน</p>
-                      </div>
+                icon: 'warning', title: 'ตรวจสอบไปแล้ว',
+                html: `
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                        <p>คำสั่งรายการนี้ได้รับการตรวจสอบและตัดชิ้นงานเสร็จแล้ว</p>
+                        <p class="mt-2">✅ <b>ผู้ตรวจสอบ:</b> ${order.verified_by || 'ไม่ระบุ'}</p>
+                        <p>🕐 <b>เวลา:</b> ${formatThaiDateTimeFromISO(order.verified_at)}</p>
+                        <p class="mt-2 text-orange-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
+                    </div>
                 `,
-                confirmButtonText:'รับทราบ',
-                confirmButtonColor:'#6b7280',
-
+                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
             });
             return;
         }
-
         const result = await Swal.fire({
-            title: 'ยืนยันการตรวจสอบ',
-            text: `คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: '✓ ยืนยันการตรวจสอบ',
-            cancelButtonText: 'ยกเลิก'
+            title: 'ยืนยันการตรวจสอบ', text: 'คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?',
+            icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', cancelButtonColor: '#6b7280',
+            confirmButtonText: '✓ ยืนยันการตรวจสอบ', cancelButtonText: 'ยกเลิก'
         });
-
         if (result.isConfirmed) {
             try {
                 const now = new Date().toISOString();
-                const verifierName = employeeId ? `${userName} (${employeeId})` : userName;
-
+                const verifierName = getCurrentUserIdentifier();
                 const { error } = await supabase.from('orders').update({
-                    is_verified: true,
-                    verified_by: verifierName,
-                    verified_at: now
+                    is_verified: true, verified_by: verifierName, verified_at: now
                 }).eq('id', order.id);
-
                 if (error) throw error;
-
-                await logAuditTrail(
-                    order.id,
-                    'VERIFY',
-                    `ตรวจสอบและยืนยันคำสั่งพิมพ์`
-                );
-
+                await logAuditTrail(order.id, 'VERIFY', 'ตรวจสอบและยืนยันคำสั่งพิมพ์');
                 setOrders(prev => prev.map(o =>
                     o.id === order.id ? { ...o, is_verified: true, verified_by: verifierName, verified_at: now } : o
                 ));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ตรวจสอบสำเร็จ!',
-                    html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`,
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                Swal.fire({ icon: 'success', title: 'ตรวจสอบสำเร็จ!', html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`, timer: 2000, showConfirmButton: false });
             } catch (error) {
-                console.error('Error verifying order:', error);
                 Swal.fire({ icon: 'error', title: 'ตรวจสอบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
 
+    // ✅ markPrinted — ดึง DB ก่อน + บันทึก printed_by, printed_by_user_id, printed_at
     const markPrinted = async (order: OrderInterface) => {
         if (!isAdmin) return;
 
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const { data: freshOrder, error: fetchError } = await supabase
+            .from('orders').select('is_printed, printed_by, printed_by_user_id').eq('id', order.id).single();
+
+        if (fetchError || !freshOrder) {
+            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่' });
+            return;
+        }
+
+        // ✅ ดักซ้ำด้วย UUID
+        if (freshOrder.is_printed) {
+            Swal.fire({
+                icon: 'warning', title: 'พิมพ์ฉลากไปแล้ว!',
+                html: `
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                        <p>คำสั่งนี้ได้รับการยืนยันพิมพ์ฉลากแล้ว</p>
+                        <p class="mt-2">🖨️ <b>ผู้พิมพ์:</b> ${freshOrder.printed_by || 'ไม่ระบุ'}</p>
+                        <p class="mt-2 text-orange-500 font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
+
         const result = await Swal.fire({
             title: 'ยืนยันพิมพ์ฉลากแล้ว?',
-            text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} พิมพ์เสร็จแล้วหรือไม่?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#3b82f6',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: '✓ ยืนยันพิมพ์แล้ว',
-            cancelButtonText: 'ยกเลิก'
+            text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} เสร็จแล้วหรือไม่?`,
+            icon: 'question', showCancelButton: true,
+            confirmButtonColor: '#3b82f6', cancelButtonColor: '#6b7280',
+            confirmButtonText: '✓ ยืนยันพิมพ์แล้ว', cancelButtonText: 'ยกเลิก'
         });
 
         if (result.isConfirmed) {
             try {
+                const printerName = getCurrentUserIdentifier();
+                const now = new Date().toISOString();
+
                 const { error } = await supabase.from('orders').update({
                     is_printed: true,
                     is_no_file: false,
+                    printed_by: printerName,           // ✅ ชื่อผู้พิมพ์
+                    printed_by_user_id: session.user.id, // ✅ UUID ผู้พิมพ์
+                    printed_at: now,                   // ✅ เวลาที่พิมพ์
                 }).eq('id', order.id);
 
                 if (error) throw error;
 
                 setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_printed: true, is_no_file: false } : o
+                    o.id === order.id ? { ...o, is_printed: true, is_no_file: false, printed_by: printerName, printed_by_user_id: session.user.id, printed_at: now } : o
                 ));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                Swal.fire({ icon: 'success', title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"', timer: 1500, showConfirmButton: false });
             } catch (error) {
-                console.error('Error marking printed:', error);
                 Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
+        }
+    };
+
+    // ✅ unmarkPrinted — เปรียบเทียบ UUID จาก DB กับ session โดยตรง
+    const unmarkPrinted = async (order: OrderInterface) => {
+        if (!isAdmin) return;
+
+        const [{ data: freshOrder, error: fetchError }, { data: { session } }] = await Promise.all([
+            supabase.from('orders').select('is_printed, printed_by, printed_by_user_id').eq('id', order.id).single(),
+            supabase.auth.getSession()
+        ]);
+
+        if (fetchError || !freshOrder || !session) {
+            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่' });
+            return;
+        }
+
+        // ✅ เปรียบเทียบ UUID ตรงๆ ไม่มีปัญหา format
+        if (freshOrder.printed_by_user_id && freshOrder.printed_by_user_id !== session.user.id) {
+            Swal.fire({
+                icon: 'error', title: 'ไม่มีสิทธิ์ยกเลิก',
+                html: `
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                        <p>คำสั่งนี้ถูกยืนยันพิมพ์โดย <b>${freshOrder.printed_by || 'ไม่ระบุ'}</b></p>
+                        <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'ยกเลิกการพิมพ์?', text: 'คุณต้องการยกเลิกสถานะ "พิมพ์ฉลากแล้ว" ใช่หรือไม่?',
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ใช่, ยกเลิกการพิมพ์', cancelButtonText: 'ปิด'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const { error } = await supabase.from('orders').update({
+                    is_printed: false,
+                    printed_by: null,
+                    printed_by_user_id: null, // ✅ เคลียร์ UUID
+                    printed_at: null,          // ✅ เคลียร์เวลา
+                }).eq('id', order.id);
+                if (error) throw error;
+
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, is_printed: false, printed_by: null, printed_by_user_id: null, printed_at: null } : o
+                ));
+                Swal.fire({ icon: 'success', title: 'ยกเลิกการพิมพ์สำเร็จ', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
+        }
+    };
+
+    const unverifyOrder = async (order: OrderInterface) => {
+        if (!isAdmin) {
+            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
+            return;
+        }
+        const currentUserIdentifier = getCurrentUserIdentifier();
+        if (order.verified_by && order.verified_by !== currentUserIdentifier) {
+            Swal.fire({
+                icon: 'error', title: 'ไม่มีสิทธิ์ยกเลิก',
+                html: `
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                        <p>คำสั่งนี้ถูกตรวจสอบโดย <b>${order.verified_by}</b> แล้ว</p>
+                        <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
+        const result = await Swal.fire({
+            title: 'ยกเลิกการตรวจสอบ?', text: 'คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?',
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ใช่, ยกเลิก', cancelButtonText: 'ปิด'
+        });
+        if (result.isConfirmed) {
+            try {
+                const { error } = await supabase.from('orders').update({
+                    is_verified: false, verified_by: null, verified_at: null
+                }).eq('id', order.id);
+                if (error) throw error;
+                setOrders(prev => prev.map(o =>
+                    o.id === order.id ? { ...o, is_verified: false, verified_by: null, verified_at: null } : o
+                ));
+                Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ!', timer: 1500, showConfirmButton: false });
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
 
     const handleCancelOrder = async (order: OrderInterface) => {
         const result = await Swal.fire({
-            title: 'ยืนยันการยกเลิกสั่งพิมพ์?',
-            text: 'กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้',
-            icon: 'warning',
-            input: 'text',
-            inputPlaceholder: 'ใส่เหตุผลการยกเลิกที่นี่...',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ยืนยันยกเลิก',
-            cancelButtonText: 'ไม่ยกเลิก',
-            inputValidator: (value) => {
-                if (!value) {
-                    return 'คุณต้องระบุเหตุผลในการยกเลิก!';
-                }
-            }
+            title: 'ยืนยันการยกเลิกสั่งพิมพ์?', text: 'กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้',
+            icon: 'warning', input: 'text', inputPlaceholder: 'ใส่เหตุผลการยกเลิกที่นี่...',
+            showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ยืนยันยกเลิก', cancelButtonText: 'ไม่ยกเลิก',
+            inputValidator: (value) => { if (!value) return 'คุณต้องระบุเหตุผลในการยกเลิก!'; }
         });
-
         if (result.isConfirmed) {
             try {
-                const reason = result.value;
                 const now = new Date().toISOString();
-                const editorName = employeeId ? `${userName} (${employeeId})` : userName;
-                const summary = `ยกเลิกเพราะ: ${reason}`;
-
+                const editorName = getCurrentUserIdentifier();
+                const summary = `ยกเลิกเพราะ: ${result.value}`;
                 const updateData = {
-                    is_printed: false,
-                    is_verified: false,
-                    is_cancelled: true,
-                    updated_at: now,
-                    updated_by: editorName,
-                    edit_summary: summary
+                    is_printed: false, is_verified: false, is_cancelled: true,
+                    updated_at: now, updated_by: editorName, edit_summary: summary
                 };
-
                 const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
-
                 if (error) throw error;
-
-                await logAuditTrail(
-                    order.id,
-                    'CANCEL',
-                    `ยกเลิกเพราะ: ${reason}`
-                );
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, ...updateData } : o
-                ));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ยกเลิกสำเร็จ',
-                    text: 'รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว',
-                    timer: 1500
-                });
+                await logAuditTrail(order.id, 'CANCEL', summary);
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
+                Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', text: 'รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว', timer: 1500 });
             } catch (error) {
-                console.error('Error cancelling order:', error);
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -576,39 +528,17 @@ export default function DashboardPage() {
 
     const markNoFile = async (order: OrderInterface) => {
         const result = await Swal.fire({
-            title: 'แจ้งเตือนไม่มีไฟล์?',
-            text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#eab308',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ยืนยัน',
-            cancelButtonText: 'ยกเลิก'
+            title: 'แจ้งเตือนไม่มีไฟล์?', text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
+            icon: 'warning', showCancelButton: true, confirmButtonColor: '#eab308', cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก'
         });
-
         if (result.isConfirmed) {
             try {
-                const updateData = {
-                    is_no_file: true
-                };
-
-                const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
-
+                const { error } = await supabase.from('orders').update({ is_no_file: true }).eq('id', order.id);
                 if (error) throw error;
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, ...updateData } : o
-                ));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ทำเครื่องหมายสำเร็จ',
-                    text: 'ระบุว่าไม่มีไฟล์เรียบร้อยแล้ว',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: true } : o));
+                Swal.fire({ icon: 'success', title: 'ทำเครื่องหมายสำเร็จ', timer: 1500, showConfirmButton: false });
             } catch (error) {
-                console.error('Error marking no file:', error);
                 Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -616,201 +546,57 @@ export default function DashboardPage() {
 
     const unmarkNoFile = async (order: OrderInterface) => {
         try {
-            const updateData = { is_no_file: false };
-            const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
-
+            const { error } = await supabase.from('orders').update({ is_no_file: false }).eq('id', order.id);
             if (error) throw error;
-
-            setOrders(prev => prev.map(o =>
-                o.id === order.id ? { ...o, ...updateData } : o
-            ));
+            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: false } : o));
         } catch (error) {
-            console.error('Error unmarking no file:', error);
             Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
     };
 
     const restoreOrder = async (order: OrderInterface) => {
         const result = await Swal.fire({
-            title: 'กู้คืนคำสั่งผลิต?',
-            text: 'รายการนี้จะถูกดึงกลับมาเป็นรายการใหม่เพื่อให้ดำเนินการต่อได้',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ยืนยันกู้คืน',
-            cancelButtonText: 'ยกเลิก'
+            title: 'กู้คืนคำสั่งผลิต?', text: 'รายการนี้จะถูกดึงกลับมาเป็นรายการใหม่เพื่อให้ดำเนินการต่อได้',
+            icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ยืนยันกู้คืน', cancelButtonText: 'ยกเลิก'
         });
-
         if (result.isConfirmed) {
             try {
                 const now = new Date().toISOString();
-                const editorName = employeeId ? `${userName} (${employeeId})` : userName;
-                const summary = 'กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)';
-
+                const editorName = getCurrentUserIdentifier();
                 const updateData = {
-                    is_cancelled: false,
-                    is_printed: false,
-                    is_verified: false,
-                    updated_at: now,
-                    updated_by: editorName,
-                    edit_summary: summary
+                    is_cancelled: false, is_printed: false, is_verified: false,
+                    updated_at: now, updated_by: editorName, edit_summary: 'กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)'
                 };
-
                 const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
-
                 if (error) throw error;
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, ...updateData } : o
-                ));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'กู้คืนสำเร็จ',
-                    text: 'รายการกลับมาเป็นปกติแล้ว',
-                    timer: 1500
-                });
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
+                Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'รายการกลับมาเป็นปกติแล้ว', timer: 1500 });
             } catch (error) {
-                console.error('Error restoring order:', error);
                 Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const unmarkPrinted = async (order: OrderInterface) => {
-        if (!isAdmin) return;
-
-        const result = await Swal.fire({
-            title: 'ยกเลิกการพิมพ์?',
-            text: 'คุณต้องการยกเลิกสถานะ "พิมพ์ฉลากแล้ว" ใช่หรือไม่?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ใช่, ยกเลิกการพิมพ์',
-            cancelButtonText: 'ปิด'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                const { error } = await supabase.from('orders').update({
-                    is_printed: false
-                }).eq('id', order.id);
-
-                if (error) throw error;
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_printed: false } : o
-                ));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ยกเลิกการพิมพ์สำเร็จ',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-            } catch (error) {
-                console.error('Error unmarking printed:', error);
-                Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const unverifyOrder = async (order: OrderInterface) => {
-        if (role !== 'moderator' && role !== 'assistant_moderator') {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
-            return;
-        }
-
-        // ดักกรณีที่คนอื่นพยายามยกเลิกการตรวจสอบของคนที่ตรวจไปแล้ว
-        const currentUserIdentifier = employeeId ? `${userName} (${employeeId})` : userName;
-        if (order.verified_by && order.verified_by !== currentUserIdentifier){
-            Swal.fire({
-                icon:'error',
-                title:'ไม่มีสิทธิ์ยกเลิก',
-                html:`
-                    <div class="text-sm text-gray-600 space-y-1 text-left">
-                    <p>คำสั่งนี้ถูกตรวจสอบโดย <b>${order.verified_by}</b> แล้ว</p>
-                    <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
-                </div>
-                    
-                `,
-                confirmButtonText: 'รับทราบ',
-                confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
-
-        const result = await Swal.fire({
-            title: 'ยกเลิกการตรวจสอบ?',
-            text: 'คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ใช่, ยกเลิก',
-            cancelButtonText: 'ปิด'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                const { error } = await supabase.from('orders').update({
-                    is_verified: false,
-                    verified_by: null,
-                    verified_at: null
-                }).eq('id', order.id);
-
-                if (error) throw error;
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_verified: false, verified_by: null, verified_at: null } : o
-                ));
-
-                Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch (error) {
-                console.error('Error unverifying order:', error);
-                Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
 
     const deleteImage = async (order: OrderInterface) => {
         if (!isAdmin || !order.image_url) return;
-
         const result = await Swal.fire({
-            title: 'ยืนยันการลบรูปภาพ?',
-            text: 'รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!',
-            cancelButtonText: 'ยกเลิก'
+            title: 'ยืนยันการลบรูปภาพ?', text: 'รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร', icon: 'warning',
+            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
         });
-
         if (result.isConfirmed) {
             try {
                 const urlParts = order.image_url.split('/order-images/');
                 if (urlParts.length > 1) {
-                    const filePath = urlParts[1];
-                    const { error: storageError } = await supabase.storage.from('order-images').remove([filePath]);
+                    const { error: storageError } = await supabase.storage.from('order-images').remove([urlParts[1]]);
                     if (storageError) throw storageError;
                 }
-
-                const { error: dbError } = await supabase.from('orders').update({
-                    image_url: null
-                }).eq('id', order.id);
-
+                const { error: dbError } = await supabase.from('orders').update({ image_url: null }).eq('id', order.id);
                 if (dbError) throw dbError;
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, image_url: null } : o
-                ));
-
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, image_url: null } : o));
                 Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
             } catch (error) {
-                console.error('Error deleting image:', error);
                 Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -823,17 +609,10 @@ export default function DashboardPage() {
             const normalized = hasTimezone ? isoString : isoString + '+07:00';
             const date = new Date(normalized);
             if (isNaN(date.getTime())) return isoString;
-
-            const thaiDate = date.toLocaleDateString('th-TH', {
-                timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', year: 'numeric',
-            });
-            const thaiTime = date.toLocaleTimeString('th-TH', {
-                timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false,
-            });
+            const thaiDate = date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', year: 'numeric' });
+            const thaiTime = date.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false });
             return `${thaiDate}, ${thaiTime}`;
-        } catch {
-            return isoString;
-        }
+        } catch { return isoString; }
     };
 
     const formatToThaiDate = (dateString: string) => {
@@ -843,17 +622,8 @@ export default function DashboardPage() {
             const day = date.getDate().toString().padStart(2, '0');
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             const yearCE = date.getFullYear();
-            const yearBE = yearCE + 543;
-            return (
-                <>
-                    {day}/{month}/{yearBE}
-                    <br />
-                    <span className="text-sm opacity-75">{day}/{month}/{yearCE}</span>
-                </>
-            );
-        } catch {
-            return dateString;
-        }
+            return (<>{day}/{month}/{yearCE + 543}<br /><span className="text-sm opacity-75">{day}/{month}/{yearCE}</span></>);
+        } catch { return dateString; }
     };
 
     const calculateExpiryDate = (manufactureDate: string, shelfLife: string): string => {
@@ -861,60 +631,31 @@ export default function DashboardPage() {
         try {
             const mfgDate = new Date(manufactureDate);
             if (isNaN(mfgDate.getTime())) return '';
-
-            const trimmedShelfLife = shelfLife.trim();
-            const spaceIndex = trimmedShelfLife.indexOf(' ');
-            let numValue: number;
-            let unit: string;
-
-            if (spaceIndex === -1) {
-                numValue = parseInt(trimmedShelfLife);
-                unit = 'months';
-            } else {
-                const valueStr = trimmedShelfLife.substring(0, spaceIndex);
-                unit = trimmedShelfLife.substring(spaceIndex + 1).toLowerCase();
-                numValue = parseInt(valueStr);
-            }
-
+            const trimmed = shelfLife.trim();
+            const spaceIdx = trimmed.indexOf(' ');
+            const numValue = parseInt(spaceIdx === -1 ? trimmed : trimmed.substring(0, spaceIdx));
+            const unit = spaceIdx === -1 ? 'months' : trimmed.substring(spaceIdx + 1).toLowerCase();
             if (isNaN(numValue) || numValue <= 0) return '';
-
             const newDate = new Date(mfgDate);
-
-            if (unit.includes('day') || unit.includes('วัน')) {
-                newDate.setDate(newDate.getDate() + numValue);
-            } else if (unit.includes('month') || unit.includes('mon') || unit.includes('เดือน')) {
-                newDate.setMonth(newDate.getMonth() + numValue);
-            } else if (unit.includes('year') || unit.includes('yr') || unit.includes('ปี')) {
-                newDate.setFullYear(newDate.getFullYear() + numValue);
-            } else {
-                newDate.setMonth(newDate.getMonth() + numValue);
-            }
-
+            if (unit.includes('day') || unit.includes('วัน')) newDate.setDate(newDate.getDate() + numValue);
+            else if (unit.includes('month') || unit.includes('mon') || unit.includes('เดือน')) newDate.setMonth(newDate.getMonth() + numValue);
+            else if (unit.includes('year') || unit.includes('yr') || unit.includes('ปี')) newDate.setFullYear(newDate.getFullYear() + numValue);
+            else newDate.setMonth(newDate.getMonth() + numValue);
             return newDate.toISOString().split('T')[0];
-        } catch {
-            return '';
-        }
+        } catch { return ''; }
     };
 
     return (
         <div className="text-gray-800">
             <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-white/20">
                 <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h1 className="text-4xl font-bold text-gray-800 mb-2 gradient-title tracking-tight pt-2 leading-relaxed">
-                            📊 Dashboard คำสั่งฉลากสินค้า
-                        </h1>
-                    </div>
+                    <h1 className="text-4xl font-bold text-gray-800 mb-2 gradient-title tracking-tight pt-2 leading-relaxed">
+                        📊 Dashboard คำสั่งฉลากสินค้า
+                    </h1>
                 </div>
-
                 <div className="mb-2 max-w-md">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        🔍 ค้นหาเลขลอตสินค้า
-                    </label>
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">🔍 ค้นหาเลขลอตสินค้า</label>
+                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="พิมพ์เพื่อค้นหาเลขลอต..."
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                     />
@@ -946,20 +687,14 @@ export default function DashboardPage() {
                                     <div className="flex gap-2 items-center mb-1 flex-wrap">
                                         <h3 className="text-lg font-bold text-gray-900 line-clamp-1 break-all flex items-center gap-2">
                                             {order.product_name}
-                                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 tracking-wider">
-                                                {order.product_id}
-                                            </span>
+                                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 tracking-wider">{order.product_id}</span>
                                         </h3>
                                         {order.original_product_name && (
                                             <div className="mt-1 flex items-center gap-1.5 text-[11px] bg-orange-50 border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg w-fit max-w-full flex-wrap">
                                                 <span className="shrink-0">🔄 ชื่อเปลี่ยน:</span>
-                                                <span className="line-through text-orange-400 truncate max-w-[120px]" title={order.original_product_name}>
-                                                    {order.original_product_name}
-                                                </span>
+                                                <span className="line-through text-orange-400 truncate max-w-[120px]" title={order.original_product_name}>{order.original_product_name}</span>
                                                 <span className="shrink-0">→</span>
-                                                <span className="font-bold truncate max-w-[120px]" title={order.product_name}>
-                                                    {order.product_name}
-                                                </span>
+                                                <span className="font-bold truncate max-w-[120px]" title={order.product_name}>{order.product_name}</span>
                                             </div>
                                         )}
                                         {order.order_type && (
@@ -967,32 +702,22 @@ export default function DashboardPage() {
                                                 {order.order_type}
                                             </span>
                                         )}
-                                        {order.is_cancelled && (
-                                            <span className="bg-red-600 text-white text-[10px] px-3 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-md">
-                                                ยกเลิกแล้ว
-                                            </span>
-                                        )}
+                                        {order.is_cancelled && <span className="bg-red-600 text-white text-[10px] px-3 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-md">ยกเลิกแล้ว</span>}
                                         {order.updated_at && !order.is_verified && !order.is_cancelled && (
-                                            <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
-                                                แก้ไขแล้ว
-                                            </span>
+                                            <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">แก้ไขแล้ว</span>
                                         )}
                                         {(() => {
                                             const isPending = !order.is_printed && !order.is_verified && !order.is_cancelled;
                                             const isRecent = new Date().getTime() - new Date(order.created_at).getTime() < 5 * 60 * 1000;
                                             return isPending && isRecent && (
-                                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
-                                                    New
-                                                </span>
+                                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">New</span>
                                             );
                                         })()}
                                     </div>
-                                    <div className="flex flex-col gap-0.5">
-                                        <h4 className="text-base font-extrabold text-indigo-700 tracking-tight flex items-center gap-1.5">
-                                            <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100 italic">LOT</span>
-                                            {order.lot_number}
-                                        </h4>
-                                    </div>
+                                    <h4 className="text-base font-extrabold text-indigo-700 tracking-tight flex items-center gap-1.5">
+                                        <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100 italic">LOT</span>
+                                        {order.lot_number}
+                                    </h4>
                                 </div>
                                 <div className="flex gap-1 shrink-0">
                                     {isAdmin && !order.is_cancelled && (
@@ -1009,7 +734,7 @@ export default function DashboardPage() {
                                                                     <FileQuestion className="w-5 h-5" />
                                                                 </button>
                                                             ) : (
-                                                                <button onClick={() => unmarkNoFile(order)} className="w-9 h-9 rounded-xl text-white bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg shadow-amber-500/20" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
+                                                                <button onClick={() => unmarkNoFile(order)} className="w-9 h-9 rounded-xl text-white bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
                                                                     <Undo className="w-4 h-4" />
                                                                 </button>
                                                             )}
@@ -1030,24 +755,18 @@ export default function DashboardPage() {
                                             )}
                                         </>
                                     )}
-                                    {/*แก้ไข - ซ่อนเมื่อตรวจสอบแล้ว */}
-                                    {!order.is_cancelled &&  !order.is_verified &&(
+                                    {!order.is_cancelled && !order.is_verified && (
                                         <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
                                     )}
-                                    {/* ยกเลิกคำสั่งพิมพ์ - ซ่อนเมื่อตรวจสอบแล้ว */}
                                     {!order.is_cancelled && !order.is_verified && (
                                         <button onClick={() => handleCancelOrder(order)} className="w-9 h-9 rounded-xl text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการสั่งพิมพ์">
                                             <X className="w-5 h-5" />
                                         </button>
                                     )}
                                     {isAdmin && order.is_cancelled && (
-                                        <button
-                                            onClick={() => restoreOrder(order)}
-                                            className="w-9 h-9 rounded-xl text-white bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg animate-bounce"
-                                            title="กู้คืนคำสั่งพิมพ์"
-                                        >
+                                        <button onClick={() => restoreOrder(order)} className="w-9 h-9 rounded-xl text-white bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg animate-bounce" title="กู้คืนคำสั่งพิมพ์">
                                             <Undo className="w-4 h-4" />
                                         </button>
                                     )}
@@ -1090,7 +809,6 @@ export default function DashboardPage() {
                                     <span className="font-bold text-xl text-green-600">{order.quantity}</span>
                                 </div>
 
-                                {/* แสดงประวัติการแก้ไข (ใช้ Component ใหม่ที่รองรับ fallback) */}
                                 <EditHistory orderId={order.id} updatedAt={order.updated_at} />
 
                                 {order.notes && order.notes !== '-' && (
@@ -1105,18 +823,13 @@ export default function DashboardPage() {
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-sm font-semibold text-gray-700">📷 ภาพตัวอย่างฉลาก:</span>
                                             {isAdmin && (
-                                                <button
-                                                    onClick={() => deleteImage(order)}
-                                                    className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded border border-red-200 transition-colors flex items-center gap-1"
-                                                >
+                                                <button onClick={() => deleteImage(order)} className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded border border-red-200 transition-colors flex items-center gap-1">
                                                     <Trash2 className="w-3 h-3" /> ลบรูป
                                                 </button>
                                             )}
                                         </div>
                                         <div className="w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex justify-center">
-                                            <img
-                                                src={order.image_url}
-                                                alt={`ตัวอย่างฉลาก ${order.lot_number}`}
+                                            <img src={order.image_url} alt={`ตัวอย่างฉลาก ${order.lot_number}`}
                                                 className="max-h-48 object-contain w-full hover:scale-105 transition-transform duration-300 cursor-pointer"
                                                 onClick={() => window.open(order.image_url || '', '_blank')}
                                             />
@@ -1125,58 +838,81 @@ export default function DashboardPage() {
                                 )}
                             </div>
 
+                            {/* ✅ Card Footer */}
                             <div className={`p-4 text-center tracking-wide font-bold 
-    ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
-        : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
-            : order.is_no_file ? 'bg-amber-500 text-white shadow-inner'
-                : order.is_printed ? 'bg-blue-500 text-white shadow-inner uppercase'
-                    : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
->
-    {order.is_cancelled ? (
-        <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
-            <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
-        </span>
-    ) : order.is_verified ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-1">
-            <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
-                {order.verified_by && order.verified_by.includes('(') ? (
-                    <div className="flex items-center gap-2">
-                        <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                        <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-bold">
-                            รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
-                        </span>
-                    </div>
-                ) : (
-                    <span>{order.verified_by || '-'}</span>
-                )}
-            </div>
-            <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
-                วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
-            </span>
-        </div>
-    ) : order.is_no_file ? (
-        <span className="flex items-center justify-center gap-2 text-sm">
-            <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
-        </span>
-    ) : order.is_printed ? (
-        <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
-            <Printer className="w-5 h-5 inline mr-1" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
-        </span>
-    ) : (
-        <span className="flex items-center justify-center gap-2 text-sm">
-            <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
-        </span>
-    )}
-</div>
-
-{/* ✅ ลบบล็อกเก่าที่เป็น banner "ไม่มีไฟล์" ออกทั้งหมด */}
+                                ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
+                                    : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
+                                        : order.is_no_file ? 'bg-amber-500 text-white shadow-inner'
+                                            : order.is_printed ? 'bg-blue-500 text-white shadow-inner'
+                                                : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
+                            >
+                                {order.is_cancelled ? (
+                                    <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
+                                        <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
+                                    </span>
+                                ) : order.is_verified ? (
+                                    <div className="flex flex-col items-center justify-center gap-2 py-1">
+                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
+                                            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
+                                            {order.verified_by && order.verified_by.includes('(') ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
+                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-bold">
+                                                        รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span>{order.verified_by || '-'}</span>
+                                            )}
+                                        </div>
+                                        <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
+                                            วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
+                                        </span>
+                                    </div>
+                                ) : order.is_no_file ? (
+                                    <span className="flex items-center justify-center gap-2 text-sm">
+                                        <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
+                                    </span>
+                                ) : order.is_printed ? (
+                                    // ✅ แสดงชื่อผู้พิมพ์และเวลาด้านล่าง
+                                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                                        <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
+                                            <Printer className="w-5 h-5" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
+                                        </span>
+                                        {order.printed_by && (
+                                            <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 mt-0.5">
+                                                <span className="flex items-center gap-1 text-xs text-blue-100">
+                                                    ชื่อผู้พิมพ์ชิ้นงาน:
+                                                    {order.printed_by.includes('(') ? (
+                                                        <>
+                                                            <span>{order.printed_by.substring(0, order.printed_by.indexOf('(')).trim()}</span>
+                                                            <span className="bg-blue-700/60 px-2 py-0.5 rounded-lg border border-blue-400/40 font-bold tracking-widest text-[11px]">
+                                                                รหัสพนักงาน: {order.printed_by.substring(order.printed_by.indexOf('(') + 1, order.printed_by.indexOf(')'))}
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <span>{order.printed_by}</span>
+                                                    )}
+                                                </span>
+                                                {order.printed_at && (
+                                                    <span className="text-[11px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
+                                                        วันที่และเวลาที่พิมพ์ชิ้นงาน: {formatThaiDateTimeFromISO(order.printed_at)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span className="flex items-center justify-center gap-2 text-sm">
+                                        <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Edit Modal */}
             {editingOrder && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-slide-up">
@@ -1184,59 +920,33 @@ export default function DashboardPage() {
                             <h2 className="text-2xl font-bold text-gray-800">✏️ แก้ไขคำสั่งพิมพ์ฉลาก</h2>
                             <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
                         </div>
-
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">เลขลอต</label>
-                                <input
-                                    type="text"
-                                    value={editingOrder.lot_number}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
-                                />
+                                <input type="text" value={editingOrder.lot_number} onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">จำนวน</label>
-                                <input
-                                    type="number"
-                                    value={editingOrder.quantity}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
-                                />
+                                <input type="number" value={editingOrder.quantity} onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">วันที่ผลิต</label>
-                                <input
-                                    type="date"
-                                    value={editingOrder.production_date || ''}
+                                <input type="date" value={editingOrder.production_date || ''}
                                     onChange={(e) => {
                                         const newDate = e.target.value;
-                                        const newExpiry = calculateExpiryDate(newDate, editingOrder.product_exp);
-                                        setEditingOrder({
-                                            ...editingOrder,
-                                            production_date: newDate,
-                                            expiry_date: newExpiry
-                                        });
+                                        setEditingOrder({ ...editingOrder, production_date: newDate, expiry_date: calculateExpiryDate(newDate, editingOrder.product_exp) });
                                     }}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
                                 />
                                 {editingOrder.expiry_date && (
-                                    <p className="mt-1 text-xs text-red-500 font-medium">
-                                        💡 วันหมดอายุใหม่: {formatToThaiDate(editingOrder.expiry_date)}
-                                    </p>
+                                    <p className="mt-1 text-xs text-red-500 font-medium">💡 วันหมดอายุใหม่: {formatToThaiDate(editingOrder.expiry_date)}</p>
                                 )}
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">หมายเหตุ</label>
-                                <textarea
-                                    value={editingOrder.notes || ''}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none shadow-sm"
-                                    rows={3}
-                                />
+                                <textarea value={editingOrder.notes || ''} onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none shadow-sm" rows={3} />
                             </div>
                         </div>
-
                         <div className="flex gap-3 mt-8">
                             <button onClick={() => setEditingOrder(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-bold transition">ยกเลิก</button>
                             <button onClick={saveEdit} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-lg transition">💾 บันทึก</button>
@@ -1247,4 +957,3 @@ export default function DashboardPage() {
         </div>
     );
 }
-                    
