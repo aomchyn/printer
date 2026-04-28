@@ -726,53 +726,53 @@ export default function DashboardPage() {
                                                 <>
                                                     {!order.is_printed ? (
                                                         <>
-                                                            <button onClick={() => markPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="พิมพ์แล้ว">
-                                                                <Printer className="w-4 h-4" />
+                                                            <button onClick={() => markPrinted(order)} className="w-6 h-6 rounded text-white bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="พิมพ์แล้ว">
+                                                                <Printer className="w-3 h-3" />
                                                             </button>
                                                             {!order.is_no_file ? (
-                                                                <button onClick={() => markNoFile(order)} className="w-9 h-9 rounded-xl text-white bg-slate-500 hover:bg-slate-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ไม่มีไฟล์">
-                                                                    <FileQuestion className="w-5 h-5" />
+                                                                <button onClick={() => markNoFile(order)} className="w-6 h-6 rounded text-white bg-slate-500 hover:bg-slate-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ไม่มีไฟล์">
+                                                                    <FileQuestion className="w-3 h-3" />
                                                                 </button>
                                                             ) : (
-                                                                <button onClick={() => unmarkNoFile(order)} className="w-9 h-9 rounded-xl text-white bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
-                                                                    <Undo className="w-4 h-4" />
+                                                                <button onClick={() => unmarkNoFile(order)} className="w-6 h-6 rounded text-white bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
+                                                                    <Undo className="w-3 h-3" />
                                                                 </button>
                                                             )}
                                                         </>
                                                     ) : (
-                                                        <button onClick={() => unmarkPrinted(order)} className="w-9 h-9 rounded-xl text-white bg-gray-400 hover:bg-gray-500 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการพิมพ์">
-                                                            <Undo className="w-4 h-4" />
+                                                        <button onClick={() => unmarkPrinted(order)} className="w-6 h-6 rounded text-white bg-gray-400 hover:bg-gray-500 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการพิมพ์">
+                                                            <Undo className="w-3 h-3" />
                                                         </button>
                                                     )}
-                                                    <button onClick={() => verifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ตรวจสอบเสร็จและตัดงานจบ">
-                                                        <Check className="w-4 h-4" />
+                                                    <button onClick={() => verifyOrder(order)} className="w-6 h-6 rounded text-white bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ตรวจสอบเสร็จและตัดงานจบ">
+                                                        <Check className="w-3 h-3" />
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button onClick={() => unverifyOrder(order)} className="w-9 h-9 rounded-xl text-white bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการตรวจสอบ">
-                                                    <Undo className="w-4 h-4" />
+                                                <button onClick={() => unverifyOrder(order)} className="w-6 h-6 rounded text-white bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการตรวจสอบ">
+                                                    <Undo className="w-3 h-3" />
                                                 </button>
                                             )}
                                         </>
                                     )}
                                     {!order.is_cancelled && !order.is_verified && (
-                                        <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
-                                            <Edit2 className="w-4 h-4" />
+                                        <button onClick={() => startEdit(order)} className="w-6 h-6 rounded text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="แก้ไข">
+                                            <Edit2 className="w-3 h-3" />
                                         </button>
                                     )}
                                     {!order.is_cancelled && !order.is_verified && (
-                                        <button onClick={() => handleCancelOrder(order)} className="w-9 h-9 rounded-xl text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการสั่งพิมพ์">
-                                            <X className="w-5 h-5" />
+                                        <button onClick={() => handleCancelOrder(order)} className="w-6 h-6 rounded text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการสั่งพิมพ์">
+                                            <X className="w-3 h-3" />
                                         </button>
                                     )}
                                     {isAdmin && order.is_cancelled && (
-                                        <button onClick={() => restoreOrder(order)} className="w-9 h-9 rounded-xl text-white bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg animate-bounce" title="กู้คืนคำสั่งพิมพ์">
-                                            <Undo className="w-4 h-4" />
+                                        <button onClick={() => restoreOrder(order)} className="w-6 h-6 rounded text-white bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors shadow-sm hover:shadow-md animate-bounce" title="กู้คืนคำสั่งพิมพ์">
+                                            <Undo className="w-3 h-3" />
                                         </button>
                                     )}
                                     {isAdmin && (
-                                        <button onClick={() => deleteOrder(order.id)} className="w-9 h-9 rounded-xl text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ลบ">
-                                            <Trash2 className="w-4 h-4" />
+                                        <button onClick={() => deleteOrder(order.id)} className="w-6 h-6 rounded text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ลบ">
+                                            <Trash2 className="w-3 h-3" />
                                         </button>
                                     )}
                                 </div>
