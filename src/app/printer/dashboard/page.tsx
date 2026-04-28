@@ -291,7 +291,25 @@ export default function DashboardPage() {
         }
     };
 
-    const startEdit = (order: OrderInterface) => setEditingOrder({ ...order });
+    const startEdit = (order: OrderInterface) => {
+        // ✅ ตรวจสอบสิทธิ์การแก้ไข
+        if (!isAdmin && order.created_by !== userName) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไม่มีสิทธิ์แก้ไข',
+                html: `
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                        <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
+                        <p class="mt-2 text-red-500 font-medium">คุณสามารถแก้ไขได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
+        setEditingOrder({ ...order });
+    };
 
     const verifyOrder = async (order: OrderInterface) => {
         if (!isAdmin) {
@@ -755,7 +773,7 @@ export default function DashboardPage() {
                                             )}
                                         </>
                                     )}
-                                    {!order.is_cancelled && !order.is_verified && (
+                                    {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
                                         <button onClick={() => startEdit(order)} className="w-6 h-6 rounded text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="แก้ไข">
                                             <Edit2 className="w-3 h-3" />
                                         </button>
