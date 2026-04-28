@@ -404,6 +404,26 @@ export default function DashboardPage() {
             return;
         }
 
+        // ดักกรณีมีการคลิกตรวจสอบซ้ำ
+        if (order.is_verified) {
+            Swal.fire({
+                icon:'warning',
+                title:'ตรวจสอบไปแล้ว',
+                html:`
+                      <div class="text-sm text-gray-600 space-y-1 text-left">
+                         <p>คำสั่งรายการนี้ได้รับการตรวจสอบและตัดชิ้นงานเสร็จแล้ว</p>
+                         <p class= "mt-2">✅ <b> ผู้ตรวจสอบ:</b> ${(order.verified_at)}</p>
+                         <p>🕐 <b>เวลา:</b> ${formatThaiDateTimeFromISO(order.verified_at)}</p>
+                         <p class="mt-2 text-orange-500 font-medium">หากต้องการแก้ไข กรุณากดปุ่ม "ยกเลิกการตรวจสอบ" ก่อน</p>
+                      </div>
+                `,
+                confirmButtonText:'รับทราบ',
+                confirmButtonColor:'#6b7280',
+
+            });
+            return;
+        }
+
         const result = await Swal.fire({
             title: 'ยืนยันการตรวจสอบ',
             text: `คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?`,
@@ -703,6 +723,25 @@ export default function DashboardPage() {
             return;
         }
 
+        // ดักกรณีที่คนอื่นพยายามยกเลิกการตรวจสอบของคนที่ตรวจไปแล้ว
+        const currentUserIdentifier = employeeId ? `${userName} (${employeeId})` : userName;
+        if (order.verified_by && order.verified_by !== currentUserIdentifier){
+            Swal.fire({
+                icon:'error',
+                title:'ไม่มีสิทธิ์ยกเลิก',
+                html:`
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                    <p>คำสั่งนี้ถูกตรวจสอบโดย <b>${order.verified_by}</b> แล้ว</p>
+                    <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
+                </div>
+                    
+                `,
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
+
         const result = await Swal.fire({
             title: 'ยกเลิกการตรวจสอบ?',
             text: 'คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?',
@@ -991,12 +1030,14 @@ export default function DashboardPage() {
                                             )}
                                         </>
                                     )}
-                                    {!order.is_cancelled && (
+                                    {/*แก้ไข - ซ่อนเมื่อตรวจสอบแล้ว */}
+                                    {!order.is_cancelled &&  !order.is_verified &&(
                                         <button onClick={() => startEdit(order)} className="w-9 h-9 rounded-xl text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="แก้ไข">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
                                     )}
-                                    {!order.is_cancelled && (
+                                    {/* ยกเลิกคำสั่งพิมพ์ - ซ่อนเมื่อตรวจสอบแล้ว */}
+                                    {!order.is_cancelled && !order.is_verified && (
                                         <button onClick={() => handleCancelOrder(order)} className="w-9 h-9 rounded-xl text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-md hover:shadow-lg" title="ยกเลิกการสั่งพิมพ์">
                                             <X className="w-5 h-5" />
                                         </button>
