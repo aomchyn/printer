@@ -517,6 +517,23 @@ export default function DashboardPage() {
     };
 
     const handleCancelOrder = async (order: OrderInterface) => {
+        // ✅ ตรวจสอบสิทธิ์การยกเลิก
+        if (!isAdmin && order.created_by !== userName) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไม่มีสิทธิ์ยกเลิก',
+                html: `
+                    <div class="text-sm text-gray-600 space-y-1 text-left">
+                        <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
+                        <p class="mt-2 text-red-500 font-medium">คุณสามารถยกเลิกได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
+
         const result = await Swal.fire({
             title: 'ยืนยันการยกเลิกสั่งพิมพ์?', text: 'กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้',
             icon: 'warning', input: 'text', inputPlaceholder: 'ใส่เหตุผลการยกเลิกที่นี่...',
@@ -778,7 +795,7 @@ export default function DashboardPage() {
                                             <Edit2 className="w-3 h-3" />
                                         </button>
                                     )}
-                                    {!order.is_cancelled && !order.is_verified && (
+                                    {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
                                         <button onClick={() => handleCancelOrder(order)} className="w-6 h-6 rounded text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการสั่งพิมพ์">
                                             <X className="w-3 h-3" />
                                         </button>
