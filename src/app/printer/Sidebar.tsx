@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert,Trash2 } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -253,6 +253,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                             <span>Audit Logs</span>
                                         </button>
                                     )}
+                                    {(role === 'moderator' || role === 'assistant_moderator') && (
+                                        <button onClick={() => navigate('/printer/trash')}
+                                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition mt-2 ${pathname.includes('trash') ? 'bg-red-600 text-white shadow-md' : 'text-red-300 hover:bg-white/10'}`}>
+                                       <Trash2 className="mr-3 w-5 h-5" />
+                                       <span>ถังขยะ</span>
+                                       </button>
+                                      )}
                                 </li>
                             )}
                         </ul>
