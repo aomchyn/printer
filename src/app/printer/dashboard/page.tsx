@@ -277,47 +277,71 @@ export default function DashboardPage() {
     };
 
     const saveEdit = async () => {
-        if (!editingOrder) return;
-        try {
-            const now = new Date().toISOString();
-            const original = orders.find(o => o.id === editingOrder.id);
-            const changeDetails: string[] = [];
+    if (!editingOrder) return;
+    try {
+        const now = new Date().toISOString();
+        const original = orders.find(o => o.id === editingOrder.id);
+        const changeDetails: string[] = [];
 
-            if (original) {
-                const displayVal = (val: any) =>
-                    (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
-                const oldLot = displayVal(original.lot_number); const newLot = displayVal(editingOrder.lot_number);
-                if (oldLot !== newLot) changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
-                const oldQty = Number(original.quantity) || 0; const newQty = Number(editingOrder.quantity) || 0;
-                if (oldQty !== newQty) changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
-                const oldDateRaw = original.production_date || ''; const newDateRaw = editingOrder.production_date || '';
-                if (oldDateRaw !== newDateRaw) {
-                    const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : 'ไม่มี';
-                    changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
-                }
-                const oldNotes = displayVal(original.notes); const newNotes = displayVal(editingOrder.notes);
-                if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
+        if (original) {
+            const displayVal = (val: any) =>
+                (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
+
+            // ประเภทคำสั่ง
+            const oldType = displayVal(original.order_type);
+            const newType = displayVal(editingOrder.order_type);
+            if (oldType !== newType) changeDetails.push(`ประเภท: ${oldType} ➡️ ${newType}`);
+
+            // เลขลอต
+            const oldLot = displayVal(original.lot_number);
+            const newLot = displayVal(editingOrder.lot_number);
+            if (oldLot !== newLot) changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
+
+            // จำนวน
+            const oldQty = Number(original.quantity) || 0;
+            const newQty = Number(editingOrder.quantity) || 0;
+            if (oldQty !== newQty) changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
+
+            // วันที่ผลิต
+            const oldDateRaw = original.production_date || '';
+            const newDateRaw = editingOrder.production_date || '';
+            if (oldDateRaw !== newDateRaw) {
+                const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : 'ไม่มี';
+                changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
             }
 
-            const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล';
-            const editorName = getCurrentUserIdentifier();
-            const updateData = {
-                lot_number: editingOrder.lot_number, quantity: editingOrder.quantity,
-                production_date: editingOrder.production_date, expiry_date: editingOrder.expiry_date,
-                notes: editingOrder.notes, updated_at: now, updated_by: editorName, edit_summary: summary
-            };
-
-            const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
-            if (error) throw error;
-
-            await logAuditTrail(editingOrder.id, 'UPDATE', summary);
-            setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
-            setEditingOrder(null);
-            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
-        } catch (error) {
-            Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            // หมายเหตุ
+            const oldNotes = displayVal(original.notes);
+            const newNotes = displayVal(editingOrder.notes);
+            if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
         }
-    };
+
+        const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล';
+        const editorName = getCurrentUserIdentifier();
+
+        const updateData = {
+            order_type: editingOrder.order_type,         // ✅ เพิ่มตรงนี้
+            lot_number: editingOrder.lot_number,
+            quantity: editingOrder.quantity,
+            production_date: editingOrder.production_date,
+            expiry_date: editingOrder.expiry_date,
+            notes: editingOrder.notes,
+            updated_at: now,
+            updated_by: editorName,
+            edit_summary: summary
+        };
+
+        const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
+        if (error) throw error;
+
+        await logAuditTrail(editingOrder.id, 'UPDATE', summary);
+        setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
+        setEditingOrder(null);
+        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+    }
+};
 
     const startEdit = (order: OrderInterface) => {
         // ✅ ตรวจสอบสิทธิ์การแก้ไข
@@ -988,6 +1012,34 @@ export default function DashboardPage() {
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">เลขลอต</label>
                                 <input type="text" value={editingOrder.lot_number} onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
                             </div>
+                            {/* แก้ไขพิมพ์ฉลากหรือปั๊มถุง */}
+<div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทคำสั่ง</label>
+    <div className="flex gap-3">
+        <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
+            <input
+                type="radio"
+                name="edit_orderType"
+                value="พิมพ์ฉลาก"
+                checked={editingOrder.order_type === 'พิมพ์ฉลาก'}
+                onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
+                className="hidden"
+            />
+            🖨️ พิมพ์ฉลาก
+        </label>
+        <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'ปั๊มถุง' ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
+            <input
+                type="radio"
+                name="edit_orderType"
+                value="ปั๊มถุง"
+                checked={editingOrder.order_type === 'ปั๊มถุง'}
+                onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
+                className="hidden"
+            />
+            🛍️ ปั๊มถุง
+        </label>
+    </div>
+</div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">จำนวน</label>
                                 <input type="number" value={editingOrder.quantity} onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
