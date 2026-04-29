@@ -156,6 +156,7 @@ export default function DashboardPage() {
             while (hasMore) {
                 const { data, error } = await supabase
                     .from('orders').select('*')
+                    .eq('is_deleted', false)
                     .gte('created_at', startOfMonthIso)
                     .order('created_at', { ascending: false })
                     .range(from, from + pageSize - 1);
@@ -238,8 +239,35 @@ export default function DashboardPage() {
         });
         if (result.isConfirmed) {
             try {
-                const { error } = await supabase.from('orders').delete().eq('id', id);
-                if (error) throw error;
+                // ✅ เก็บข้อมูล order ไว้ก่อนลบ
+            const orderToDelete = orders.find(o => o.id === id);
+
+            const { error } = await supabase.from('orders').update({
+                  is_deleted:true,
+                  deleted_at: new Date().toISOString(),
+                  deleted_by:getCurrentUserIdentifier(),
+            }).eq('id', id);
+            if (error) throw error;
+
+            // ✅ Log การลบพร้อมรายละเอียด order ที่ถูกลบ
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && orderToDelete) {
+                await supabase.from('audit_logs').insert([{
+                    user_id: session.user.id,
+                    action: 'DELETE_ORDER',
+                    details: {
+                        order_id: orderToDelete.id,
+                        lot_number: orderToDelete.lot_number,
+                        product_id: orderToDelete.product_id,
+                        product_name: orderToDelete.product_name,
+                        quantity: orderToDelete.quantity,
+                        created_by: orderToDelete.created_by,
+                        deleted_by: getCurrentUserIdentifier(),
+                        deleted_at: new Date().toISOString(),
+                    },
+                    created_at: new Date().toISOString()
+                }]);
+            }
                 setOrders(prev => prev.filter(order => order.id !== id));
                 Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false });
             } catch (error) {

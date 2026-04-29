@@ -84,6 +84,8 @@ export default function LogsManagement() {
             case 'UPDATE_PRODUCT': return <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">แก้ไขสินค้า</span>;
             case 'DELETE_PRODUCT': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold">ลบสินค้า</span>;
             case 'CREATE_ORDER': return <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-bold">สั่งพิมพ์ฉลาก</span>;
+            case 'DELETE_ORDER': return <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">🗑️ ลบคำสั่งพิมพ์</span>;
+            case 'RESTORE_FROM_TRASH': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">♻️ กู้คืนจากถังขยะ</span>;
             case 'CREATE_USER': return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">เพิ่มผู้ใช้</span>;
             case 'UPDATE_USER': return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">แก้ไขผู้ใช้</span>;
             case 'DELETE_USER': return <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-xs font-bold">ลบผู้ใช้</span>;
@@ -170,11 +172,22 @@ export default function LogsManagement() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {formatAction(log.action)}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={JSON.stringify(log.details, null, 2)}>
-                                        <code className="text-xs bg-gray-50 px-2 py-1 rounded border border-gray-100 block truncate">
-                                            {JSON.stringify(log.details)}
-                                        </code>
-                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
+                                     {log.action === 'DELETE_ORDER' && log.details ? (
+                                      <div className="text-xs space-y-0.5">
+                                      <div><span className="text-gray-400">สินค้า:</span> <span className="font-semibold text-gray-800">{(log.details as any).product_name}</span></div>
+                                      <div><span className="text-gray-400">รหัส:</span> {(log.details as any).product_id}</div>
+                                      <div><span className="text-gray-400">ลอต:</span> <span className="font-semibold text-indigo-700">{(log.details as any).lot_number}</span></div>
+                                     <div><span className="text-gray-400">จำนวน:</span> {(log.details as any).quantity}</div>
+                                     <div><span className="text-gray-400">ผู้สั่ง:</span> {(log.details as any).created_by}</div>
+                                     <div><span className="text-gray-400">ลบโดย:</span> <span className="font-semibold text-red-600">{(log.details as any).deleted_by}</span></div>
+                       </div>
+                        ) : (
+                         <code className="text-xs bg-gray-50 px-2 py-1 rounded border border-gray-100 block truncate" title={JSON.stringify(log.details, null, 2)}>
+                               {JSON.stringify(log.details)}
+                         </code>
+                          )}
+                            </td>
                                 </tr>
                             ))
                         )}
