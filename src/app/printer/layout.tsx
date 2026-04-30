@@ -12,8 +12,7 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="flex flex-col md:flex-row bg-gradient-to-t from-blue-900 via-green-700 to-white min-h-screen">
-
+        <div className="flex flex-col md:flex-row bg-gradient-to-br from-slate-100 via-blue-200 to-indigo-300 min-h-screen">
             {/* Mobile Header (Visible only on small screens) */}
             <div className="md:hidden flex items-center justify-between bg-blue-900 text-white p-4 sticky top-0 z-40 shadow-xl border-b border-indigo-500/30 font-sans tracking-wide">
                 <div className="font-extrabold text-xl flex items-center tracking-wider">
