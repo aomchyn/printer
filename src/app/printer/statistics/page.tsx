@@ -552,7 +552,7 @@ ws4.addImage(imgId4, { tl: { col: 0, row: 0 }, ext: { width: 960, height: 520 } 
                             <Tooltip
                                   cursor={{ fill: 'transparent' }}
                                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                  formatter={(value: number) => [value.toLocaleString(), 'จำนวนชิ้นงาน']}
+                                  formatter={(value) => [Number(value).toLocaleString(), 'จำนวนชิ้นงาน']}
                                  />
                                 <Bar dataKey="total" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
@@ -581,7 +581,7 @@ ws4.addImage(imgId4, { tl: { col: 0, row: 0 }, ext: { width: 960, height: 520 } 
                                        </Pie>
                                  <Tooltip
                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                 formatter={(value: number) => [value.toLocaleString(), 'ชิ้นงาน']}
+                                 formatter={(value) => [Number(value).toLocaleString(), 'ชิ้นงาน']}
                                  />
                                <Legend iconType="circle" />
                             </PieChart>
@@ -610,7 +610,7 @@ ws4.addImage(imgId4, { tl: { col: 0, row: 0 }, ext: { width: 960, height: 520 } 
                         <Tooltip
                             cursor={{ fill: 'transparent' }}
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            formatter={(value: number) => [value, 'คำสั่งยกเลิก']}
+                            formatter={(value) => [String(value), 'คำสั่งยกเลิก']}
                         />
                         <Bar dataKey="count" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={40} />
                     </BarChart>
@@ -632,7 +632,7 @@ ws4.addImage(imgId4, { tl: { col: 0, row: 0 }, ext: { width: 960, height: 520 } 
                             outerRadius={80}
                             paddingAngle={5}
                             dataKey="count"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                             labelLine={false}
                         >
                             {cancelChartData.map((_, index) => (
@@ -644,7 +644,7 @@ ws4.addImage(imgId4, { tl: { col: 0, row: 0 }, ext: { width: 960, height: 520 } 
                         </Pie>
                         <Tooltip
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            formatter={(value: number) => [value, 'คำสั่งยกเลิก']}
+                           formatter={(value) => [String(value), 'คำสั่งยกเลิก']}
                         />
                         <Legend iconType="circle" />
                     </PieChart>
