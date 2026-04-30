@@ -123,8 +123,27 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             return;
         }
 
-        setIsSavingProfile(true);
-        try {
+       // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงหรือไม่
+const hasChanges =
+    profileForm.name.trim()        !== name        ||
+    profileForm.employee_id.trim() !== employeeId  ||
+    profileForm.job_title.trim()   !== jobTitle    ||
+    profileForm.department.trim()  !== department  ||
+    profileForm.new_password       !== '';
+
+if (!hasChanges) {
+    Swal.fire({
+        icon: 'info',
+        title: 'ไม่มีการเปลี่ยนแปลง',
+        text: 'คุณยังไม่ได้แก้ไขข้อมูลโปรไฟล์ใดๆ',
+        confirmButtonText: 'รับทราบ',
+        confirmButtonColor: '#6b7280',
+    });
+    return;
+}
+
+setIsSavingProfile(true);
+try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
