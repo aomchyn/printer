@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert,Trash2 } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert, Trash2 } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -17,6 +17,19 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     const [employeeId, setEmployeeId] = useState('');
     const [jobTitle, setJobTitle] = useState('');
     const [department, setDepartment] = useState('');
+
+    // ✅ Profile modal state
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [profileForm, setProfileForm] = useState({
+        name: '',
+        employee_id: '',
+        job_title: '',
+        department: '',
+        new_password: '',
+        confirm_password: '',
+    });
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+
     const router = useRouter();
     const pathname = usePathname();
 
@@ -42,12 +55,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 setJobTitle(userData.job_title || '');
                 setDepartment(userData.department || '');
             } else {
-                // AUTO RECOVERY: If a user was created directly in Supabase Dashboard,
-                // their public.users row will be missing. Let's create it automatically.
                 const fallbackName = session.user.email?.split('@')[0] || 'User';
-                const fallbackRole = 'user'; // SECURITY: Always default to 'user' — never auto-grant admin
+                const fallbackRole = 'user';
 
-                // Insert missing profile
                 await supabase.from('users').insert({
                     id: session.user.id,
                     email: session.user.email,
@@ -67,17 +77,11 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     useEffect(() => {
         fetchData();
 
-        // Listen for changes to the user's role in real-time
         const channel = supabase.channel('sidebar-roles')
             .on(
                 'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'users'
-                },
+                { event: 'UPDATE', schema: 'public', table: 'users' },
                 (payload) => {
-                    // Update role immediately if it's the current user
                     supabase.auth.getSession().then(({ data: { session } }) => {
                         if (session?.user.id === payload.new.id) {
                             setRole(payload.new.role);
@@ -87,13 +91,75 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             )
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // ✅ เปิด Modal และ pre-fill ข้อมูลปัจจุบัน
+    const openProfile = () => {
+        setProfileForm({
+            name,
+            employee_id: employeeId,
+            job_title: jobTitle,
+            department,
+            new_password: '',
+            confirm_password: '',
+        });
+        setIsProfileOpen(true);
+    };
 
+    // ✅ บันทึกโปรไฟล์
+    const saveProfile = async () => {
+        if (!profileForm.name.trim()) {
+            Swal.fire({ icon: 'warning', title: 'กรุณากรอกชื่อ', confirmButtonColor: '#6b7280' });
+            return;
+        }
+        if (profileForm.new_password && profileForm.new_password !== profileForm.confirm_password) {
+            Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ตรงกัน', confirmButtonColor: '#6b7280' });
+            return;
+        }
+        if (profileForm.new_password && profileForm.new_password.length < 6) {
+            Swal.fire({ icon: 'warning', title: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', confirmButtonColor: '#6b7280' });
+            return;
+        }
+
+        setIsSavingProfile(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            // ✅ อัปเดต users table
+            const { error: updateError } = await supabase.from('users').update({
+                name:        profileForm.name.trim(),
+                employee_id: profileForm.employee_id.trim() || null,
+                job_title:   profileForm.job_title.trim() || null,
+                department:  profileForm.department.trim() || null,
+            }).eq('id', session.user.id);
+
+            if (updateError) throw updateError;
+
+            // ✅ เปลี่ยนรหัสผ่านถ้ากรอกมา
+            if (profileForm.new_password) {
+                const { error: pwError } = await supabase.auth.updateUser({
+                    password: profileForm.new_password,
+                });
+                if (pwError) throw pwError;
+            }
+
+            // ✅ อัปเดต state ใน sidebar ทันที
+            setName(profileForm.name.trim());
+            setEmployeeId(profileForm.employee_id.trim());
+            setJobTitle(profileForm.job_title.trim());
+            setDepartment(profileForm.department.trim());
+
+            setIsProfileOpen(false);
+            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
+        } catch (err: any) {
+            Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: err?.message || 'กรุณาลองใหม่อีกครั้ง' });
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
 
     const handleLogout = async () => {
         try {
@@ -103,25 +169,20 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 text: 'คุณแน่ใจที่จะลงชื่อออกจากระบบหรือไม่ ?',
                 showCancelButton: true,
                 showConfirmButton: true
-            })
-
+            });
             if (button.isConfirmed) {
                 await supabase.auth.signOut();
                 router.push('/login');
             }
         } catch (err) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'ไม่สามารถลงชื่อออกได้' + err
-            })
+            Swal.fire({ icon: 'error', title: 'Error', text: 'ไม่สามารถลงชื่อออกได้' + err });
         }
-    }
+    };
 
     const navigate = (path: string) => {
         router.push(path);
-        setIsOpen(false); // Close sidebar on mobile after navigation
-    }
+        setIsOpen(false);
+    };
 
     return (
         <>
@@ -133,9 +194,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 />
             )}
 
-            {/* Sidebar container with sliding animation for mobile */}
+            {/* Sidebar */}
             <div className={`
-                fixed inset-y-0 left-0 z-50 
+                fixed inset-y-0 left-0 z-50
                 w-72 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 text-white p-4 md:p-6 shadow-2xl flex flex-col
                 transform transition-transform duration-300 ease-in-out
                 md:relative md:translate-x-0
@@ -145,15 +206,17 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     <div className="sidebar-title mb-6 text-center relative border-b border-b-white/10 pb-4">
                         <div className="flex items-center justify-between text-2xl font-bold p-6 border-b border-blue-800/50 text-white tracking-widest bg-gradient-to-r from-blue-900 to-indigo-900">
                             <span className="flex items-center"><Printer className="mr-3 text-blue-400 w-6 h-6" />Printer OP</span>
-                            {/* Close button for mobile */}
                         </div>
-                        {/* Mobile close button inside sidebar */}
+
+                        {/* Mobile close button */}
                         <button
                             className="md:hidden absolute -top-2 -right-2 p-2 text-white/70 hover:text-white bg-white/10 rounded-full"
                             onClick={() => setIsOpen(false)}
                         >
                             <X size={20} />
                         </button>
+
+                        {/* User info */}
                         <div className="text-sm font-medium mt-6 mb-4 text-white bg-white/10 p-4 rounded-xl shadow-inner border border-white/5 text-left flex flex-col gap-2">
                             <div className="p-4 bg-indigo-800/40 rounded-xl mb-4 text-sm border border-indigo-700 hover:bg-indigo-700/40 transition flex items-center shadow-inner">
                                 <UserCircle className="mr-2 w-5 h-5 shrink-0" />
@@ -183,25 +246,39 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
                             <div className="flex justify-between items-center text-xs pt-1">
                                 <span className="text-white/60">สิทธิ์ (Role)</span>
-                                <span className={`uppercase tracking-wider font-bold ${role === 'moderator' ? 'text-purple-400' :
+                                <span className={`uppercase tracking-wider font-bold ${
+                                    role === 'moderator'           ? 'text-purple-400' :
                                     role === 'assistant_moderator' ? 'text-indigo-400' :
-                                        role === 'operator' ? 'text-blue-400' :
-                                            'text-emerald-400'
-                                    }`}>
-                                    {
-                                        role === 'moderator' ? 'Moderator' :
-                                            role === 'assistant_moderator' ? 'Asst. Moderator' :
-                                                role === 'operator' ? 'Operator' : 'User'
-                                    }
+                                    role === 'operator'            ? 'text-blue-400'   :
+                                                                     'text-emerald-400'
+                                }`}>
+                                    {role === 'moderator'           ? 'Moderator'       :
+                                     role === 'assistant_moderator' ? 'Asst. Moderator' :
+                                     role === 'operator'            ? 'Operator'        : 'User'}
                                 </span>
                             </div>
                         </div>
-                        <div className="flex gap-1 justify-center">
-                            <button className="bg-red-500/80 hover:bg-red-600 text-white px-4 py-2 rounded w-full font-semibold transition" onClick={handleLogout}>
-                                <LogOut className="mr-2 w-4 h-4" />Logout
+
+                        {/* ✅ ปุ่มแก้ไขโปรไฟล์ + ออกจากระบบ */}
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={openProfile}
+                                className="bg-white/10 hover:bg-white/20 text-white px-4 py-1.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition w-full"
+                            >
+                                <UserCircle className="w-4 h-4" />
+                                <span>แก้ไขโปรไฟล์</span>
+                            </button>
+                            <button
+                                className="bg-red-500/80 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition"
+                                onClick={handleLogout}
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span>ออกจากระบบ</span>
                             </button>
                         </div>
                     </div>
+
+                    {/* Nav */}
                     <nav className="mt-8 overflow-y-auto pb-8 h-full">
                         <ul className="space-y-2">
                             <li>
@@ -255,17 +332,124 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                     )}
                                     {(role === 'moderator' || role === 'assistant_moderator') && (
                                         <button onClick={() => navigate('/printer/trash')}
-                                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition mt-2 ${pathname.includes('trash') ? 'bg-red-600 text-white shadow-md' : 'text-red-300 hover:bg-white/10'}`}>
-                                       <Trash2 className="mr-3 w-5 h-5" />
-                                       <span>ถังขยะ</span>
-                                       </button>
-                                      )}
+                                            className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition mt-2 ${pathname.includes('trash') ? 'bg-red-600 text-white shadow-md' : 'text-red-300 hover:bg-white/10'}`}>
+                                            <Trash2 className="mr-3 w-5 h-5" />
+                                            <span>ถังขยะ</span>
+                                        </button>
+                                    )}
                                 </li>
                             )}
                         </ul>
                     </nav>
                 </div>
             </div>
+
+            {/* ✅ Profile Edit Modal */}
+            {isProfileOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md text-gray-800">
+
+                        {/* Header */}
+                        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+                            <h2 className="text-xl font-bold text-gray-800">✏️ แก้ไขโปรไฟล์</h2>
+                            <button onClick={() => setIsProfileOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                    ชื่อ <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={profileForm.name}
+                                    onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">รหัสพนักงาน</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.employee_id}
+                                    onChange={e => setProfileForm(f => ({ ...f, employee_id: e.target.value }))}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">ตำแหน่งงาน</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.job_title}
+                                    onChange={e => setProfileForm(f => ({ ...f, job_title: e.target.value }))}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">หน่วยงาน</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.department}
+                                    onChange={e => setProfileForm(f => ({ ...f, department: e.target.value }))}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                />
+                            </div>
+
+                            {/* เปลี่ยนรหัสผ่าน */}
+                            <div className="pt-2 border-t border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                                    เปลี่ยนรหัสผ่าน (ถ้าต้องการ)
+                                </p>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">รหัสผ่านใหม่</label>
+                                        <input
+                                            type="password"
+                                            value={profileForm.new_password}
+                                            onChange={e => setProfileForm(f => ({ ...f, new_password: e.target.value }))}
+                                            placeholder="ปล่อยว่างถ้าไม่ต้องการเปลี่ยน"
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">ยืนยันรหัสผ่านใหม่</label>
+                                        <input
+                                            type="password"
+                                            value={profileForm.confirm_password}
+                                            onChange={e => setProfileForm(f => ({ ...f, confirm_password: e.target.value }))}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setIsProfileOpen(false)}
+                                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                onClick={saveProfile}
+                                disabled={isSavingProfile}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-2.5 rounded-lg font-semibold text-sm transition"
+                            >
+                                {isSavingProfile ? 'กำลังบันทึก...' : '💾 บันทึก'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
