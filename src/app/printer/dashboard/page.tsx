@@ -316,9 +316,19 @@ export default function DashboardPage() {
             if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
         }
 
-        const summary = changeDetails.length > 0 ? `แก้ไข: ${changeDetails.join(' | ')}` : 'อัปเดตข้อมูล';
-        const editorName = getCurrentUserIdentifier();
+       if (changeDetails.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'ไม่มีการเปลี่ยนแปลง',
+                text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของคำสั่งพิมพ์นี้',
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
 
+        const summary = `แก้ไข: ${changeDetails.join(' | ')}`;
+        const editorName = getCurrentUserIdentifier();
         const updateData = {
             order_type: editingOrder.order_type,         // ✅ เพิ่มตรงนี้
             lot_number: editingOrder.lot_number,
