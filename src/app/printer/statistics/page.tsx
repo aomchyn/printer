@@ -24,6 +24,7 @@ export interface OrderInterface {
     created_by_department?: string;
     order_type?:string;
     is_verified: boolean;
+    is_cancelled?: boolean;
     verified_by?: string | null;
     verified_at?: string | null;
     created_at: string;
