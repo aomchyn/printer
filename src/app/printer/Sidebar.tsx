@@ -319,7 +319,7 @@ setName(profileForm.name.trim());
                     </div>
 
                     {/* Nav */}
-                    <nav className="mt-8 overflow-y-auto pb-8 h-full">
+                    <nav className="mt-3 overflow-y-auto pb-8 h-full">
                         <ul className="space-y-2">
                             <li>
                                 <button onClick={() => navigate('/printer/dashboard')}
