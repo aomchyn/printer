@@ -237,16 +237,22 @@ setName(profileForm.name.trim());
             {/* Sidebar */}
             <div className={`
                 fixed inset-y-0 left-0 z-50
-                w-72 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 text-white p-4 md:p-6 shadow-2xl flex flex-col
+                w-72 bg-gradient-to-b from-blue-900 via-blue-800 to-blue-500 to-indigo-700 text-white p-4 md:p-6 shadow-2xl flex flex-col
                 transform transition-transform duration-300 ease-in-out
                 md:relative md:translate-x-0
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
                 <div className="sidebar-container h-full flex flex-col">
                     <div className="sidebar-title mb-6 text-center relative border-b border-b-white/10 pb-4">
-                        <div className="flex items-center justify-between text-2xl font-bold p-6 border-b border-blue-800/50 text-white tracking-widest bg-gradient-to-r from-blue-900 to-indigo-900">
-                            <span className="flex items-center"><Printer className="mr-3 text-blue-400 w-6 h-6" />Printer OP</span>
-                        </div>
+                       <div className="flex items-center gap-3 px-4 py-5">
+    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+        <Printer className="w-5 h-5 text-white" />
+    </div>
+    <div>
+        <div className="text-lg font-extrabold text-white tracking-wider">Printer OP</div>
+        <div className="text-[11px] text-blue-200 font-medium">Label Management System</div>
+    </div>
+</div>
 
                         {/* Mobile close button */}
                         <button
@@ -256,49 +262,48 @@ setName(profileForm.name.trim());
                             <X size={20} />
                         </button>
 
-                        {/* User info */}
-                        <div className="text-sm font-medium mt-6 mb-4 text-white bg-white/10 p-4 rounded-xl shadow-inner border border-white/5 text-left flex flex-col gap-2">
-                            <div className="p-4 bg-indigo-800/40 rounded-xl mb-4 text-sm border border-indigo-700 hover:bg-indigo-700/40 transition flex items-center shadow-inner">
-                                <UserCircle className="mr-2 w-5 h-5 shrink-0" />
-                                <span className="truncate">{name || 'Loading...'}</span>
-                            </div>
+                       <div className="mt-4 mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg">
+    {/* ชื่อผู้ใช้ */}
+    <div className="bg-white/10 px-4 py-3 flex items-center gap-3 border-b border-white/10">
+        <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow">
+            {name ? name.charAt(0).toUpperCase() : '?'}
+        </div>
+        <div className="min-w-0">
+            <div className="text-white font-bold text-sm truncate">{name || 'Loading...'}</div>
+            <div className={`text-[11px] font-semibold uppercase tracking-wider ${
+                role === 'moderator' ? 'text-purple-300' :
+                role === 'assistant_moderator' ? 'text-indigo-300' :
+                role === 'operator' ? 'text-blue-300' : 'text-emerald-300'
+            }`}>
+                {role === 'moderator' ? 'Moderator' :
+                 role === 'assistant_moderator' ? 'Asst. Moderator' :
+                 role === 'operator' ? 'Operator' : 'User'}
+            </div>
+        </div>
+    </div>
 
-                            {employeeId && (
-                                <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
-                                    <span className="text-white/60">รหัสพนักงาน</span>
-                                    <span className="text-white/90 truncate ml-2 max-w-[60%]">{employeeId}</span>
-                                </div>
-                            )}
-
-                            {jobTitle && (
-                                <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
-                                    <span className="text-white/60">ตำแหน่ง</span>
-                                    <span className="text-white/90 truncate ml-2 max-w-[70%]">{jobTitle}</span>
-                                </div>
-                            )}
-
-                            {department && (
-                                <div className="flex justify-between items-center text-xs border-b border-white/5 pb-1">
-                                    <span className="text-white/60">หน่วยงาน</span>
-                                    <span className="text-white/90 truncate ml-2 max-w-[60%]">{department}</span>
-                                </div>
-                            )}
-
-                            <div className="flex justify-between items-center text-xs pt-1">
-                                <span className="text-white/60">สิทธิ์ (Role)</span>
-                                <span className={`uppercase tracking-wider font-bold ${
-                                    role === 'moderator'           ? 'text-purple-400' :
-                                    role === 'assistant_moderator' ? 'text-indigo-400' :
-                                    role === 'operator'            ? 'text-blue-400'   :
-                                                                     'text-emerald-400'
-                                }`}>
-                                    {role === 'moderator'           ? 'Moderator'       :
-                                     role === 'assistant_moderator' ? 'Asst. Moderator' :
-                                     role === 'operator'            ? 'Operator'        : 'User'}
-                                </span>
-                            </div>
-                        </div>
-
+    {/* ข้อมูลเพิ่มเติม */}
+    <div className="bg-white/5 px-4 py-2.5 flex flex-col gap-1.5 text-xs">
+        {employeeId && (
+            <div className="flex justify-between">
+                <span className="text-blue-300">รหัสพนักงาน</span>
+                <span className="text-white font-medium">{employeeId}</span>
+            </div>
+        )}
+        {jobTitle && (
+            <div className="flex justify-between">
+                <span className="text-blue-300">ตำแหน่ง</span>
+                <span className="text-white font-medium truncate ml-2 max-w-[60%] text-right">{jobTitle}</span>
+            </div>
+        )}
+        {department && (
+            <div className="flex justify-between">
+                <span className="text-blue-300">หน่วยงาน</span>
+                <span className="text-white font-medium truncate ml-2 max-w-[60%] text-right">{department}</span>
+            </div>
+        )}
+    </div>
+</div>
                         {/* ✅ ปุ่มแก้ไขโปรไฟล์ + ออกจากระบบ */}
                         <div className="flex flex-col gap-2">
                             <button
