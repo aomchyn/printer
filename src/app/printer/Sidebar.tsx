@@ -118,8 +118,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ตรงกัน', confirmButtonColor: '#6b7280' });
             return;
         }
-        if (profileForm.new_password && profileForm.new_password.length < 6) {
-            Swal.fire({ icon: 'warning', title: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', confirmButtonColor: '#6b7280' });
+        if (profileForm.new_password && profileForm.new_password.length < 8) {
+            Swal.fire({ icon: 'warning', title: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', confirmButtonColor: '#6b7280' });
             return;
         }
 
@@ -146,8 +146,29 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 if (pwError) throw pwError;
             }
 
-            // ✅ อัปเดต state ใน sidebar ทันที
-            setName(profileForm.name.trim());
+            // ✅ บันทึก Audit Log
+const changes: Record<string, { before: string; after: string }> = {};
+if (profileForm.name.trim() !== name)              changes['ชื่อ']          = { before: name,       after: profileForm.name.trim() };
+if (profileForm.employee_id.trim() !== employeeId) changes['รหัสพนักงาน']   = { before: employeeId, after: profileForm.employee_id.trim() };
+if (profileForm.job_title.trim() !== jobTitle)     changes['ตำแหน่งงาน']    = { before: jobTitle,   after: profileForm.job_title.trim() };
+if (profileForm.department.trim() !== department)  changes['หน่วยงาน']      = { before: department, after: profileForm.department.trim() };
+if (profileForm.new_password)                       changes['รหัสผ่าน']      = { before: '••••••',   after: '(เปลี่ยนแล้ว)' };
+
+const changeSummary = Object.entries(changes)
+    .map(([field, { before, after }]) => `${field}: "${before || '-'}" → "${after || '-'}"`)
+    .join(' | ');
+
+await supabase.from('audit_logs').insert([{
+    user_id:    session.user.id,
+    user_name:  profileForm.name.trim(),
+    action:     'UPDATE_PROFILE',
+    summary:    `แก้ไขโปรไฟล์: ${changeSummary}`,
+    changes,
+    created_at: new Date().toISOString(),
+}]);
+
+// ✅ อัปเดต state ใน sidebar ทันที
+setName(profileForm.name.trim());
             setEmployeeId(profileForm.employee_id.trim());
             setJobTitle(profileForm.job_title.trim());
             setDepartment(profileForm.department.trim());

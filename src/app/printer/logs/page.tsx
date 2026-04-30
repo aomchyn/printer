@@ -167,6 +167,7 @@ export default function LogsManagement() {
             case 'CANCEL':                 return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">❌ ยกเลิกคำสั่งพิมพ์</span>;
             case 'CREATE_USER':            return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">เพิ่มผู้ใช้</span>;
             case 'UPDATE_USER':            return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">แก้ไขผู้ใช้</span>;
+            case 'UPDATE_PROFILE':         return <span className="bg-sky-100 text-sky-800 px-2 py-1 rounded text-xs font-bold">👤 แก้ไขโปรไฟล์</span>;
             case 'DELETE_USER':            return <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-xs font-bold">ลบผู้ใช้</span>;
             default:                       return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-bold">{action}</span>;
         }
