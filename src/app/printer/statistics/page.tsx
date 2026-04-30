@@ -25,6 +25,9 @@ export interface OrderInterface {
     order_type?:string;
     is_verified: boolean;
     is_cancelled?: boolean;
+    edit_summary?:string | null;
+     updated_by?: string | null;     
+    updated_at?: string | null;     
     verified_by?: string | null;
     verified_at?: string | null;
     created_at: string;
@@ -381,6 +384,76 @@ const img4 = drawBarChart(
     quantityChartData, // ✅ มี .value อยู่แล้ว ไม่ต้อง map
     totalQuantity,
 );
+
+// ✅ Sheet 5 — รายการคำสั่งพิมพ์ที่ยกเลิก
+const cancelledOrders = orders.filter(o => o.is_cancelled);
+const ws5 = wb.addWorksheet('คำสั่งที่ยกเลิก');
+ws5.columns = [
+    { header: 'ลำดับ',         key: 'no',          width: 6  },
+    { header: 'วันที่สั่ง',     key: 'date',        width: 14 },
+    { header: 'เวลาสั่ง',       key: 'time',        width: 10 },
+    { header: 'ประเภทคำสั่ง',   key: 'order_type',  width: 16 },
+    { header: 'เลขลอต',         key: 'lot',         width: 16 },
+    { header: 'รหัสสินค้า',     key: 'product_id',  width: 14 },
+    { header: 'ชื่อสินค้า',     key: 'product_name',width: 30 },
+    { header: 'จำนวน',          key: 'quantity',    width: 8  },
+    { header: 'วันที่ผลิต',     key: 'mfg',         width: 14 },
+    { header: 'วันหมดอายุ',     key: 'exp',         width: 14 },
+    { header: 'ผู้สั่ง',        key: 'created_by',  width: 20 },
+    { header: 'หน่วยงาน',       key: 'dept',        width: 16 },
+    { header: 'เหตุผลการยกเลิก',key: 'cancel_note', width: 40 },
+    { header: 'ผู้ยกเลิก',      key: 'cancelled_by',width: 20 },
+    { header: 'เวลาที่ยกเลิก',  key: 'cancelled_at',width: 20 },
+];
+
+// Header สีแดง
+ws5.getRow(1).eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEF4444' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+});
+
+cancelledOrders.forEach((order, index) => {
+    // ดึงเหตุผลยกเลิกจาก edit_summary เช่น "ยกเลิกเพราะ: ..."
+    const cancelNote = order.edit_summary?.startsWith('ยกเลิกเพราะ:')
+        ? order.edit_summary.replace('ยกเลิกเพราะ:', '').trim()
+        : order.edit_summary || '-';
+
+    const row = ws5.addRow({
+        no:           index + 1,
+        date:         new Date(order.created_at).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' }),
+        time:         new Date(order.created_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }),
+        order_type:   order.order_type || 'ไม่ระบุ',
+        lot:          order.lot_number,
+        product_id:   order.product_id,
+        product_name: order.product_name,
+        quantity:     order.quantity,
+        mfg:          order.production_date,
+        exp:          order.expiry_date,
+        created_by:   order.created_by,
+        dept:         order.created_by_department || 'ไม่ระบุ',
+        cancel_note:  cancelNote,
+        cancelled_by: order.updated_by || '-',
+        cancelled_at: order.updated_at
+            ? new Date(order.updated_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
+            : '-',
+    });
+
+    // ไฮไลต์แถวสีชมพูอ่อน
+    row.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF1F2' } };
+        cell.border = { top: { style: 'thin', color: { argb: 'FFFECACA' } }, bottom: { style: 'thin', color: { argb: 'FFFECACA' } }, left: { style: 'thin', color: { argb: 'FFFECACA' } }, right: { style: 'thin', color: { argb: 'FFFECACA' } } };
+    });
+});
+
+// summary row ท้าย sheet
+ws5.addRow([]);
+const summaryRow = ws5.addRow({
+    no: '',
+    date: `รวมทั้งหมด: ${cancelledOrders.length} รายการ`,
+});
+summaryRow.getCell('date').font = { bold: true, color: { argb: 'FFEF4444' } };
 const imgId4 = wb.addImage({ base64: img4, extension: 'png' });
 ws4.addImage(imgId4, { tl: { col: 0, row: 0 }, ext: { width: 960, height: 520 } });
     // ✅ Download
