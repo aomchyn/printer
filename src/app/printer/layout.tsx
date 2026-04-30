@@ -34,7 +34,7 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
                 </div>
 
                 {/* Global Footer */}
-                <footer className="mt-8 mb-2 w-full text-center text-sm text-white/60">
+                <footer className="mt-8 mb-2 w-full text-center text-sm text-black">
                     <p>&copy; {new Date().getFullYear()} Printer OP. All rights reserved.</p>
                     <p className="mt-1 text-xs">Created by Chaloempon Promma</p>
                 </footer>
