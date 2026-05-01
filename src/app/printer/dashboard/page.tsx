@@ -145,9 +145,6 @@ export default function DashboardPage() {
 
     const loadOrders = async () => {
         try {
-            const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-            const startOfMonthIso = startOfMonth.toISOString();
-
             let allOrders: OrderInterface[] = [];
             let from = 0;
             const pageSize = 1000;
@@ -157,7 +154,6 @@ export default function DashboardPage() {
                 const { data, error } = await supabase
                     .from('orders').select('*')
                     .eq('is_deleted', false)
-                    .gte('created_at', startOfMonthIso)
                     .order('created_at', { ascending: false })
                     .range(from, from + pageSize - 1);
 
