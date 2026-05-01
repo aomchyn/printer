@@ -377,7 +377,7 @@ setName(profileForm.name.trim());
                                     )}
                                     {(role === 'moderator' || role === 'assistant_moderator') && (
                                         <button onClick={() => navigate('/printer/trash')}
-                                            className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition mt-2 ${pathname.includes('trash') ? 'bg-red-600 text-white shadow-md' : 'text-red-300 hover:bg-white/10'}`}>
+                                            className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition mt-2 ${pathname.includes('trash') ? 'bg-red-400 text-white shadow-md' : 'text-red-300 hover:bg-white/10'}`}>
                                             <Trash2 className="mr-3 w-5 h-5" />
                                             <span>ถังขยะ</span>
                                         </button>
