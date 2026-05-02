@@ -230,28 +230,76 @@ export default function OrderPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const confirm = await Swal.fire({
-            icon: 'question',
-            title: 'ยืนยันการบันทึก?',
-            html: `
-            <div class="text-left text-sm space-y-1">
-                <p>📦 <b>ประเภท:</b> ${orderData.orderType}</p>
-                <p>🔢 <b>ลอต:</b> ${orderData.lotNumber}</p>
-                <p>🏷️ <b>รหัสสินค้า:</b> ${orderData.productId}</p>
-                <p>📝 <b>ชื่อสินค้า:</b> ${orderData.productName}</p>
-                <p>🔢 <b>จำนวน:</b> ${orderData.quantity}</p>
-                <p>📅 <b>วันที่ผลิต:</b> ${orderData.productionDate}</p>
-                <p>📅 <b>วันหมดอายุ:</b> ${orderData.expiryDate}</p>
-                <p>📋 <b>หมายเหตุ:</b> ${orderData.notes}</p>
-            </div>
-        `,
-            showCancelButton: true,
-            confirmButtonText: 'ยืนยัน',
-            cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#6b7280',
-        });
+       // สร้าง HTML สำหรับรูปภาพ (ถ้ามี)
+let imageHtml = '';
+if (imagePreview) {
+  imageHtml = `
+    <div style="margin-top:12px; display:flex; justify-content:center;">
+      <div style="text-align:center; margin-bottom:0;">
+        <div style="font-size:12px; color:#6b7280; margin-bottom:2px;">📷 ภาพตัวอย่างฉลาก</div>
+        <img src="${imagePreview}" alt="ตัวอย่างฉลาก" 
+             style="max-width:100%; max-height:160px; object-fit:contain; border-radius:8px; border:1px solid #ddd;" />
+      </div>
+    </div>
+  `;
+}
 
+const confirm = await Swal.fire({
+  icon: 'question',
+  title: 'ยืนยันการบันทึก?',
+  html: `
+    <div style="font-family: sans-serif; margin-bottom:0;">
+      <table style="width:100%; border-collapse:collapse; font-size:13px; margin:auto;">
+        <tr>
+          <td style="padding:4px 6px; color:#4b5563;">📦 ประเภท</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.orderType}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:4px 6px; color:#4b5563;">🔢 เลขลอต</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.lotNumber}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px; color:#4b5563;">🏷️ รหัสสินค้า</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.productId}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.productName}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px; color:#4b5563;">🔢 จำนวน</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.quantity}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:4px 6px; color:#4b5563;">📅 วันที่ผลิต</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.productionDate}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 6px; color:#4b5563;">📅 วันหมดอายุ</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.expiryDate}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:4px 6px; color:#4b5563;">📋 หมายเหตุ</td>
+          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.notes || '-'}</td>
+        </tr>
+      </table>
+      ${imageHtml}
+    </div>
+  `,
+  showCancelButton: true,
+  confirmButtonText: 'ยืนยัน',
+  cancelButtonText: 'ยกเลิก',
+  confirmButtonColor: '#2563eb',
+  cancelButtonColor: '#6b7280',
+  width: 'clamp(300px, 90vw, 500px)',  
+  heightAuto:true,             // ไม่เต็มจอเกินไป
+  customClass: {
+    popup: 'rounded-xl text-sm !p-4', // ลดขนาดฟอนต์รวม
+    title: 'text-base',            // หัวเรื่องเล็กลง
+    confirmButton: 'text-sm py-2 px-4',
+    cancelButton: 'text-sm py-2 px-4',
+  },
+});
         if (!confirm.isConfirmed) return;
         try {
             const requiredFields = ['lotNumber', 'productId', 'productionDate', 'quantity'];
@@ -262,28 +310,53 @@ export default function OrderPage() {
                 return;
             }
 
-            setUploading(true);
+setUploading(true);
 
-            // Upload image if selected
-            let imageUrl: string | null = null;
-            if (imageFile) {
-                const fileExt = imageFile.name.split('.').pop();
-                const fileName = `${Date.now()}_${orderData.lotNumber}.${fileExt}`;
-                const filePath = `labels/${fileName}`;
+let imageUrl: string | null = null;
+if (imageFile) {
+  if (!imageFile.type.startsWith('image/')) {
+    throw new Error('ไฟล์ที่เลือกไม่ใช่รูปภาพ');
+  }
 
-                const { error: uploadError } = await supabase.storage
-                    .from('order-images')
-                    .upload(filePath, imageFile);
+  const fileExt = imageFile.name.split('.').pop() || 'jpg';
 
-                if (uploadError) throw new Error(`อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError.message}`);
+  // เลือกชื่อที่ใช้ตั้งไฟล์
+  const rawName = orderData.productName?.trim() || '';
+  const hasThai = /[ก-๙]/.test(rawName);
 
-                const { data: urlData } = supabase.storage
-                    .from('order-images')
-                    .getPublicUrl(filePath);
+  let safeName: string;
+  if (hasThai || !rawName) {
+    // ใช้รหัสสินค้าแทน
+    const rawId = orderData.productId?.trim() || 'unknown-product';
+    safeName = rawId.replace(/[^a-zA-Z0-9\-_]/g, '_').substring(0, 50);
+  } else {
+    safeName = rawName
+      .replace(/[^a-zA-Z0-9\-_]/g, '_')
+      .replace(/_+/g, '_')
+      .substring(0, 50);
+  }
 
-                imageUrl = urlData.publicUrl;
-            }
+  // ✅ วันที่และเวลาอัปโหลด (YYYYMMDD_HHmmss)
+  const now = new Date();
+  const dateStr = now.toISOString().replace(/[-:T]/g, '').slice(0, 15);
 
+  const fileName = `${safeName}_${dateStr}.${fileExt}`;
+  const filePath = `labels/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('order-images')
+    .upload(filePath, imageFile);
+
+  if (uploadError) {
+    throw new Error(`อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError.message}`);
+  }
+
+  const { data: urlData } = supabase.storage
+    .from('order-images')
+    .getPublicUrl(filePath);
+
+  imageUrl = urlData.publicUrl;
+}
             const { error } = await supabase.from('orders').insert({
                 order_date: orderData.orderDate,
                 order_time: orderData.orderTime,
@@ -360,6 +433,34 @@ export default function OrderPage() {
         }
     };
 
+    // ฟังก์ชันช่วยกำหนดคลาสตามสถานะ
+const getRequiredFieldStyle = (value: string | number, isRequired: boolean = true) => {
+  if (!isRequired) return "w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm";
+  
+  const hasValue = typeof value === 'string' ? value.trim().length > 0 : value > 0;
+  
+  if (hasValue) {
+    // กรอกแล้ว → เขียว
+    return "w-full px-4 py-3 bg-green-50 border border-green-400 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm";
+  } else {
+    // ยังไม่กรอก → แดง
+    return "w-full px-4 py-3 bg-red-50 border border-red-400 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 transition shadow-sm";
+  }
+};
+
+
+const renderDateLabels = (dateString: string) => {
+  if (!dateString) return null;
+  const [year, month, day] = dateString.split('-');
+  const thaiYear = parseInt(year) + 543;
+  return (
+    <div className="mt-1 text-xs text-gray-500 space-y-0.5 md:hidden">
+      <p>(ค.ศ.) : {day}/{month}/{year}</p>
+      <p>(พ.ศ.) : {day}/{month}/{thaiYear}</p>
+    </div>
+  );
+};
+
     return (
         <div className="flex justify-center py-6 text-gray-800">
             <div className="w-full max-w-2xl bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-white/20">
@@ -407,23 +508,25 @@ export default function OrderPage() {
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            เลขลอตสินค้า
-                        </label>
-                        <input
-                            type="text"
-                            value={orderData.lotNumber}
-                            onChange={(e) => setOrderData(prev => ({ ...prev, lotNumber: e.target.value }))}
-                            placeholder='ป้อนเลขลอต'
-                            required
-                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
-                        />
-                    </div>
+                    {/* เลขลอตสินค้า */}
+<div>
+  <label className="block text-sm font-semibold text-gray-700 mb-2">
+    เลขลอตสินค้า <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="text"
+    value={orderData.lotNumber}
+    onChange={(e) => setOrderData(prev => ({ ...prev, lotNumber: e.target.value }))}
+    placeholder='ป้อนเลขลอต'
+    required
+    className={getRequiredFieldStyle(orderData.lotNumber)}
+  />
+</div>
 
-                   <div>
+{/* รหัสสินค้า (ใช้ orderData.productId ตัดสิน) */}
+<div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">
-        รหัสสินค้า
+        รหัสสินค้า <span className='text-red-500'>*</span>
     </label>
     <div className="relative">
         <input
@@ -446,8 +549,33 @@ export default function OrderPage() {
             onFocus={() => setShowDropdown(true)}
             placeholder="ค้นหาด้วยรหัสหรือชื่อสินค้า"
             required
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
+            className={`${getRequiredFieldStyle(orderData.productId)} pr-10`}
         />
+
+             {/* ปุ่มเคลียร์ (X) */}
+    {productSearch && (
+    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+      <button
+        type="button"
+        onClick={() => {
+          setProductSearch('');
+          setShowDropdown(false);
+          setOrderData(prev => ({
+            ...prev,
+            productId: '',
+            productName: '',
+            productExp: '',
+            expiryDate: '',
+          }));
+        }}
+        className="text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-full p-1 transition-colors"
+        tabIndex={-1}
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  )}
+
 
         {/* ✅ Dropdown */}
         {showDropdown && productSearch.length > 0 && (
@@ -511,29 +639,33 @@ export default function OrderPage() {
                     )}
 
                     {orderData.productExp && (
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">อายุผลิตภัณฑ์</label>
-                            <input
-                                type="text"
-                                value={orderData.productExp}
-                                readOnly
-                                className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-800 font-medium"
-                            />
-                        </div>
-                    )}
+  <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+      อายุผลิตภัณฑ์
+    </label>
+    <input
+      type="text"
+      value={`${orderData.productExp} เดือน`}
+      readOnly
+      className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-800 font-medium"
+    />
+  </div>
+)}
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            วันที่ผลิต
-                        </label>
-                        <input
-                            type="date"
-                            value={orderData.productionDate}
-                            onChange={handleProductionDateChange}
-                            required
-                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
-                        />
-                    </div>
+                    {/* วันที่ผลิต */}
+<div>
+  <label className="block text-sm font-semibold text-gray-700 mb-2">
+    วันที่ผลิต <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="date"
+    value={orderData.productionDate}
+    onChange={handleProductionDateChange}
+    required
+    className={getRequiredFieldStyle(orderData.productionDate)}
+  />
+ {renderDateLabels(orderData.productionDate)}
+</div>
 
                     {orderData.expiryDate && (
                         <div>
@@ -546,27 +678,26 @@ export default function OrderPage() {
                                 readOnly
                                 className="w-full px-4 py-3 bg-green-50 border border-green-300 rounded-lg text-green-800 font-medium shadow-inner"
                             />
+                             {renderDateLabels(orderData.expiryDate)}
                         </div>
                     )}
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            จำนวน
-                        </label>
-                        <input
-                            type="number"
-                            value={orderData.quantity || ''}
-                            onChange={(e) => setOrderData(prev => ({
-                                ...prev,
-                                quantity: Math.max(1, parseInt(e.target.value) || 1)
-                            }))}
-                            onWheel={(e) => e.currentTarget.blur()}
-                            placeholder="กรอกจำนวนที่ต้องการสั่ง"
-                            min="1"
-                            required
-                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                    </div>
+                   {/* จำนวน */}
+<div>
+  <label className="block text-sm font-semibold text-gray-700 mb-2">
+    จำนวน <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="number"
+    value={orderData.quantity || ''}
+    onChange={(e) => setOrderData(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+    onWheel={(e) => e.currentTarget.blur()}
+    placeholder="กรอกจำนวนที่ต้องการสั่ง"
+    min="1"
+    required
+    className={`${getRequiredFieldStyle(orderData.quantity)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+  />
+</div>
 
                     <div>
                         <label className='block text-sm font-semibold text-gray-700 mb-2'>

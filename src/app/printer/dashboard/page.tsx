@@ -50,7 +50,7 @@ export default function DashboardPage() {
     const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
     const [timeFilter, setTimeFilter] = useState<'week' | 'month'>('week');
     const router = useRouter();
-    
+
 
     useEffect(() => {
         fetchUserInfo();
@@ -1014,7 +1014,7 @@ export default function DashboardPage() {
                                     </div>
                                 ) : (
                                     <span className="flex items-center justify-center gap-2 text-sm">
-                                        <Clock className="w-4 h-4 inline mr-1" /> รอการจัดทำชิ้นงาน
+                                        <Clock className="w-4 h-4 inline mr-1" /> กำลังรอการจัดทำชิ้นงาน
                                     </span>
                                 )}
                             </div>
@@ -1059,7 +1059,7 @@ export default function DashboardPage() {
                 onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
                 className="hidden"
             />
-            🛍️ ปั๊มถุง
+            🔖 ปั๊มถุง
         </label>
     </div>
 </div>
