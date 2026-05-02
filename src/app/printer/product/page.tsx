@@ -8,7 +8,7 @@ import { Search, Plus, X, Check, Edit2, Trash2 } from "lucide-react"
 import { logAction } from "@/lib/logger"
 
 export interface FgcodeInterface {
-    id: string; // e.g. FG-1001
+    id: string; 
     name: string;
     exp: string;
     category?: string;
@@ -79,8 +79,8 @@ export default function FgcodeManagement() {
         fetchUserRole()
     }, [])
 
-  
-
+    const isAdminRole = userRole === 'moderator' || userRole === 'assistant_moderator';
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -97,6 +97,30 @@ export default function FgcodeManagement() {
             return;
         }
 
+        // ✅ ตรวจสอบภาษาไทยในชื่อสินค้า
+    const thaiCharRegex = /[ก-๙]/;
+    if (thaiCharRegex.test(cleanId)) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'รหัสสินค้าไม่ถูกต้อง',
+            text: 'รหัสสินค้าต้องเป็นภาษาอังกฤษ ตัวเลข หรือเครื่องหมายขีด (-) เท่านั้น ห้ามใช้ภาษาไทย',
+            confirmButtonText: 'รับทราบ',
+        });
+        return;
+    }
+
+     const isAdminRole = userRole === 'moderator' || userRole === 'assistant_moderator';
+        if (!isAdminRole && thaiCharRegex.test(cleanName)) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'ไม่อนุญาตให้ใช้ภาษาไทย',
+            text: 'ชื่อสินค้าภาษาไทยไม่อนุญาตให้ใช้',
+            confirmButtonText: 'รับทราบ',
+            confirmButtonColor: '#6b7280',
+        });
+        return;
+    }
+    
         try {
             if (editingFgcode) {
                 // แก้ไข
@@ -470,18 +494,21 @@ export default function FgcodeManagement() {
                         </div>
 
                         <div className="mb-4">
-                            <label className="block mb-2 font-semibold text-gray-700">
-                                ชื่อสินค้า <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
-                                value={name}
-                                onChange={e => setName(e.target.value.toUpperCase())}
-                                placeholder="เช่น TEST 25KG."
-                                required
-                            />
-                        </div>
+    <label className="block mb-2 font-semibold text-gray-700">
+  ชื่อสินค้า <span className="text-red-500">*</span>
+  {!isAdminRole && (
+    <span className="text-xs text-gray-400 ml-2">(ภาษาอังกฤษเท่านั้น)</span>
+  )}
+</label>
+    <input
+        type="text"
+        className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+        value={name}
+        onChange={e => setName(e.target.value.toUpperCase())}
+        placeholder={isAdminRole ? "ชื่อสินค้า (ภาษาไทยหรืออังกฤษ)" : "เช่น TEST 25KG."}
+        required
+    />
+</div>
 
                         <div className="mb-6">
                             <label className="block mb-2 font-semibold text-gray-700">
