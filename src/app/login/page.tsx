@@ -494,6 +494,11 @@ export default function LoginPage() {
                     background: rgba(59,130,246,0.12);
                 }
 
+                .login-form-input--password::-ms-reveal,
+                .login-form-input--password::-ms-clear {
+                 display: none;
+                }
+
                 /* Security badge */
                 .login-security-badge {
                     display: flex;
