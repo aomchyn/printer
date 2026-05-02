@@ -34,12 +34,7 @@ export default function TrashPage() {
     const getCurrentUserIdentifier = () =>
         employeeId ? `${userName} (${employeeId})` : userName;
 
-    useEffect(() => {
-        fetchUserInfo();
-        loadDeletedOrders();
-    }, []);
-
-    const fetchUserInfo = async () => {
+     const fetchUserInfo = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { router.push('/login'); return; }
@@ -83,6 +78,13 @@ export default function TrashPage() {
             setLoading(false);
         }
     };
+    
+    useEffect(() => {
+        fetchUserInfo();
+        loadDeletedOrders();
+    }, []);
+
+   
 
     // ✅ คำนวณวันที่เหลือก่อนลบถาวร
     const getDaysRemaining = (deletedAt: string): number => {

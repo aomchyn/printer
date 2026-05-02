@@ -29,27 +29,30 @@ export interface OrderInterface {
 }
 
 export interface FgcodeInterface {
-    id: string; // e.g. FG-1001
+    id: string;
     name: string;
     exp: string;
 }
 
 export default function OrderPage() {
-    const [orderData, setOrderData] = useState<OrderInterface>({
-        orderDate: '',
-        orderTime: '',
-        orderDateTime: '',
-        orderType: 'พิมพ์ฉลาก',
-        lotNumber: '',
-        productId: '',
-        productName: '',
-        productExp: '',
-        productionDate: '',
-        expiryDate: '',
-        quantity: 0,
-        notes: '',
+    // ✅ ใส่ค่า initial time ตรงนี้แทน useEffect เพื่อหลีกเลี่ยง setState in effect
+    const [orderData, setOrderData] = useState<OrderInterface>(() => {
+        const now = new Date();
+        return {
+            orderDate: now.toISOString().split('T')[0],
+            orderTime: now.toTimeString().split(' ')[0].substring(0, 5),
+            orderDateTime: now.toISOString(),
+            orderType: 'พิมพ์ฉลาก',
+            lotNumber: '',
+            productId: '',
+            productName: '',
+            productExp: '',
+            productionDate: '',
+            expiryDate: '',
+            quantity: 0,
+            notes: '',
+        };
     });
-
     const [products, setProducts] = useState<FgcodeInterface[]>([]);
     const [username, setUsername] = useState('Unknown User');
     const [department, setDepartment] = useState('');
@@ -60,28 +63,21 @@ export default function OrderPage() {
     const [productSearch, setProductSearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
 
-    useEffect(() => {
-        fetchUserInfo();
-        fetchProducts();
-
-        const today = new Date().toISOString().split('T')[0];
-        setOrderData(prev => ({ ...prev, orderDate: today }));
-    }, []);
-
+    // ✅ ย้ายฟังก์ชันขึ้นก่อน useEffect
     const fetchUserInfo = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                const { data } = await supabase.from('users').select('name, department').eq('id', session.user.id).single();
-                if (data?.name) {
-                    setUsername(data.name);
-                }
-                if (data?.department) {
-                    setDepartment(data.department);
-                }
+                const { data } = await supabase
+                    .from('users')
+                    .select('name, department')
+                    .eq('id', session.user.id)
+                    .single();
+                if (data?.name) setUsername(data.name);
+                if (data?.department) setDepartment(data.department);
             }
-        } catch (error) {
-            console.error('Error fetching user info:', error);
+        } catch {
+            console.error('Error fetching user info');
         }
     };
 
@@ -115,6 +111,12 @@ export default function OrderPage() {
         }
     };
 
+    // ✅ useEffect เดียว ไม่มี setState โดยตรง
+    useEffect(() => {
+        fetchUserInfo();
+        fetchProducts();
+    }, []);
+
     const calculateExpiryDate = (manufactureDate: string, shelfLife: string): string => {
         if (!manufactureDate || !shelfLife) return '';
         try {
@@ -130,15 +132,13 @@ export default function OrderPage() {
                 numValue = parseInt(trimmedShelfLife);
                 unit = 'months';
             } else {
-                const valueStr = trimmedShelfLife.substring(0, spaceIndex);
+                numValue = parseInt(trimmedShelfLife.substring(0, spaceIndex));
                 unit = trimmedShelfLife.substring(spaceIndex + 1).toLowerCase();
-                numValue = parseInt(valueStr);
             }
 
             if (isNaN(numValue) || numValue <= 0) return '';
 
             const newDate = new Date(mfgDate);
-
             if (unit.includes('day') || unit.includes('วัน')) {
                 newDate.setDate(newDate.getDate() + numValue);
             } else if (unit.includes('month') || unit.includes('mon') || unit.includes('เดือน')) {
@@ -150,32 +150,8 @@ export default function OrderPage() {
             }
 
             return newDate.toISOString().split('T')[0];
-        } catch (err) {
-            console.error('เกิดข้อผิดพลาดในการคำนวณวันหมดอายุ:', err);
+        } catch {
             return '';
-        }
-    };
-
-    const handleProductCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const code = e.target.value;
-        const product = products.find(p => p.id === code);
-
-        if (product) {
-            setOrderData(prev => ({
-                ...prev,
-                productId: code,
-                productName: product.name,
-                productExp: product.exp,
-                expiryDate: calculateExpiryDate(prev.productionDate, product.exp),
-            }));
-        } else {
-            setOrderData(prev => ({
-                ...prev,
-                productId: code,
-                productName: '',
-                productExp: '',
-                expiryDate: '',
-            }));
         }
     };
 
@@ -188,30 +164,14 @@ export default function OrderPage() {
         }));
     };
 
-    useEffect(() => {
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5);
-
-        setOrderData(prev => ({
-            ...prev,
-            orderDate: today,
-            orderTime: currentTime,
-            orderDateTime: now.toISOString()
-        }));
-    }, []);
-
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             Swal.fire({ icon: 'error', title: 'ไฟล์ไม่ถูกต้อง', text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WEBP)' });
             return;
         }
-
-        // Validate file size (2MB max)
         if (file.size > 2 * 1024 * 1024) {
             Swal.fire({ icon: 'error', title: 'ไฟล์ใหญ่เกินไป', text: 'ขนาดไฟล์ต้องไม่เกิน 2 MB' });
             return;
@@ -230,133 +190,92 @@ export default function OrderPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-       // สร้าง HTML สำหรับรูปภาพ (ถ้ามี)
-let imageHtml = '';
-if (imagePreview) {
-  imageHtml = `
-    <div style="margin-top:12px; display:flex; justify-content:center;">
-      <div style="text-align:center; margin-bottom:0;">
-        <div style="font-size:12px; color:#6b7280; margin-bottom:2px;">📷 ภาพตัวอย่างฉลาก</div>
-        <img src="${imagePreview}" alt="ตัวอย่างฉลาก" 
-             style="max-width:100%; max-height:160px; object-fit:contain; border-radius:8px; border:1px solid #ddd;" />
-      </div>
-    </div>
-  `;
-}
+        let imageHtml = '';
+        if (imagePreview) {
+            imageHtml = `
+                <div style="margin-top:12px; display:flex; justify-content:center;">
+                    <div style="text-align:center;">
+                        <div style="font-size:12px; color:#6b7280; margin-bottom:2px;">📷 ภาพตัวอย่างฉลาก</div>
+                        <img src="${imagePreview}" alt="ตัวอย่างฉลาก"
+                             style="max-width:100%; max-height:160px; object-fit:contain; border-radius:8px; border:1px solid #ddd;" />
+                    </div>
+                </div>
+            `;
+        }
 
-const confirm = await Swal.fire({
-  icon: 'question',
-  title: 'ยืนยันการบันทึก?',
-  html: `
-    <div style="font-family: sans-serif; margin-bottom:0;">
-      <table style="width:100%; border-collapse:collapse; font-size:13px; margin:auto;">
-        <tr>
-          <td style="padding:4px 6px; color:#4b5563;">📦 ประเภท</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.orderType}</td>
-        </tr>
-        <tr style="background:#f9fafb;">
-          <td style="padding:4px 6px; color:#4b5563;">🔢 เลขลอต</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.lotNumber}</td>
-        </tr>
-        <tr>
-          <td style="padding:4px 6px; color:#4b5563;">🏷️ รหัสสินค้า</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.productId}</td>
-        </tr>
-        <tr style="background:#f9fafb;">
-          <td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.productName}</td>
-        </tr>
-        <tr>
-          <td style="padding:4px 6px; color:#4b5563;">🔢 จำนวน</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.quantity}</td>
-        </tr>
-        <tr style="background:#f9fafb;">
-          <td style="padding:4px 6px; color:#4b5563;">📅 วันที่ผลิต</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.productionDate}</td>
-        </tr>
-        <tr>
-          <td style="padding:4px 6px; color:#4b5563;">📅 วันหมดอายุ</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.expiryDate}</td>
-        </tr>
-        <tr style="background:#f9fafb;">
-          <td style="padding:4px 6px; color:#4b5563;">📋 หมายเหตุ</td>
-          <td style="padding:4px 6px; font-weight:600; color:#1e293b;">${orderData.notes || '-'}</td>
-        </tr>
-      </table>
-      ${imageHtml}
-    </div>
-  `,
-  showCancelButton: true,
-  confirmButtonText: 'ยืนยัน',
-  cancelButtonText: 'ยกเลิก',
-  confirmButtonColor: '#2563eb',
-  cancelButtonColor: '#6b7280',
-  width: 'clamp(300px, 90vw, 500px)',  
-  heightAuto:true,             // ไม่เต็มจอเกินไป
-  customClass: {
-    popup: 'rounded-xl text-sm !p-4', // ลดขนาดฟอนต์รวม
-    title: 'text-base',            // หัวเรื่องเล็กลง
-    confirmButton: 'text-sm py-2 px-4',
-    cancelButton: 'text-sm py-2 px-4',
-  },
-});
+        const confirm = await Swal.fire({
+            icon: 'question',
+            title: 'ยืนยันการบันทึก?',
+            html: `
+                <div style="font-family: sans-serif;">
+                    <table style="width:100%; border-collapse:collapse; font-size:13px; margin:auto;">
+                        <tr><td style="padding:4px 6px; color:#4b5563;">📦 ประเภท</td><td style="padding:4px 6px; font-weight:600;">${orderData.orderType}</td></tr>
+                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">🔢 เลขลอต</td><td style="padding:4px 6px; font-weight:600;">${orderData.lotNumber}</td></tr>
+                        <tr><td style="padding:4px 6px; color:#4b5563;">🏷️ รหัสสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productId}</td></tr>
+                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productName}</td></tr>
+                        <tr><td style="padding:4px 6px; color:#4b5563;">🔢 จำนวน</td><td style="padding:4px 6px; font-weight:600;">${orderData.quantity}</td></tr>
+                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📅 วันที่ผลิต</td><td style="padding:4px 6px; font-weight:600;">${orderData.productionDate}</td></tr>
+                        <tr><td style="padding:4px 6px; color:#4b5563;">📅 วันหมดอายุ</td><td style="padding:4px 6px; font-weight:600;">${orderData.expiryDate}</td></tr>
+                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📋 หมายเหตุ</td><td style="padding:4px 6px; font-weight:600;">${orderData.notes || '-'}</td></tr>
+                    </table>
+                    ${imageHtml}
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6b7280',
+            width: 'clamp(300px, 90vw, 500px)',
+            heightAuto: true,
+            customClass: {
+                popup: 'rounded-xl text-sm !p-4',
+                title: 'text-base',
+                confirmButton: 'text-sm py-2 px-4',
+                cancelButton: 'text-sm py-2 px-4',
+            },
+        });
+
         if (!confirm.isConfirmed) return;
+
         try {
             const requiredFields = ['lotNumber', 'productId', 'productionDate', 'quantity'];
             const missingFields = requiredFields.filter(field => !orderData[field as keyof OrderInterface]);
-
             if (missingFields.length > 0) {
                 alert(`กรุณากรอกข้อมูลให้ครบถ้วน: ${missingFields.join(', ')}`);
                 return;
             }
 
-setUploading(true);
+            setUploading(true);
 
-let imageUrl: string | null = null;
-if (imageFile) {
-  if (!imageFile.type.startsWith('image/')) {
-    throw new Error('ไฟล์ที่เลือกไม่ใช่รูปภาพ');
-  }
+            let imageUrl: string | null = null;
+            if (imageFile) {
+                if (!imageFile.type.startsWith('image/')) throw new Error('ไฟล์ที่เลือกไม่ใช่รูปภาพ');
 
-  const fileExt = imageFile.name.split('.').pop() || 'jpg';
+                const fileExt = imageFile.name.split('.').pop() || 'jpg';
+                const rawName = orderData.productName?.trim() || '';
+                const hasThai = /[ก-๙]/.test(rawName);
 
-  // เลือกชื่อที่ใช้ตั้งไฟล์
-  const rawName = orderData.productName?.trim() || '';
-  const hasThai = /[ก-๙]/.test(rawName);
+                let safeName: string;
+                if (hasThai || !rawName) {
+                    const rawId = orderData.productId?.trim() || 'unknown-product';
+                    safeName = rawId.replace(/[^a-zA-Z0-9\-_]/g, '_').substring(0, 50);
+                } else {
+                    safeName = rawName.replace(/[^a-zA-Z0-9\-_]/g, '_').replace(/_+/g, '_').substring(0, 50);
+                }
 
-  let safeName: string;
-  if (hasThai || !rawName) {
-    // ใช้รหัสสินค้าแทน
-    const rawId = orderData.productId?.trim() || 'unknown-product';
-    safeName = rawId.replace(/[^a-zA-Z0-9\-_]/g, '_').substring(0, 50);
-  } else {
-    safeName = rawName
-      .replace(/[^a-zA-Z0-9\-_]/g, '_')
-      .replace(/_+/g, '_')
-      .substring(0, 50);
-  }
+                const now = new Date();
+                const dateStr = now.toISOString().replace(/[-:T]/g, '').slice(0, 15);
+                const fileName = `${safeName}_${dateStr}.${fileExt}`;
+                const filePath = `labels/${fileName}`;
 
-  // ✅ วันที่และเวลาอัปโหลด (YYYYMMDD_HHmmss)
-  const now = new Date();
-  const dateStr = now.toISOString().replace(/[-:T]/g, '').slice(0, 15);
+                const { error: uploadError } = await supabase.storage.from('order-images').upload(filePath, imageFile);
+                if (uploadError) throw new Error(`อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError.message}`);
 
-  const fileName = `${safeName}_${dateStr}.${fileExt}`;
-  const filePath = `labels/${fileName}`;
+                const { data: urlData } = supabase.storage.from('order-images').getPublicUrl(filePath);
+                imageUrl = urlData.publicUrl;
+            }
 
-  const { error: uploadError } = await supabase.storage
-    .from('order-images')
-    .upload(filePath, imageFile);
-
-  if (uploadError) {
-    throw new Error(`อัปโหลดรูปภาพไม่สำเร็จ: ${uploadError.message}`);
-  }
-
-  const { data: urlData } = supabase.storage
-    .from('order-images')
-    .getPublicUrl(filePath);
-
-  imageUrl = urlData.publicUrl;
-}
             const { error } = await supabase.from('orders').insert({
                 order_date: orderData.orderDate,
                 order_time: orderData.orderTime,
@@ -386,14 +305,11 @@ if (imageFile) {
                 quantity: orderData.quantity
             });
 
-            Swal.fire({
-                icon: 'success',
-                title: 'บันทึกสำเร็จ',
-                text: `บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว`
-            });
+            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: 'บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว' });
 
             // Reset form
             removeImage();
+            setProductSearch('');
             const resetNow = new Date();
             setOrderData({
                 orderDate: resetNow.toISOString().split('T')[0],
@@ -409,13 +325,8 @@ if (imageFile) {
                 quantity: 0,
                 notes: '',
             });
-        } catch (error) {
-            const errorObj = error as Error;
-            Swal.fire({
-                icon: 'error',
-                title: 'เกิดข้อผิดพลาด',
-                text: errorObj.message || 'กรุณาลองใหม่อีกครั้ง'
-            });
+        } catch {
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'กรุณาลองใหม่อีกครั้ง' });
         } finally {
             setUploading(false);
         }
@@ -433,33 +344,25 @@ if (imageFile) {
         }
     };
 
-    // ฟังก์ชันช่วยกำหนดคลาสตามสถานะ
-const getRequiredFieldStyle = (value: string | number, isRequired: boolean = true) => {
-  if (!isRequired) return "w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm";
-  
-  const hasValue = typeof value === 'string' ? value.trim().length > 0 : value > 0;
-  
-  if (hasValue) {
-    // กรอกแล้ว → เขียว
-    return "w-full px-4 py-3 bg-green-50 border border-green-400 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm";
-  } else {
-    // ยังไม่กรอก → แดง
-    return "w-full px-4 py-3 bg-red-50 border border-red-400 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 transition shadow-sm";
-  }
-};
+    const getRequiredFieldStyle = (value: string | number, isRequired: boolean = true) => {
+        const base = 'w-full px-4 py-3 rounded-lg text-gray-800 focus:outline-none transition shadow-sm';
+        if (!isRequired) return `${base} bg-white border border-gray-300 focus:ring-2 focus:ring-blue-500`;
+        const hasValue = typeof value === 'string' ? value.trim().length > 0 : value > 0;
+        if (hasValue) return `${base} bg-green-50 border border-green-400 focus:ring-2 focus:ring-green-500`;
+        return `${base} bg-red-50 border border-red-400 focus:ring-2 focus:ring-red-500`;
+    };
 
-
-const renderDateLabels = (dateString: string) => {
-  if (!dateString) return null;
-  const [year, month, day] = dateString.split('-');
-  const thaiYear = parseInt(year) + 543;
-  return (
-    <div className="mt-1 text-xs text-gray-500 space-y-0.5 md:hidden">
-      <p>(ค.ศ.) : {day}/{month}/{year}</p>
-      <p>(พ.ศ.) : {day}/{month}/{thaiYear}</p>
-    </div>
-  );
-};
+    const renderDateLabels = (dateString: string) => {
+        if (!dateString) return null;
+        const [year, month, day] = dateString.split('-');
+        const thaiYear = parseInt(year) + 543;
+        return (
+            <div className="mt-1 text-xs text-gray-500 space-y-0.5 md:hidden">
+                <p>(ค.ศ.) : {day}/{month}/{year}</p>
+                <p>(พ.ศ.) : {day}/{month}/{thaiYear}</p>
+            </div>
+        );
+    };
 
     return (
         <div className="flex justify-center py-6 text-gray-800">
@@ -469,246 +372,191 @@ const renderDateLabels = (dateString: string) => {
                 </h1>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* วันที่และเวลา */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            วันที่และเวลาสั่ง
-                        </label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">วันที่และเวลาสั่ง</label>
                         <div className="w-full px-4 py-3 bg-blue-50/50 border border-blue-200 rounded-lg text-gray-800 font-medium shadow-inner">
                             {formatThaiDateTime()}
                         </div>
                     </div>
 
+                    {/* ประเภทคำสั่ง */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-3">
-                            ประเภทคำสั่ง
-                        </label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">ประเภทคำสั่ง</label>
                         <div className="flex gap-4">
                             <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-medium transition-all ${orderData.orderType === 'พิมพ์ฉลาก' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100 hover:border-blue-400'}`}>
-                                <input
-                                    type="radio"
-                                    name="orderType"
-                                    value="พิมพ์ฉลาก"
+                                <input type="radio" name="orderType" value="พิมพ์ฉลาก"
                                     checked={orderData.orderType === 'พิมพ์ฉลาก'}
                                     onChange={(e) => setOrderData(prev => ({ ...prev, orderType: e.target.value }))}
-                                    className="hidden"
-                                />
+                                    className="hidden" />
                                 🖨️ พิมพ์ฉลาก
                             </label>
                             <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-medium transition-all ${orderData.orderType === 'ปั๊มถุง' ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100 hover:border-purple-400'}`}>
-                                <input
-                                    type="radio"
-                                    name="orderType"
-                                    value="ปั๊มถุง"
+                                <input type="radio" name="orderType" value="ปั๊มถุง"
                                     checked={orderData.orderType === 'ปั๊มถุง'}
                                     onChange={(e) => setOrderData(prev => ({ ...prev, orderType: e.target.value }))}
-                                    className="hidden"
-                                />
+                                    className="hidden" />
                                 🔖 ปั๊มถุง
                             </label>
                         </div>
                     </div>
 
-                    {/* เลขลอตสินค้า */}
-<div>
-  <label className="block text-sm font-semibold text-gray-700 mb-2">
-    เลขลอตสินค้า <span className="text-red-500">*</span>
-  </label>
-  <input
-    type="text"
-    value={orderData.lotNumber}
-    onChange={(e) => setOrderData(prev => ({ ...prev, lotNumber: e.target.value }))}
-    placeholder='ป้อนเลขลอต'
-    required
-    className={getRequiredFieldStyle(orderData.lotNumber)}
-  />
-</div>
+                    {/* เลขลอต */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            เลขลอตสินค้า <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={orderData.lotNumber}
+                            onChange={(e) => setOrderData(prev => ({ ...prev, lotNumber: e.target.value }))}
+                            placeholder="ป้อนเลขลอต"
+                            required
+                            className={getRequiredFieldStyle(orderData.lotNumber)}
+                        />
+                    </div>
 
-{/* รหัสสินค้า (ใช้ orderData.productId ตัดสิน) */}
-<div>
-    <label className="block text-sm font-semibold text-gray-700 mb-2">
-        รหัสสินค้า <span className='text-red-500'>*</span>
-    </label>
-    <div className="relative">
-        <input
-            type="text"
-            value={productSearch}
-            onChange={(e) => {
-                setProductSearch(e.target.value);
-                setShowDropdown(true);
-                // ถ้าล้างค่า ให้ reset product
-                if (!e.target.value) {
-                    setOrderData(prev => ({
-                        ...prev,
-                        productId: '',
-                        productName: '',
-                        productExp: '',
-                        expiryDate: '',
-                    }));
-                }
-            }}
-            onFocus={() => setShowDropdown(true)}
-            placeholder="ค้นหาด้วยรหัสหรือชื่อสินค้า"
-            required
-            className={`${getRequiredFieldStyle(orderData.productId)} pr-10`}
-        />
+                    {/* รหัสสินค้า — custom dropdown */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            รหัสสินค้า <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={productSearch}
+                                onChange={(e) => {
+                                    setProductSearch(e.target.value);
+                                    setShowDropdown(true);
+                                    if (!e.target.value) {
+                                        setOrderData(prev => ({ ...prev, productId: '', productName: '', productExp: '', expiryDate: '' }));
+                                    }
+                                }}
+                                onFocus={() => setShowDropdown(true)}
+                                placeholder="ค้นหาด้วยรหัสหรือชื่อสินค้า"
+                                required
+                                className={`${getRequiredFieldStyle(orderData.productId)} pr-10`}
+                            />
 
-             {/* ปุ่มเคลียร์ (X) */}
-    {productSearch && (
-    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-      <button
-        type="button"
-        onClick={() => {
-          setProductSearch('');
-          setShowDropdown(false);
-          setOrderData(prev => ({
-            ...prev,
-            productId: '',
-            productName: '',
-            productExp: '',
-            expiryDate: '',
-          }));
-        }}
-        className="text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-full p-1 transition-colors"
-        tabIndex={-1}
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  )}
+                            {/* ปุ่มเคลียร์ */}
+                            {productSearch && (
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <button type="button" tabIndex={-1}
+                                        onClick={() => {
+                                            setProductSearch('');
+                                            setShowDropdown(false);
+                                            setOrderData(prev => ({ ...prev, productId: '', productName: '', productExp: '', expiryDate: '' }));
+                                        }}
+                                        className="text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-full p-1 transition-colors">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
 
+                            {/* Dropdown */}
+                            {showDropdown && productSearch.length > 0 && (
+                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto"
+                                    onMouseDown={(e) => e.preventDefault()}>
+                                    {products
+                                        .filter(p =>
+                                            p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                            p.name.toLowerCase().includes(productSearch.toLowerCase())
+                                        )
+                                        .slice(0, 20)
+                                        .map(product => (
+                                            <button key={product.id} type="button"
+                                                onClick={() => {
+                                                    setProductSearch(product.id);
+                                                    setShowDropdown(false);
+                                                    setOrderData(prev => ({
+                                                        ...prev,
+                                                        productId: product.id,
+                                                        productName: product.name,
+                                                        productExp: product.exp,
+                                                        expiryDate: calculateExpiryDate(prev.productionDate, product.exp),
+                                                    }));
+                                                }}
+                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors">
+                                                <div className="font-semibold text-blue-700 text-sm">{product.id}</div>
+                                                <div className="text-gray-600 text-xs mt-0.5 truncate">{product.name}</div>
+                                            </button>
+                                        ))}
+                                    {products.filter(p =>
+                                        p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                        p.name.toLowerCase().includes(productSearch.toLowerCase())
+                                    ).length === 0 && (
+                                        <div className="px-4 py-3 text-gray-400 text-sm text-center">ไม่พบสินค้า</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
-        {/* ✅ Dropdown */}
-        {showDropdown && productSearch.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto"
-                 onMouseDown={(e) => e.preventDefault()} // ป้องกัน blur ก่อน click
-                 >
-                {products
-                    .filter(p =>
-                        p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
-                        p.name.toLowerCase().includes(productSearch.toLowerCase())
-                    )
-                    .slice(0, 20)
-                    .map(product => (
-                        <button
-                            key={product.id}
-                            type="button"
-                            onClick={() => {
-                                setProductSearch(product.id);
-                                setShowDropdown(false);
-                                setOrderData(prev => ({
-                                    ...prev,
-                                    productId: product.id,
-                                    productName: product.name,
-                                    productExp: product.exp,
-                                    expiryDate: calculateExpiryDate(prev.productionDate, product.exp),
-                                }));
-                            }}
-                            className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
-                        >
-                            <div className="font-semibold text-blue-700 text-sm">{product.id}</div>
-                            <div className="text-gray-600 text-xs mt-0.5 truncate">{product.name}</div>
-                        </button>
-                    ))
-                }
-                {products.filter(p =>
-                    p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
-                    p.name.toLowerCase().includes(productSearch.toLowerCase())
-                ).length === 0 && (
-                    <div className="px-4 py-3 text-gray-400 text-sm text-center">ไม่พบสินค้า</div>
-                )}
-            </div>
-        )}
-    </div>
+                        {/* Overlay ปิด dropdown */}
+                        {showDropdown && (
+                            <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                        )}
+                    </div>
 
-    {/* ✅ ปุ่มปิด dropdown เมื่อ click นอก */}
-    {showDropdown && (
-        <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-    )}
-</div>
-
+                    {/* ชื่อสินค้า */}
                     {orderData.productName && (
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">ชื่อสินค้า</label>
-                            <input
-                                type="text"
-                                value={orderData.productName}
-                                readOnly
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600"
-                            />
+                            <input type="text" value={orderData.productName} readOnly
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600" />
                         </div>
                     )}
 
+                    {/* อายุผลิตภัณฑ์ */}
                     {orderData.productExp && (
-  <div>
-    <label className="block text-sm font-semibold text-gray-700 mb-2">
-      อายุผลิตภัณฑ์
-    </label>
-    <input
-      type="text"
-      value={`${orderData.productExp} เดือน`}
-      readOnly
-      className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-800 font-medium"
-    />
-  </div>
-)}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">อายุผลิตภัณฑ์</label>
+                            <input type="text" value={`${orderData.productExp} เดือน`} readOnly
+                                className="w-full px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-800 font-medium" />
+                        </div>
+                    )}
 
                     {/* วันที่ผลิต */}
-<div>
-  <label className="block text-sm font-semibold text-gray-700 mb-2">
-    วันที่ผลิต <span className="text-red-500">*</span>
-  </label>
-  <input
-    type="date"
-    value={orderData.productionDate}
-    onChange={handleProductionDateChange}
-    required
-    className={getRequiredFieldStyle(orderData.productionDate)}
-  />
- {renderDateLabels(orderData.productionDate)}
-</div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            วันที่ผลิต <span className="text-red-500">*</span>
+                        </label>
+                        <input type="date" value={orderData.productionDate}
+                            onChange={handleProductionDateChange} required
+                            className={getRequiredFieldStyle(orderData.productionDate)} />
+                        {renderDateLabels(orderData.productionDate)}
+                    </div>
 
+                    {/* วันหมดอายุ */}
                     {orderData.expiryDate && (
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                วันหมดอายุ (คำนวณอัตโนมัติ)
-                            </label>
-                            <input
-                                type="date"
-                                value={orderData.expiryDate}
-                                readOnly
-                                className="w-full px-4 py-3 bg-green-50 border border-green-300 rounded-lg text-green-800 font-medium shadow-inner"
-                            />
-                             {renderDateLabels(orderData.expiryDate)}
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">วันหมดอายุ (คำนวณอัตโนมัติ)</label>
+                            <input type="date" value={orderData.expiryDate} readOnly
+                                className="w-full px-4 py-3 bg-green-50 border border-green-300 rounded-lg text-green-800 font-medium shadow-inner" />
+                            {renderDateLabels(orderData.expiryDate)}
                         </div>
                     )}
 
-                   {/* จำนวน */}
-<div>
-  <label className="block text-sm font-semibold text-gray-700 mb-2">
-    จำนวน <span className="text-red-500">*</span>
-  </label>
-  <input
-    type="number"
-    value={orderData.quantity || ''}
-    onChange={(e) => setOrderData(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
-    onWheel={(e) => e.currentTarget.blur()}
-    placeholder="กรอกจำนวนที่ต้องการสั่ง"
-    min="1"
-    required
-    className={`${getRequiredFieldStyle(orderData.quantity)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-  />
-</div>
-
+                    {/* จำนวน */}
                     <div>
-                        <label className='block text-sm font-semibold text-gray-700 mb-2'>
-                            หมายเหตุ
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            จำนวน <span className="text-red-500">*</span>
                         </label>
-                        <textarea
-                            value={orderData.notes || ''}
+                        <input type="number"
+                            value={orderData.quantity || ''}
+                            onChange={(e) => setOrderData(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            placeholder="กรอกจำนวนที่ต้องการสั่ง" min="1" required
+                            className={`${getRequiredFieldStyle(orderData.quantity)} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                        />
+                    </div>
+
+                    {/* หมายเหตุ */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">หมายเหตุ</label>
+                        <textarea value={orderData.notes || ''}
                             onChange={(e) => setOrderData(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder='กรอกรายละเอียดเพิ่มเติมหรือหมายเหตุ'
-                            rows={3}
-                            className='w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none shadow-sm'
+                            placeholder="กรอกรายละเอียดเพิ่มเติมหรือหมายเหตุ" rows={3}
+                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none shadow-sm"
                         />
                     </div>
 
@@ -717,60 +565,49 @@ const renderDateLabels = (dateString: string) => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                             📷 ภาพตัวอย่างฉลาก <span className="text-gray-400 font-normal">(ไม่บังคับ, สูงสุด 2 MB)</span>
                         </label>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            className="hidden"
-                            id="label-image-input"
-                        />
+                        <input ref={fileInputRef} type="file" accept="image/*"
+                            onChange={handleImageChange} className="hidden" id="label-image-input" />
                         {!imagePreview ? (
-                            <label
-                                htmlFor="label-image-input"
-                                className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group"
-                            >
+                            <label htmlFor="label-image-input"
+                                className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group">
                                 <ImagePlus className="w-10 h-10 text-gray-300 group-hover:text-blue-400 transition-colors mb-2" />
                                 <span className="text-sm text-gray-400 group-hover:text-blue-500 transition-colors">คลิกเพื่อเลือกรูปภาพ</span>
                                 <span className="text-xs text-gray-300 mt-1">JPG, PNG, WEBP (สูงสุด 2 MB)</span>
                             </label>
                         ) : (
                             <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                                <img
-                                    src={imagePreview}
-                                    alt="ตัวอย่างฉลาก"
-                                    className="w-full max-h-60 object-contain bg-gray-50"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={removeImage}
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={imagePreview} alt="ตัวอย่างฉลาก"
+                                    className="w-full max-h-60 object-contain bg-gray-50" />
+                                <button type="button" onClick={removeImage}
                                     className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors"
-                                    title="ลบรูปภาพ"
-                                >
+                                    title="ลบรูปภาพ">
                                     <X className="w-4 h-4" />
                                 </button>
                                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1.5 px-3 text-center">
-                                    {imageFile?.name} ({(imageFile?.size ?? 0 / 1024 / 1024).toFixed(2)} bytes)
+                                    {imageFile?.name}
                                 </div>
                             </div>
                         )}
                     </div>
 
+                    {/* Submit */}
                     <div className="pt-4">
-                        <button
-                            type="submit"
+                        <button type="submit"
                             className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold py-4 px-6 rounded-lg hover:from-blue-700 hover:to-indigo-800 transform transition duration-200 hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
-                            disabled={!orderData.lotNumber || !orderData.productId || !orderData.productionDate || !orderData.quantity || uploading}
-                        >
+                            disabled={!orderData.lotNumber || !orderData.productId || !orderData.productionDate || !orderData.quantity || uploading}>
                             {uploading ? (
                                 <>
-                                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                    <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
                                     กำลังบันทึก...
                                 </>
                             ) : (
                                 <>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     บันทึกคำสั่ง{orderData.orderType}
                                 </>

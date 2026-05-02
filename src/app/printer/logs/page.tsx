@@ -27,11 +27,8 @@ export default function LogsManagement() {
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
 
-    useEffect(() => {
-        fetchLogs()
-    }, [])
-
-    const fetchLogs = async () => {
+    
+     const fetchLogs = async () => {
         setLoading(true)
         try {
             const { data, error } = await supabase
@@ -65,6 +62,12 @@ export default function LogsManagement() {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+   
 
     // ✅ ดึงชื่อผู้ใช้ — รองรับทั้ง join users และ user_name โดยตรง
     const getDisplayName = (log: AuditLog): string => {

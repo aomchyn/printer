@@ -31,37 +31,7 @@ export default function UserManagement() {
     const [role, setRole] = useState('user');
     const [isAdmin, setIsAdmin] = useState(false); // only admins should see this
 
-    useEffect(() => {
-        checkAdminStatus();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
-    const checkAdminStatus = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
-            if (data?.role === 'moderator' || data?.role === 'assistant_moderator') {
-                setIsAdmin(true);
-                fetchUsers();
-            } else if (!data) {
-                // Auto-recovery: always default to 'user' role for safety
-                // SECURITY: Never auto-grant admin based on email content
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ไม่มีสิทธิ์เข้าถึง',
-                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ไม่มีสิทธิ์เข้าถึง',
-                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
-                });
-            }
-        }
-    }
-
-    const fetchUsers = async () => {
+     const fetchUsers = async () => {
         try {
             const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
             if (error) throw error;
@@ -77,6 +47,37 @@ export default function UserManagement() {
         }
     }
 
+
+     const checkAdminStatus = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
+            if (data?.role === 'moderator' || data?.role === 'assistant_moderator') {
+                setIsAdmin(true);
+                fetchUsers();
+            } else if (!data) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
+                });
+            }
+        }
+    }
+
+    useEffect(() => {
+        checkAdminStatus();
+    }, []);
+
+   
+
+   
     const isDuplicateName = (checkName: string, excludeUserId?: string): boolean => {
         return users.some(user =>
             user.name.toLowerCase() === checkName.toLowerCase() &&
@@ -272,9 +273,6 @@ export default function UserManagement() {
                     throw new Error(data.error || 'Failed to delete user via API');
                 }
 
-                // Note: If the api route deleted the user from auth.users, 
-                // it might cascade to public.users if configured.
-                // Just in case, we also try to delete from public.users here.
                 await supabase.from('users').delete().eq('id', user.id);
 
                 await logAction('DELETE_USER', { id: user.id, email: user.email, name: user.name });

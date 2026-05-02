@@ -48,78 +48,7 @@ export default function DashboardPage() {
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
     const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
-    const [timeFilter, setTimeFilter] = useState<'week' | 'month'>('week');
     const router = useRouter();
-
-
-    useEffect(() => {
-        fetchUserInfo();
-        loadOrders();
-
-        const playNotificationSound = () => {
-            try {
-                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                if (!AudioContext) return;
-                const audioCtx = new AudioContext();
-
-                const playTone = (freq: number, startTime: number, duration: number) => {
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
-                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration);
-                    oscillator.start(audioCtx.currentTime + startTime);
-                    oscillator.stop(audioCtx.currentTime + startTime + duration);
-                };
-
-                playTone(880, 0, 0.3);
-                playTone(1108.73, 0.15, 0.5);
-            } catch (e) {
-                console.error('Audio playback failed', e);
-            }
-        };
-
-        const channel = supabase.channel('schema-db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
-                (payload) => {
-                    const nowTS = Date.now();
-                    if (payload.eventType === 'INSERT') {
-                        playNotificationSound();
-                        Swal.fire({
-                            toast: true, position: 'top-end', icon: 'info',
-                            title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
-                            showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                            background: '#eff6ff', color: '#1e3a8a'
-                        });
-                    } else if (payload.eventType === 'UPDATE' && payload.new) {
-                        const newData = payload.new as any;
-                        if (newData.updated_at) {
-                            const updateTS = new Date(newData.updated_at).getTime();
-                            if (nowTS - updateTS < 10000) {
-                                playNotificationSound();
-                                const isCancelled = newData.is_cancelled;
-                                Swal.fire({
-                                    toast: true, position: 'top-end',
-                                    icon: isCancelled ? 'warning' : 'info',
-                                    title: isCancelled ? '❌ มีคำสั่งพิมพ์ถูกยกเลิก!' : '📝 มีการแก้ไขคำสั่งพิมพ์!',
-                                    text: newData.product_name ? `สินค้า: ${newData.product_name}` : '',
-                                    showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                                    background: isCancelled ? '#fef2f2' : '#eff6ff',
-                                    color: isCancelled ? '#991b1b' : '#1e3a8a'
-                                });
-                            }
-                        }
-                    }
-                    loadOrders();
-                }
-            ).subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const fetchUserInfo = async () => {
         try {
@@ -185,12 +114,80 @@ export default function DashboardPage() {
             }
 
             setOrders(allOrders);
-        } catch (error) {
-            console.error('Error loading orders:', error);
+        } catch {
             Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
     };
 
+    useEffect(() => {
+        fetchUserInfo();
+        loadOrders();
+
+        const playNotificationSound = () => {
+            try {
+                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                if (!AudioContext) return;
+                const audioCtx = new AudioContext();
+
+                const playTone = (freq: number, startTime: number, duration: number) => {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration);
+                    oscillator.start(audioCtx.currentTime + startTime);
+                    oscillator.stop(audioCtx.currentTime + startTime + duration);
+                };
+
+                playTone(880, 0, 0.3);
+                playTone(1108.73, 0.15, 0.5);
+            } catch (e) {
+                console.error('Audio playback failed', e);
+            }
+        };
+
+        const channel = supabase.channel('schema-db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
+                (payload: { eventType: string; new?: Record<string, unknown> }) => {
+                    const nowTS = Date.now();
+                    if (payload.eventType === 'INSERT') {
+                        playNotificationSound();
+                        Swal.fire({
+                            toast: true, position: 'top-end', icon: 'info',
+                            title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
+                            showConfirmButton: false, timer: 4000, timerProgressBar: true,
+                            background: '#eff6ff', color: '#1e3a8a'
+                        });
+                    } else if (payload.eventType === 'UPDATE' && payload.new) {
+                        const newData = payload.new as Record<string, unknown>;
+                        if (newData.updated_at) {
+                            const updateTS = new Date(newData.updated_at as string).getTime();
+                            if (nowTS - updateTS < 10000) {
+                                playNotificationSound();
+                                const isCancelled = newData.is_cancelled;
+                                Swal.fire({
+                                    toast: true, position: 'top-end',
+                                    icon: isCancelled ? 'warning' : 'info',
+                                    title: isCancelled ? '❌ มีคำสั่งพิมพ์ถูกยกเลิก!' : '📝 มีการแก้ไขคำสั่งพิมพ์!',
+                                    text: newData.product_name ? `สินค้า: ${newData.product_name}` : '',
+                                    showConfirmButton: false, timer: 4000, timerProgressBar: true,
+                                    background: isCancelled ? '#fef2f2' : '#eff6ff',
+                                    color: isCancelled ? '#991b1b' : '#1e3a8a'
+                                });
+                            }
+                        }
+                    }
+                    loadOrders();
+                }
+            ).subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
+   
     const sortedOrders = useMemo(() => {
         return [...orders].sort((a, b) => {
             const timeA = new Date(a.updated_at || a.created_at).getTime();
@@ -208,7 +205,7 @@ export default function DashboardPage() {
     const isAdmin = role === 'moderator' || role === 'assistant_moderator';
     const getCurrentUserIdentifier = () => employeeId ? `${userName} (${employeeId})` : userName;
 
-    const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: any) => {
+    const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: Record<string, unknown>) => {
         try {
             const userIdentifier = getCurrentUserIdentifier();
             const { error } = await supabase.from('audit_logs').insert([{
@@ -267,7 +264,7 @@ export default function DashboardPage() {
             }
                 setOrders(prev => prev.filter(order => order.id !== id));
                 Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -281,7 +278,7 @@ export default function DashboardPage() {
         const changeDetails: string[] = [];
 
         if (original) {
-            const displayVal = (val: any) =>
+            const displayVal = (val: unknown) =>
                 (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
 
             // ประเภทคำสั่ง
@@ -345,7 +342,7 @@ export default function DashboardPage() {
         setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
         setEditingOrder(null);
         Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
-    } catch (error) {
+    } catch  {
         Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
     }
 };
@@ -408,7 +405,7 @@ export default function DashboardPage() {
                     o.id === order.id ? { ...o, is_verified: true, verified_by: verifierName, verified_at: now } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'ตรวจสอบสำเร็จ!', html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`, timer: 2000, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'ตรวจสอบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -472,7 +469,7 @@ export default function DashboardPage() {
                     o.id === order.id ? { ...o, is_printed: true, is_no_file: false, printed_by: printerName, printed_by_user_id: session.user.id, printed_at: now } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -528,7 +525,7 @@ export default function DashboardPage() {
                     o.id === order.id ? { ...o, is_printed: false, printed_by: null, printed_by_user_id: null, printed_at: null } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'ยกเลิกการพิมพ์สำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -569,7 +566,7 @@ export default function DashboardPage() {
                     o.id === order.id ? { ...o, is_verified: false, verified_by: null, verified_at: null } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -614,7 +611,7 @@ export default function DashboardPage() {
                 await logAuditTrail(order.id, 'CANCEL', summary);
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
                 Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', text: 'รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว', timer: 1500 });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -632,21 +629,35 @@ export default function DashboardPage() {
                 if (error) throw error;
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: true } : o));
                 Swal.fire({ icon: 'success', title: 'ทำเครื่องหมายสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
 
     const unmarkNoFile = async (order: OrderInterface) => {
+    const result = await Swal.fire({
+        title: 'ยกเลิกการแจ้งเตือนไม่มีไฟล์?',
+        text: 'สถานะ "ไม่มีไฟล์" จะถูกยกเลิก และคำสั่งจะกลับสู่ปกติ',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'ใช่, ยกเลิก',
+        cancelButtonText: 'ปิด'
+    });
+
+    if (result.isConfirmed) {
         try {
             const { error } = await supabase.from('orders').update({ is_no_file: false }).eq('id', order.id);
             if (error) throw error;
             setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: false } : o));
-        } catch (error) {
+            Swal.fire({ icon: 'success', title: 'ยกเลิกการแจ้งเตือนสำเร็จ', timer: 1500, showConfirmButton: false });
+        } catch  {
             Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
-    };
+    }
+};
 
     const restoreOrder = async (order: OrderInterface) => {
         const result = await Swal.fire({
@@ -666,7 +677,7 @@ export default function DashboardPage() {
                 if (error) throw error;
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
                 Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'รายการกลับมาเป็นปกติแล้ว', timer: 1500 });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -690,7 +701,7 @@ export default function DashboardPage() {
                 if (dbError) throw dbError;
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, image_url: null } : o));
                 Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch  {
                 Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }

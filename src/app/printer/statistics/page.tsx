@@ -67,12 +67,7 @@ export default function StatisticsPage() {
         checkAuth();
     }, [router]);
 
-    useEffect(() => {
-        loadHistoricalOrders();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedMonth, selectedYear]);
-
-    const loadHistoricalOrders = async () => {
+     const loadHistoricalOrders = async () => {
         setIsLoading(true);
         try {
             // Calculate start and end of the selected month
@@ -104,6 +99,13 @@ export default function StatisticsPage() {
             setIsLoading(false);
         }
     };
+    
+    useEffect(() => {
+        loadHistoricalOrders();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedMonth, selectedYear]);
+
+   
 
     const getChartData = () => {
         const departmentOrders: { [key: string]: number } = {};

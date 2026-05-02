@@ -27,12 +27,7 @@ export default function FgcodeManagement() {
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
 
-    useEffect(() => {
-        fetchFgcodes()
-        fetchUserRole()
-    }, [])
-
-    const fetchUserRole = async () => {
+      const fetchUserRole = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
             const { data } = await supabase.from('users').select('role, name, employee_id').eq('id', session.user.id).single();
@@ -78,6 +73,13 @@ export default function FgcodeManagement() {
             })
         }
     }
+    
+    useEffect(() => {
+        fetchFgcodes()
+        fetchUserRole()
+    }, [])
+
+  
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
