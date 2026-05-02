@@ -57,6 +57,8 @@ export default function OrderPage() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [productSearch, setProductSearch] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
 
     useEffect(() => {
         fetchUserInfo();
@@ -362,7 +364,7 @@ export default function OrderPage() {
         <div className="flex justify-center py-6 text-gray-800">
             <div className="w-full max-w-2xl bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-8 border border-white/20">
                 <h1 className="text-3xl font-bold mb-8 text-center text-blue-700 tracking-tight">
-                    📦 ฟอร์มสั่งฉลากสินค้า
+                    📦 ฟอร์มสั่งชิ้นงาน
                 </h1>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -400,7 +402,7 @@ export default function OrderPage() {
                                     onChange={(e) => setOrderData(prev => ({ ...prev, orderType: e.target.value }))}
                                     className="hidden"
                                 />
-                                🛍️ ปั๊มถุง
+                                🔖 ปั๊มถุง
                             </label>
                         </div>
                     </div>
@@ -419,27 +421,82 @@ export default function OrderPage() {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            รหัสสินค้า
-                        </label>
-                        <input
-                            type="text"
-                            list="product-list"
-                            value={orderData.productId}
-                            onChange={handleProductCodeChange}
-                            placeholder="ป้อนรหัสสินค้า"
-                            required
-                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
-                        />
-                        <datalist id="product-list">
-                            {products.map(product => (
-                                <option key={product.id} value={product.id}>
-                                    {product.name}
-                                </option>
-                            ))}
-                        </datalist>
-                    </div>
+                   <div>
+    <label className="block text-sm font-semibold text-gray-700 mb-2">
+        รหัสสินค้า
+    </label>
+    <div className="relative">
+        <input
+            type="text"
+            value={productSearch}
+            onChange={(e) => {
+                setProductSearch(e.target.value);
+                setShowDropdown(true);
+                // ถ้าล้างค่า ให้ reset product
+                if (!e.target.value) {
+                    setOrderData(prev => ({
+                        ...prev,
+                        productId: '',
+                        productName: '',
+                        productExp: '',
+                        expiryDate: '',
+                    }));
+                }
+            }}
+            onFocus={() => setShowDropdown(true)}
+            placeholder="ค้นหาด้วยรหัสหรือชื่อสินค้า"
+            required
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
+        />
+
+        {/* ✅ Dropdown */}
+        {showDropdown && productSearch.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto"
+                 onMouseDown={(e) => e.preventDefault()} // ป้องกัน blur ก่อน click
+                 >
+                {products
+                    .filter(p =>
+                        p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
+                        p.name.toLowerCase().includes(productSearch.toLowerCase())
+                    )
+                    .slice(0, 20)
+                    .map(product => (
+                        <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => {
+                                setProductSearch(product.id);
+                                setShowDropdown(false);
+                                setOrderData(prev => ({
+                                    ...prev,
+                                    productId: product.id,
+                                    productName: product.name,
+                                    productExp: product.exp,
+                                    expiryDate: calculateExpiryDate(prev.productionDate, product.exp),
+                                }));
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
+                        >
+                            <div className="font-semibold text-blue-700 text-sm">{product.id}</div>
+                            <div className="text-gray-600 text-xs mt-0.5 truncate">{product.name}</div>
+                        </button>
+                    ))
+                }
+                {products.filter(p =>
+                    p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
+                    p.name.toLowerCase().includes(productSearch.toLowerCase())
+                ).length === 0 && (
+                    <div className="px-4 py-3 text-gray-400 text-sm text-center">ไม่พบสินค้า</div>
+                )}
+            </div>
+        )}
+    </div>
+
+    {/* ✅ ปุ่มปิด dropdown เมื่อ click นอก */}
+    {showDropdown && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+    )}
+</div>
 
                     {orderData.productName && (
                         <div>

@@ -50,6 +50,7 @@ export default function DashboardPage() {
     const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
     const [timeFilter, setTimeFilter] = useState<'week' | 'month'>('week');
     const router = useRouter();
+    
 
     useEffect(() => {
         fetchUserInfo();
