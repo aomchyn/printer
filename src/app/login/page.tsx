@@ -76,6 +76,92 @@ export default function LoginPage() {
                         <p className="login-brand-subtitle">
                             ระบบจัดการคำสั่งพิมพ์ฉลากสินค้าและปั๊มถุง
                         </p>
+
+                        <div className="husky-scene">
+    <svg className="husky-dog" viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">
+
+  {/* หางม้วนฟู - signature husky */}
+  <path d="M58,75 C32,62 20,38 30,16 C36,5 50,8 52,22"
+        stroke="#8faec8" strokeWidth="16" fill="none" strokeLinecap="round"/>
+  <path d="M58,75 C32,62 20,38 30,16 C36,5 50,8 52,22"
+        stroke="#d0e6f4" strokeWidth="8" fill="none" strokeLinecap="round"/>
+  <path d="M58,75 C32,62 20,38 30,16"
+        stroke="rgba(255,255,255,0.25)" strokeWidth="4" fill="none" strokeLinecap="round"/>
+
+  {/* ตัว */}
+  <ellipse cx="115" cy="78" rx="58" ry="30" fill="#7898b2"/>
+  {/* ท้องขาว */}
+  <ellipse cx="120" cy="87" rx="42" ry="18" fill="#cce0ef"/>
+
+  {/* คอ + ขนรอบคอ */}
+  <ellipse cx="158" cy="64" rx="24" ry="22" fill="#89adc6"/>
+  <ellipse cx="160" cy="70" rx="17" ry="14" fill="#bfd5e8" opacity="0.45"/>
+
+  {/* หัว */}
+  <ellipse cx="185" cy="46" rx="30" ry="28" fill="#89adc6"/>
+
+  {/* หมวกสีเข้ม - husky mask บนหัว */}
+  <ellipse cx="181" cy="30" rx="24" ry="17" fill="#4e6d86"/>
+
+  {/* แก้มขาว / ใบหน้าขาว */}
+  <ellipse cx="192" cy="53" rx="20" ry="15" fill="#d8eaf6"/>
+
+  {/* ปากกระบอก (snout) */}
+  <ellipse cx="210" cy="57" rx="14" ry="10" fill="#c6daea"/>
+  <path d="M196,46 C204,43 214,47 218,52"
+        stroke="#6a8ea8" strokeWidth="2" fill="none" strokeLinecap="round"/>
+
+  {/* จมูก */}
+  <ellipse cx="221" cy="54" rx="7" ry="6" fill="#111820"/>
+  <ellipse cx="219" cy="52" rx="3" ry="2" fill="rgba(255,255,255,0.38)"/>
+
+  {/* ===== ตา — จุดเด่นที่สุดของไซบีเรียน ===== */}
+  <circle cx="194" cy="42" r="10" fill="white"/>
+  <circle cx="194" cy="42" r="8" fill="#28b4e0"/>
+  <circle cx="194" cy="42" r="4.5" fill="#0c1824"/>
+  <circle cx="196.5" cy="39" r="2.5" fill="white"/>
+  <circle cx="194" cy="42" r="10" fill="none" stroke="#3d6a86" strokeWidth="1"/>
+
+  {/* จุดคิ้ว (husky มีจุดสีอ่อนเหนือตาเสมอ) */}
+  <ellipse cx="192" cy="30" rx="5" ry="3" fill="#d8eaf6" opacity="0.95"/>
+
+  {/* หู ข้างหน้า */}
+  <polygon points="166,28 175,4 188,30" fill="#3d5e78"/>
+  <polygon points="169,28 175,11 185,29" fill="#d47890" opacity="0.8"/>
+
+  {/* หู ข้างหลัง */}
+  <polygon points="180,26 190,4 202,28" fill="#304e65"/>
+  <polygon points="183,26 190,11 199,27" fill="#b86878" opacity="0.65"/>
+
+  {/* ปาก */}
+  <path d="M216,61 Q220,66 224,61"
+        stroke="#4a6878" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+
+  {/* ลิ้น */}
+  <ellipse cx="220" cy="67" rx="6" ry="5" fill="#e8728a" className="husky-tongue"/>
+  <line x1="220" y1="63" x2="220" y2="71" stroke="#cc5870" strokeWidth="1.2" strokeLinecap="round"/>
+
+  {/* ===== ขา ===== */}
+  <g className="leg-back-l">
+    <rect x="82" y="102" width="12" height="28" rx="6" fill="#5a7a96"/>
+    <ellipse cx="88" cy="131" rx="10" ry="5" fill="#486880"/>
+  </g>
+  <g className="leg-back-r">
+    <rect x="100" y="102" width="12" height="28" rx="6" fill="#6a8aaa"/>
+    <ellipse cx="106" cy="131" rx="10" ry="5" fill="#587898"/>
+  </g>
+  <g className="leg-front-l">
+    <rect x="138" y="102" width="12" height="28" rx="6" fill="#6a8aaa"/>
+    <ellipse cx="144" cy="131" rx="10" ry="5" fill="#587898"/>
+  </g>
+  <g className="leg-front-r">
+    <rect x="156" y="102" width="12" height="28" rx="6" fill="#5a7a96"/>
+    <ellipse cx="162" cy="131" rx="10" ry="5" fill="#486880"/>
+  </g>
+
+</svg>
+    <div className="husky-ground"/>
+</div>
                     </div>
 
                     {/* ── Login card ── */}
@@ -498,6 +584,81 @@ export default function LoginPage() {
                 .login-form-input--password::-ms-clear {
                  display: none;
                 }
+
+                .husky-scene {
+    position: relative;
+    height: 120px;
+    margin-top: 2.5rem;
+    overflow: hidden;
+}
+
+.husky-ground {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: rgba(59,130,246,0.3);
+}
+.husky-ground::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 0; right: 0;
+    height: 2px;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(59,130,246,0.18) 0px, rgba(59,130,246,0.18) 5px,
+        transparent 5px, transparent 14px
+    );
+}
+
+.husky-cloud { position: absolute; top: 4px; }
+.husky-cloud-1 { animation: cloudDrift 9s linear infinite; }
+.husky-cloud-2 { animation: cloudDrift 13s linear infinite; animation-delay: -5s; top: 14px; }
+
+@keyframes cloudDrift {
+    from { left: 110%; }
+    to   { left: -120px; }
+}
+
+.husky-dog {
+    position: absolute;
+    bottom: 2px;
+    width: 150px;
+    animation: huskyRunAcross 5s linear infinite, huskyBounce 0.4s ease-in-out infinite;
+    filter: drop-shadow(0 6px 10px rgba(30,80,180,0.3));
+}
+
+@keyframes huskyRunAcross {
+    from { left: -170px; }
+    to   { left: calc(100% + 20px); }
+}
+@keyframes huskyBounce {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-6px); }
+}
+
+.leg-front-r { transform-origin: 162px 102px; transform-box: fill-box; animation: legSwingA 0.4s ease-in-out infinite; }
+.leg-back-l  { transform-origin: 88px 102px;  transform-box: fill-box; animation: legSwingA 0.4s ease-in-out infinite; }
+.leg-front-l { transform-origin: 144px 102px; transform-box: fill-box; animation: legSwingB 0.4s ease-in-out infinite; }
+.leg-back-r  { transform-origin: 106px 102px; transform-box: fill-box; animation: legSwingB 0.4s ease-in-out infinite; }
+
+@keyframes legSwingA {
+    0%, 100% { transform: rotate(-25deg); }
+    50%       { transform: rotate(25deg); }
+}
+@keyframes legSwingB {
+    0%, 100% { transform: rotate(25deg); }
+    50%       { transform: rotate(-25deg); }
+}
+
+.husky-tongue {
+    transform-origin: 178px 48px;
+    transform-box: fill-box;
+    animation: tongueWag 0.8s ease-in-out infinite;
+}
+@keyframes tongueWag {
+    0%, 100% { transform: rotate(-10deg) scaleY(1); }
+    50%       { transform: rotate(10deg) scaleY(1.2); }
+}
 
                 /* Security badge */
                 .login-security-badge {
