@@ -27,7 +27,7 @@ export default function FgcodeManagement() {
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
 
-      const fetchUserRole = async () => {
+    const fetchUserRole = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
             const { data } = await supabase.from('users').select('role, name, employee_id').eq('id', session.user.id).single();
@@ -97,33 +97,31 @@ export default function FgcodeManagement() {
             return;
         }
 
-        // ✅ ตรวจสอบภาษาไทยในชื่อสินค้า
-    const thaiCharRegex = /[ก-๙]/;
-    if (thaiCharRegex.test(cleanId)) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'รหัสสินค้าไม่ถูกต้อง',
-            text: 'รหัสสินค้าต้องเป็นภาษาอังกฤษ ตัวเลข หรือเครื่องหมายขีด (-) เท่านั้น ห้ามใช้ภาษาไทย',
-            confirmButtonText: 'รับทราบ',
-        });
-        return;
-    }
+        const thaiCharRegex = /[ก-๙]/;
+        if (thaiCharRegex.test(cleanId)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'รหัสสินค้าไม่ถูกต้อง',
+                text: 'รหัสสินค้าต้องเป็นภาษาอังกฤษ ตัวเลข หรือเครื่องหมายขีด (-) เท่านั้น ห้ามใช้ภาษาไทย',
+                confirmButtonText: 'รับทราบ',
+            });
+            return;
+        }
 
-     const isAdminRole = userRole === 'moderator' || userRole === 'assistant_moderator';
+        const isAdminRole = userRole === 'moderator' || userRole === 'assistant_moderator';
         if (!isAdminRole && thaiCharRegex.test(cleanName)) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'ไม่อนุญาตให้ใช้ภาษาไทย',
-            text: 'ชื่อสินค้าภาษาไทยไม่อนุญาตให้ใช้',
-            confirmButtonText: 'รับทราบ',
-            confirmButtonColor: '#6b7280',
-        });
-        return;
-    }
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่อนุญาตให้ใช้ภาษาไทย',
+                text: 'ชื่อสินค้าภาษาไทยไม่อนุญาตให้ใช้',
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
     
         try {
             if (editingFgcode) {
-                // แก้ไข
                 const { error } = await supabase.from('fgcode').update({
                     name: cleanName,
                     exp: cleanExp,
@@ -133,28 +131,29 @@ export default function FgcodeManagement() {
                 if (error) throw error;
                 await logAction('UPDATE_PRODUCT', { id: editingFgcode.id, name: cleanName, exp: cleanExp, category });
 
-                // ถ้าอายุผลิตภัณฑ์เปลี่ยน → อัปเดตคำสั่งพิมพ์ที่ยังไม่ Verify ทั้งหมด
-                if (editingFgcode.exp !== cleanExp) {
+                const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+                const now = new Date().toISOString();
+
+                // ✅ ชื่อเปลี่ยน และ/หรือ exp เปลี่ยน → ดึง orders พร้อมกันครั้งเดียว
+                const nameChanged = editingFgcode.name !== cleanName;
+                const expChanged = editingFgcode.exp !== cleanExp;
+
+                if (nameChanged || expChanged) {
                     try {
-                        // ดึงคำสั่งพิมพ์ทั้งหมดที่ใช้สินค้านี้
                         const { data: allOrders, error: fetchError } = await supabase
                             .from('orders')
-                            .select('id, production_date, is_verified, is_cancelled')
+                            .select('id, product_name, production_date, is_verified, is_cancelled')
                             .eq('product_id', editingFgcode.id);
 
                         if (fetchError) {
                             console.error('Error fetching orders for sync:', fetchError);
                         }
 
-                        // กรองเฉพาะรายการที่ยังไม่ Verify และยังไม่ยกเลิก
                         const pendingOrders = (allOrders || []).filter(
                             o => !o.is_verified && !o.is_cancelled
                         );
 
-                        console.log(`[Sync] Found ${pendingOrders.length} pending orders for product ${editingFgcode.id}`);
-
                         if (pendingOrders.length > 0) {
-                            // คำนวณวันหมดอายุใหม่ให้แต่ละ order
                             const calculateExpiry = (mfgDate: string, shelfLife: string): string => {
                                 if (!mfgDate || !shelfLife) return '';
                                 try {
@@ -168,30 +167,62 @@ export default function FgcodeManagement() {
                             };
 
                             let updatedCount = 0;
-                            const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+
                             for (const order of pendingOrders) {
-                                const newExpiry = calculateExpiry(order.production_date, cleanExp);
-                                const { error: updateError } = await supabase.from('orders').update({
-                                    product_exp: cleanExp,
-                                    expiry_date: newExpiry,
-                                    updated_at: new Date().toISOString(),
+                                const updatePayload: Record<string, unknown> = {
+                                    updated_at: now,
                                     updated_by: editorName,
-                                    edit_summary: `อัปเดตอายุผลิตภัณฑ์อัตโนมัติ โดย ${editorName}: ${editingFgcode.exp} ➡️ ${cleanExp} เดือน`
-                                }).eq('id', order.id);
+                                };
+
+                                const auditSummaries: string[] = [];
+
+                                // ✅ ชื่อเปลี่ยน
+                                if (nameChanged) {
+                                    updatePayload.product_name = cleanName;
+                                    updatePayload.previous_product_name = order.product_name;
+                                    auditSummaries.push(`ชื่อสินค้าเปลี่ยน: ${order.product_name} ➡️ ${cleanName}`);
+                                }
+
+                                // ✅ exp เปลี่ยน
+                                if (expChanged) {
+                                    const newExpiry = calculateExpiry(order.production_date, cleanExp);
+                                    updatePayload.product_exp = cleanExp;
+                                    updatePayload.expiry_date = newExpiry;
+                                    updatePayload.edit_summary = `อัปเดตอายุผลิตภัณฑ์อัตโนมัติ โดย ${editorName}: ${editingFgcode.exp} ➡️ ${cleanExp} เดือน`;
+                                    auditSummaries.push(`อายุผลิตภัณฑ์เปลี่ยน: ${editingFgcode.exp} ➡️ ${cleanExp} เดือน (วันหมดอายุใหม่: ${newExpiry})`);
+                                }
+
+                                const { error: updateError } = await supabase
+                                    .from('orders')
+                                    .update(updatePayload)
+                                    .eq('id', order.id);
 
                                 if (updateError) {
                                     console.error(`Error updating order ${order.id}:`, updateError);
                                 } else {
+                                    // ✅ insert audit_logs ทีละ summary
+                                    for (const summary of auditSummaries) {
+                                        await supabase.from('audit_logs').insert([{
+                                            order_id: order.id,
+                                            action: 'UPDATE',
+                                            user_name: editorName,
+                                            summary,
+                                            created_at: now,
+                                        }]);
+                                    }
                                     updatedCount++;
                                 }
                             }
 
                             if (updatedCount > 0) {
+                                const toastParts = [];
+                                if (nameChanged) toastParts.push('ชื่อสินค้า');
+                                if (expChanged) toastParts.push('อายุผลิตภัณฑ์');
                                 Swal.fire({
                                     toast: true,
                                     position: 'top-end',
                                     icon: 'info',
-                                    title: `📦 อัปเดตอายุผลิตภัณฑ์ในคำสั่งพิมพ์ ${updatedCount} รายการ`,
+                                    title: `📦 อัปเดต${toastParts.join(' และ ')}ในคำสั่งพิมพ์ ${updatedCount} รายการ`,
                                     showConfirmButton: false,
                                     timer: 3000,
                                     timerProgressBar: true
@@ -199,11 +230,11 @@ export default function FgcodeManagement() {
                             }
                         }
                     } catch (syncError) {
-                        console.error('Error syncing orders with new exp:', syncError);
+                        console.error('Error syncing orders:', syncError);
                     }
                 }
+
             } else {
-                // เพิ่มใหม่ (ตรวจสอบซ้ำ)
                 const { data: existing } = await supabase.from('fgcode').select('id').eq('id', cleanId).single();
                 if (existing) {
                     Swal.fire({
@@ -233,14 +264,12 @@ export default function FgcodeManagement() {
                 showConfirmButton: false
             });
 
-            // ปิด Modal และรีเซ็ตฟอร์ม
             setShowModal(false);
             setEditingFgcode(null);
             setId('');
             setName('');
             setExp('');
             setCategory('');
-
             fetchFgcodes();
 
         } catch (error) {
@@ -278,23 +307,11 @@ export default function FgcodeManagement() {
             try {
                 const { error } = await supabase.from('fgcode').delete().eq('id', rowId);
                 if (error) throw error;
-
                 await logAction('DELETE_PRODUCT', { id: rowId });
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'ลบสำเร็จ',
-                    timer: 1500,
-                    showConfirmButton: false
-                })
-
+                Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', timer: 1500, showConfirmButton: false })
                 fetchFgcodes()
             } catch {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ผิดพลาด',
-                    text: 'ไม่สามารถลบรหัสสินค้าได้'
-                })
+                Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถลบรหัสสินค้าได้' })
             }
         }
     }
@@ -306,35 +323,21 @@ export default function FgcodeManagement() {
 
     const getCategoryBadge = (cat?: string) => {
         if (!cat) return null;
-
         let bgColor = '';
         let textColor = '';
         let borderColor = '';
-
         switch (cat) {
             case 'มีทะเบียน / FAMI-QS':
             case 'มีทะเบียน':
             case 'มีทะเบียน / GHPs-HACCP':
-                bgColor = 'bg-green-100';
-                textColor = 'text-green-800';
-                borderColor = 'border-green-200';
-                break;
+                bgColor = 'bg-green-100'; textColor = 'text-green-800'; borderColor = 'border-green-200'; break;
             case 'สินค้าภายใน / สินค้าคุณหมอเอ':
-                bgColor = 'bg-red-100';
-                textColor = 'text-red-800';
-                borderColor = 'border-red-200';
-                break;
+                bgColor = 'bg-red-100'; textColor = 'text-red-800'; borderColor = 'border-red-200'; break;
             case 'วัตถุดิบ':
-                bgColor = 'bg-purple-100';
-                textColor = 'text-purple-800';
-                borderColor = 'border-purple-200';
-                break;
+                bgColor = 'bg-purple-100'; textColor = 'text-purple-800'; borderColor = 'border-purple-200'; break;
             default:
-                bgColor = 'bg-gray-100';
-                textColor = 'text-gray-800';
-                borderColor = 'border-gray-200';
+                bgColor = 'bg-gray-100'; textColor = 'text-gray-800'; borderColor = 'border-gray-200';
         }
-
         return (
             <span className={`px-3 py-1 ${bgColor} ${textColor} rounded-full text-xs font-bold border ${borderColor}`}>
                 {cat}
@@ -360,24 +363,14 @@ export default function FgcodeManagement() {
                         className="w-full pl-10 pr-4 py-2.5 bg-white/95 border border-white/20 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                     />
                     {searchTerm && (
-                        <button
-                            onClick={() => setSearchTerm('')}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                        >
+                        <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
                             <X className="w-5 h-5" />
                         </button>
                     )}
                 </div>
 
                 <button
-                    onClick={() => {
-                        setEditingFgcode(null)
-                        setId('')
-                        setName('')
-                        setExp('')
-                        setCategory('')
-                        setShowModal(true)
-                    }}
+                    onClick={() => { setEditingFgcode(null); setId(''); setName(''); setExp(''); setCategory(''); setShowModal(true); }}
                     className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 px-6 rounded-lg transition duration-200 flex items-center justify-center shadow-lg transform hover:scale-105 shrink-0"
                 >
                     <Plus className="mr-2 w-5 h-5" /> เพิ่มรายการสินค้า
@@ -392,9 +385,7 @@ export default function FgcodeManagement() {
                             <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">รายการสินค้า</th>
                             <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">กลุ่มสินค้า</th>
                             <th className="px-6 py-4 text-left text-sm font-bold text-white uppercase tracking-wider">อายุผลิตภัณฑ์</th>
-                            <th className="px-6 py-4 text-right text-sm font-bold text-white uppercase tracking-wider">
-                                จัดการ
-                            </th>
+                            <th className="px-6 py-4 text-right text-sm font-bold text-white uppercase tracking-wider">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -411,43 +402,19 @@ export default function FgcodeManagement() {
                             </tr>
                         ) : (
                             filteredFgcodes.map((fgcode, index) => (
-                                <tr
-                                    key={fgcode.id}
-                                    className={`
-                                        ${index % 2 === 0 ? 'bg-white' : 'bg-blue-50'} 
-                                        hover:bg-blue-100 transition-colors duration-200 border-b border-gray-200 last:border-0
-                                    `}
-                                >
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                        {fgcode.id}
-                                    </td>
+                                <tr key={fgcode.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-blue-50'} hover:bg-blue-100 transition-colors duration-200 border-b border-gray-200 last:border-0`}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{fgcode.id}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{fgcode.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{getCategoryBadge(fgcode.category)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {fgcode.name}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        {getCategoryBadge(fgcode.category)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold border border-blue-200">
-                                            {fgcode.exp}
-                                        </span>
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold border border-blue-200">{fgcode.exp}</span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        {/* ทุก role สามารถแก้ไขได้ */}
-                                        <button
-                                            onClick={() => handleEdit(fgcode)}
-                                            className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2"
-                                            title="แก้ไข"
-                                        >
+                                        <button onClick={() => handleEdit(fgcode)} className="text-white bg-indigo-500 hover:bg-indigo-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg mr-2" title="แก้ไข">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
-                                        {/* เฉพาะ moderator / assistant_moderator เท่านั้นที่ลบได้ */}
                                         {userRole !== 'user' && (
-                                            <button
-                                                onClick={() => handleDelete(fgcode.id)}
-                                                className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg"
-                                                title="ลบ"
-                                            >
+                                            <button onClick={() => handleDelete(fgcode.id)} className="text-white bg-red-500 hover:bg-red-600 p-2.5 rounded-xl transition-colors shadow-md hover:shadow-lg" title="ลบ">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         )}
@@ -463,14 +430,7 @@ export default function FgcodeManagement() {
                 <Modal
                     id="fgcode-modal"
                     title={editingFgcode ? 'แก้ไขรหัสสินค้า' : 'เพิ่มรหัสสินค้าใหม่'}
-                    onClose={() => {
-                        setShowModal(false)
-                        setEditingFgcode(null)
-                        setId('')
-                        setName('')
-                        setExp('')
-                        setCategory('')
-                    }}
+                    onClose={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp(''); setCategory(''); }}
                     size="md">
                     <form onSubmit={handleSubmit}>
                         <div className="mb-4">
@@ -487,42 +447,39 @@ export default function FgcodeManagement() {
                                 disabled={!!editingFgcode}
                             />
                             {editingFgcode && (
-                                <small className="text-gray-500 mt-1 block">
-                                    ไม่สามารถแก้ไขรหัสสินค้าได้
-                                </small>
+                                <small className="text-gray-500 mt-1 block">ไม่สามารถแก้ไขรหัสสินค้าได้</small>
                             )}
                         </div>
 
                         <div className="mb-4">
-    <label className="block mb-2 font-semibold text-gray-700">
-        ชื่อสินค้า <span className="text-red-500">*</span>
-        {!isAdminRole && (
-            <span className="text-xs text-gray-400 ml-2">(ภาษาอังกฤษเท่านั้น)</span>
-        )}
-    </label>
-    <input
-        type="text"
-        className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
-        value={name}
-        onChange={e => {
-            const value = e.target.value;
-            if (!isAdminRole) {
-                const filtered = value.replace(/[ก-๙]/g, '');
-                setName(filtered.toUpperCase());
-            } else {
-                setName(value.toUpperCase());
-            }
-        }}
-        placeholder={isAdminRole ? "ชื่อสินค้า (ภาษาไทยหรืออังกฤษ)" : "เช่น TEST 25KG."}
-        required
-    />
-    {/* ✅ อยู่หลัง /> ของ input เสมอ */}
-    {!isAdminRole && (
-        <p className="mt-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
-            ⚠️ สิทธิ์ของคุณอนุญาตให้ใช้ภาษาอังกฤษและตัวเลขเท่านั้น
-        </p>
-    )}
-</div>
+                            <label className="block mb-2 font-semibold text-gray-700">
+                                ชื่อสินค้า <span className="text-red-500">*</span>
+                                {!isAdminRole && (
+                                    <span className="text-xs text-gray-400 ml-2">(ภาษาอังกฤษเท่านั้น)</span>
+                                )}
+                            </label>
+                            <input
+                                type="text"
+                                className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
+                                value={name}
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    if (!isAdminRole) {
+                                        const filtered = value.replace(/[ก-๙]/g, '');
+                                        setName(filtered.toUpperCase());
+                                    } else {
+                                        setName(value.toUpperCase());
+                                    }
+                                }}
+                                placeholder={isAdminRole ? "ชื่อสินค้า (ภาษาไทยหรืออังกฤษ)" : "เช่น TEST 25KG."}
+                                required
+                            />
+                            {!isAdminRole && (
+                                <p className="mt-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                    ⚠️ สิทธิ์ของคุณอนุญาตให้ใช้ภาษาอังกฤษและตัวเลขเท่านั้น
+                                </p>
+                            )}
+                        </div>
 
                         <div className="mb-6">
                             <label className="block mb-2 font-semibold text-gray-700">
@@ -560,18 +517,10 @@ export default function FgcodeManagement() {
                         <div className="flex justify-end gap-3 mt-4">
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setShowModal(false)
-                                    setEditingFgcode(null)
-                                    setId('')
-                                    setName('')
-                                    setExp('')
-                                    setCategory('')
-                                }}
+                                onClick={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp(''); setCategory(''); }}
                                 className="px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors">
                                 <X className="mr-2 w-4 h-4" /> ยกเลิก
                             </button>
-
                             <button
                                 type="submit"
                                 className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-lg transition-transform hover:scale-105">

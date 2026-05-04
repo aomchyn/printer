@@ -146,7 +146,7 @@ loadOrders(identifier);
                     await supabase.from('audit_logs').insert([{
                         order_id: id,
                         action: 'UPDATE',
-                        user_name: userIdentifier || 'ระบบอัตโนมัติ',
+                        user_name: userIdentifier ,
                         summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
                         created_at: now,
                     }]);
