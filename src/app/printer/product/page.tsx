@@ -26,6 +26,7 @@ export default function FgcodeManagement() {
     const [userRole, setUserRole] = useState<string>('user');
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
+    const [saving, setSaving] = useState(false);
 
     const fetchUserRole = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -119,7 +120,25 @@ export default function FgcodeManagement() {
             });
             return;
         }
-    
+
+        // ✅ ตรวจสอบว่าไม่มีการแก้ไข (เฉพาะกรณีแก้ไข)
+        if (editingFgcode) {
+            const oldName = editingFgcode.name || '';
+            const oldExp = editingFgcode.exp || '';
+            const oldCategory = editingFgcode.category || '';
+            const newCategory = category || '';
+            if (cleanName === oldName && cleanExp === oldExp && newCategory === oldCategory) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ไม่มีการเปลี่ยนแปลง',
+                    text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของสินค้านี้',
+                    confirmButtonText: 'รับทราบ'
+                });
+                return;
+            }
+        }
+
+        setSaving(true); // โหลดกำลังบันทึก
         try {
             if (editingFgcode) {
                 const { error } = await supabase.from('fgcode').update({
@@ -279,6 +298,8 @@ export default function FgcodeManagement() {
                 title: 'ผิดพลาด',
                 text: errorObj.message || `ไม่สามารถ${editingFgcode ? 'แก้ไข' : 'สร้าง'}รหัสสินค้าได้`
             });
+        } finally{
+            setSaving(false); // หยุดโหลด
         }
     };
 
@@ -523,9 +544,23 @@ export default function FgcodeManagement() {
                             </button>
                             <button
                                 type="submit"
-                                className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-lg transition-transform hover:scale-105">
-                                <Check className="mr-2 w-4 h-4" />
-                                {editingFgcode ? 'บันทึกการแก้ไข' : 'สร้างสินค้า'}
+                                disabled={saving}
+                                className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-lg transition-transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {saving ? (
+                                    <span className="flex items-center gap-2">
+                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        กำลังบันทึก...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <Check className="mr-2 w-4 h-4" />
+                                        {editingFgcode ? 'บันทึกการแก้ไข' : 'สร้างสินค้า'}
+                                    </>
+                                )}
                             </button>
                         </div>
                     </form>
