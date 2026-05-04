@@ -495,19 +495,33 @@ export default function FgcodeManagement() {
 
                         <div className="mb-4">
     <label className="block mb-2 font-semibold text-gray-700">
-  ชื่อสินค้า <span className="text-red-500">*</span>
-  {!isAdminRole && (
-    <span className="text-xs text-gray-400 ml-2">(ภาษาอังกฤษเท่านั้น)</span>
-  )}
-</label>
+        ชื่อสินค้า <span className="text-red-500">*</span>
+        {!isAdminRole && (
+            <span className="text-xs text-gray-400 ml-2">(ภาษาอังกฤษเท่านั้น)</span>
+        )}
+    </label>
     <input
         type="text"
         className="w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300"
         value={name}
-        onChange={e => setName(e.target.value.toUpperCase())}
+        onChange={e => {
+            const value = e.target.value;
+            if (!isAdminRole) {
+                const filtered = value.replace(/[ก-๙]/g, '');
+                setName(filtered.toUpperCase());
+            } else {
+                setName(value.toUpperCase());
+            }
+        }}
         placeholder={isAdminRole ? "ชื่อสินค้า (ภาษาไทยหรืออังกฤษ)" : "เช่น TEST 25KG."}
         required
     />
+    {/* ✅ อยู่หลัง /> ของ input เสมอ */}
+    {!isAdminRole && (
+        <p className="mt-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+            ⚠️ สิทธิ์ของคุณอนุญาตให้ใช้ภาษาอังกฤษและตัวเลขเท่านั้น
+        </p>
+    )}
 </div>
 
                         <div className="mb-6">
