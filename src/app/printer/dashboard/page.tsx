@@ -38,6 +38,7 @@ export interface OrderInterface {
     printed_by?: string | null;         // ✅ ชื่อผู้พิมพ์
     printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
     printed_at?: string | null;         // ✅ เวลาที่พิมพ์
+    previous_product_name?: string | null;  // ✅ เพิ่มตรงนี้
 }
 
 export default function DashboardPage() {
@@ -98,20 +99,47 @@ export default function DashboardPage() {
             }
 
             const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
-            if (fgcodeData && fgcodeData.length > 0) {
-                const productMap = Object.fromEntries(
-                    fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
-                );
-                allOrders = allOrders.map(order => {
-                    const currentName = productMap[order.product_id];
-                    const nameChanged = currentName && currentName !== order.product_name;
-                    return {
-                        ...order,
-                        product_name: currentName ?? order.product_name,
-                        original_product_name: nameChanged ? order.product_name : undefined,
-                    };
-                });
-            }
+           if (fgcodeData && fgcodeData.length > 0) {
+    const productMap = Object.fromEntries(
+        fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
+    );
+
+    const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
+
+    allOrders = allOrders.map(order => {
+        const currentName = productMap[order.product_id];
+
+        // ✅ ชื่อใน fgcode ≠ ชื่อใน DB → เปลี่ยนแปลง
+        const nameChanged = currentName && currentName !== order.product_name;
+
+        if (nameChanged) {
+            updatesNeeded.push({
+                id: order.id,
+                newName: currentName,
+                oldName: order.product_name, // ชื่อล่าสุดก่อนเปลี่ยน
+            });
+        }
+
+        return {
+            ...order,
+            product_name: currentName ?? order.product_name,
+            // ✅ ใช้ค่าจาก DB ถ้ามี (เพื่อให้ badge คงอยู่หลัง reload)
+            original_product_name: order.previous_product_name ?? (nameChanged ? order.product_name : undefined),
+        };
+    });
+
+    if (updatesNeeded.length > 0) {
+        await Promise.all(
+            updatesNeeded.map(({ id, newName, oldName }) =>
+                supabase.from('orders').update({
+                    product_name: newName,
+                    previous_product_name: oldName, // ✅ บันทึกชื่อก่อนเปลี่ยนถาวร
+                    updated_at: new Date().toISOString(),
+                }).eq('id', id)
+            )
+        );
+    }
+}
 
             setOrders(allOrders);
         } catch {
