@@ -127,7 +127,7 @@ export default function FgcodeManagement() {
             const oldExp = editingFgcode.exp || '';
             const oldCategory = editingFgcode.category || '';
             const newCategory = category || '';
-            if (cleanName === oldName && cleanExp === oldExp && newCategory === oldCategory) {
+            if (cleanName === oldName && cleanExp === oldExp && newCategory === oldCategory && cleanId === editingFgcode.id) {
                 Swal.fire({
                     icon: 'info',
                     title: 'ไม่มีการเปลี่ยนแปลง',
@@ -150,6 +150,56 @@ export default function FgcodeManagement() {
                 if (error) throw error;
                 await logAction('UPDATE_PRODUCT', { id: editingFgcode.id, name: cleanName, exp: cleanExp, category });
 
+                const idChanged = editingFgcode.id !== cleanId;
+
+// ถ้า id เปลี่ยน → rename fgcode id ก่อน (CASCADE จะจัดการ orders.product_id ให้อัตโนมัติ)
+if (idChanged) {
+   // ✅ เช็คซ้ำก่อน
+    const { data: existingId } = await supabase.from('fgcode').select('id').eq('id', cleanId).single();
+    if (existingId) {
+        Swal.fire({
+            icon: 'error',
+            title: 'รหัสสินค้าซ้ำ',
+            text: `รหัส "${cleanId}" มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น`,
+            confirmButtonText: 'รับทราบ',
+            confirmButtonColor: '#6b7280',
+        });
+        return;
+    }
+
+    // ต้อง insert fgcode ใหม่ก่อน แล้วค่อยลบอันเก่า เพราะ PK ไม่สามารถ update ตรงๆ ใน Supabase
+    const { error: insertErr } = await supabase.from('fgcode').insert({
+        id: cleanId,
+        name: cleanName,
+        exp: cleanExp,
+        category: category || null,
+    });
+    if (insertErr) throw insertErr;
+
+    // update orders ให้ชี้ไป id ใหม่
+    await supabase.from('orders').update({ product_id: cleanId }).eq('product_id', editingFgcode.id);
+
+    // ลบ fgcode เก่า
+    await supabase.from('fgcode').delete().eq('id', editingFgcode.id);
+
+    // log audit ใน orders ที่เกี่ยวข้อง
+    const { data: affectedOrders } = await supabase
+        .from('orders').select('id').eq('product_id', cleanId);
+    
+    const now = new Date().toISOString();
+    const editorName = employeeId ? `${userName} (${employeeId})` : userName;
+    for (const o of affectedOrders || []) {
+        await supabase.from('audit_logs').insert([{
+            order_id: o.id,
+            action: 'UPDATE',
+            user_name: editorName,
+            summary: `รหัสสินค้าเปลี่ยน: ${editingFgcode.id} ➡️ ${cleanId}`,
+            created_at: now,
+        }]);
+    }
+}
+
+
                 const editorName = employeeId ? `${userName} (${employeeId})` : userName;
                 const now = new Date().toISOString();
 
@@ -159,10 +209,14 @@ export default function FgcodeManagement() {
 
                 if (nameChanged || expChanged) {
                     try {
+                    
+                        // ✅ ถ้า id เปลี่ยนด้วย ให้ใช้ cleanId แทน editingFgcode.id
+        const productIdToQuery = idChanged ? cleanId : editingFgcode.id;
+
                         const { data: allOrders, error: fetchError } = await supabase
                             .from('orders')
                             .select('id, product_name, production_date, is_verified, is_cancelled')
-                            .eq('product_id', editingFgcode.id);
+                            .eq('product_id', productIdToQuery);
 
                         if (fetchError) {
                             console.error('Error fetching orders for sync:', fetchError);
@@ -465,11 +519,14 @@ export default function FgcodeManagement() {
                                 onChange={e => setId(e.target.value.toUpperCase())}
                                 placeholder="เช่น 01-1-001 หรือ FG-001"
                                 required
-                                disabled={!!editingFgcode}
+                                disabled={!!editingFgcode && !isAdminRole}
                             />
-                            {editingFgcode && (
-                                <small className="text-gray-500 mt-1 block">ไม่สามารถแก้ไขรหัสสินค้าได้</small>
-                            )}
+                            {editingFgcode && !isAdminRole && (
+    <small className="text-gray-500 mt-1 block">ไม่สามารถแก้ไขรหัสสินค้าได้</small>
+)}
+{editingFgcode && isAdminRole && (
+    <small className="text-amber-600 mt-1 block">⚠️ การเปลี่ยนรหัสสินค้าจะอัปเดตคำสั่งพิมพ์ทั้งหมดที่เกี่ยวข้อง</small>
+)}
                         </div>
 
                         <div className="mb-4">
