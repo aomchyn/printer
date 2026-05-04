@@ -66,6 +66,8 @@ export default function DashboardPage() {
                 setRole(data.role);
                 setUserName(data.name);
                 setEmployeeId(data.employee_id || '');
+                const identifier = data.employee_id ? `${data.name} (${data.employee_id})` : data.name;
+loadOrders(identifier);
             } else {
                 setRole('user');
                 setUserName(session.user.email?.split('@')[0] || 'User');
@@ -78,7 +80,7 @@ export default function DashboardPage() {
 
     const [auditKey, setAuditKey] = useState(0);
 
-    const loadOrders = async () => {
+    const loadOrders = async (userIdentifier?: string) => {
     try {
         let allOrders: OrderInterface[] = [];
         let from = 0;
@@ -144,7 +146,7 @@ export default function DashboardPage() {
                     await supabase.from('audit_logs').insert([{
                         order_id: id,
                         action: 'UPDATE',
-                        user_name: 'ระบบอัตโนมัติ',
+                        user_name: userIdentifier || 'ระบบอัตโนมัติ',
                         summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
                         created_at: now,
                     }]);
@@ -166,7 +168,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         fetchUserInfo();
-        loadOrders();
+        
 
         const playNotificationSound = () => {
             try {
