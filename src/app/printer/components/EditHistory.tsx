@@ -15,9 +15,10 @@ interface HistoryEntry {
 interface Props {
     orderId: number;
     updatedAt?: string | null;
+    auditKey?: number;
 }
 
-export default function EditHistory({ orderId, updatedAt }: Props) {
+export default function EditHistory({ orderId, updatedAt, auditKey }: Props) {
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState(false);
@@ -47,7 +48,7 @@ export default function EditHistory({ orderId, updatedAt }: Props) {
 
         loadHistory();
         return () => { cancelled = true; };
-    }, [orderId, updatedAt]);
+    }, [orderId, updatedAt, auditKey]);
 
     if (loading) return <div className="text-sm text-gray-400 mt-2">กำลังโหลดประวัติ...</div>;
     if (history.length === 0) return null;

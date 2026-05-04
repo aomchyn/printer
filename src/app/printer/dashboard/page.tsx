@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search } from 'lucide-react';
 import EditHistory from '../components/EditHistory';
 
+const processingOrderIds = new Set<number>();
+
 export interface OrderInterface {
     id: number;
     order_date: string;
@@ -38,7 +40,7 @@ export interface OrderInterface {
     printed_by?: string | null;         // ✅ ชื่อผู้พิมพ์
     printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
     printed_at?: string | null;         // ✅ เวลาที่พิมพ์
-    previous_product_name?: string | null;  // ✅ เพิ่มตรงนี้
+    previous_product_name?: string | null;  
 }
 
 export default function DashboardPage() {
@@ -74,78 +76,93 @@ export default function DashboardPage() {
         }
     };
 
+    const [auditKey, setAuditKey] = useState(0);
+
     const loadOrders = async () => {
-        try {
-            let allOrders: OrderInterface[] = [];
-            let from = 0;
-            const pageSize = 1000;
-            let hasMore = true;
+    try {
+        let allOrders: OrderInterface[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
 
-            while (hasMore) {
-                const { data, error } = await supabase
-                    .from('orders').select('*')
-                    .eq('is_deleted', false)
-                    .order('created_at', { ascending: false })
-                    .range(from, from + pageSize - 1);
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('orders').select('*')
+                .eq('is_deleted', false)
+                .order('created_at', { ascending: false })
+                .range(from, from + pageSize - 1);
 
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    allOrders = [...allOrders, ...(data as OrderInterface[])];
-                    from += pageSize;
-                    hasMore = data.length === pageSize;
-                } else {
-                    hasMore = false;
-                }
+            if (error) throw error;
+            if (data && data.length > 0) {
+                allOrders = [...allOrders, ...(data as OrderInterface[])];
+                from += pageSize;
+                hasMore = data.length === pageSize;
+            } else {
+                hasMore = false;
             }
+        }
 
-            const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
-           if (fgcodeData && fgcodeData.length > 0) {
-    const productMap = Object.fromEntries(
-        fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
-    );
+        const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
+        if (fgcodeData && fgcodeData.length > 0) {
+            const productMap = Object.fromEntries(
+                fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
+            );
 
-    const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
+            const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
 
-    allOrders = allOrders.map(order => {
-        const currentName = productMap[order.product_id];
+            allOrders = allOrders.map(order => {
+                const currentName = productMap[order.product_id];
+                const nameChanged = currentName &&
+                 currentName !== order.product_name &&
+                 !processingOrderIds.has(order.id);
 
-        // ✅ ชื่อใน fgcode ≠ ชื่อใน DB → เปลี่ยนแปลง
-        const nameChanged = currentName && currentName !== order.product_name;
+                if (nameChanged) {
+                    processingOrderIds.add(order.id);
+                    updatesNeeded.push({
+                        id: order.id,
+                        newName: currentName,
+                        oldName: order.product_name,
+                    });
+                }
 
-        if (nameChanged) {
-            updatesNeeded.push({
-                id: order.id,
-                newName: currentName,
-                oldName: order.product_name, // ชื่อล่าสุดก่อนเปลี่ยน
+                return {
+                    ...order,
+                    product_name: currentName ?? order.product_name,
+                    original_product_name: order.previous_product_name ?? (nameChanged ? order.product_name : undefined),
+                };
             });
-        }
 
-        return {
-            ...order,
-            product_name: currentName ?? order.product_name,
-            // ✅ ใช้ค่าจาก DB ถ้ามี (เพื่อให้ badge คงอยู่หลัง reload)
-            original_product_name: order.previous_product_name ?? (nameChanged ? order.product_name : undefined),
-        };
-    });
+            if (updatesNeeded.length > 0) {
+                const now = new Date().toISOString();
+                for (const { id, newName, oldName } of updatesNeeded) {
+                    await supabase.from('orders').update({
+                        product_name: newName,
+                        previous_product_name: oldName,
+                        updated_at: now,
+                    }).eq('id', id);
 
-    if (updatesNeeded.length > 0) {
-        await Promise.all(
-            updatesNeeded.map(({ id, newName, oldName }) =>
-                supabase.from('orders').update({
-                    product_name: newName,
-                    previous_product_name: oldName, // ✅ บันทึกชื่อก่อนเปลี่ยนถาวร
-                    updated_at: new Date().toISOString(),
-                }).eq('id', id)
-            )
+                    await supabase.from('audit_logs').insert([{
+                        order_id: id,
+                        action: 'UPDATE',
+                        user_name: 'ระบบอัตโนมัติ',
+                        summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
+                        created_at: now,
+                    }]);
+
+                    // ✅ อัปเดต updated_at ใน allOrders ด้วย เพื่อให้ EditHistory re-fetch
+        allOrders = allOrders.map(o =>
+            o.id === id ? { ...o, updated_at: now } : o
         );
-    }
-}
+                }
+                 setAuditKey(prev => prev + 1); // ✅ force EditHistory re-fetch
+            } 
+        } 
 
-            setOrders(allOrders);
-        } catch {
-            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-        }
-    };
+        setOrders(allOrders);
+    } catch {
+        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+    }
+};
 
     useEffect(() => {
         fetchUserInfo();
@@ -838,14 +855,6 @@ export default function DashboardPage() {
                                             {order.product_name}
                                             <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 tracking-wider">{order.product_id}</span>
                                         </h3>
-                                        {order.original_product_name && (
-                                            <div className="mt-1 flex items-center gap-1.5 text-[11px] bg-orange-50 border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg w-fit max-w-full flex-wrap">
-                                                <span className="shrink-0">🔄 ชื่อเปลี่ยน:</span>
-                                                <span className="line-through text-orange-400 truncate max-w-[120px]" title={order.original_product_name}>{order.original_product_name}</span>
-                                                <span className="shrink-0">→</span>
-                                                <span className="font-bold truncate max-w-[120px]" title={order.product_name}>{order.product_name}</span>
-                                            </div>
-                                        )}
                                         {order.order_type && (
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-red-200 text-red-800 border-red-300' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
                                                 {order.order_type}
@@ -958,7 +967,7 @@ export default function DashboardPage() {
                                     <span className="font-bold text-xl text-green-600">{order.quantity}</span>
                                 </div>
 
-                                <EditHistory orderId={order.id} updatedAt={order.updated_at} />
+                                <EditHistory orderId={order.id} updatedAt={order.updated_at} auditKey={auditKey} />
 
                                 {order.notes && order.notes !== '-' && (
                                     <div className="mt-3 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">
