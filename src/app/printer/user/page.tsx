@@ -29,9 +29,9 @@ export default function UserManagement() {
     const [department, setDepartment] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('user');
-    const [isAdmin, setIsAdmin] = useState(false); // only admins should see this
+    const [isAdmin, setIsAdmin] = useState(false);
 
-     const fetchUsers = async () => {
+    const fetchUsers = async () => {
         try {
             const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
             if (error) throw error;
@@ -41,26 +41,19 @@ export default function UserManagement() {
         } catch {
             Swal.fire({
                 icon: 'error',
-                title: 'error',
+                title: 'Error',
                 text: 'Failed to fetch users'
             })
         }
     }
 
-
-     const checkAdminStatus = async () => {
+    const checkAdminStatus = async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
             const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single();
             if (data?.role === 'moderator' || data?.role === 'assistant_moderator') {
                 setIsAdmin(true);
                 fetchUsers();
-            } else if (!data) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ไม่มีสิทธิ์เข้าถึง',
-                    text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น',
-                });
             } else {
                 Swal.fire({
                     icon: 'error',
@@ -75,9 +68,6 @@ export default function UserManagement() {
         checkAdminStatus();
     }, []);
 
-   
-
-   
     const isDuplicateName = (checkName: string, excludeUserId?: string): boolean => {
         return users.some(user =>
             user.name.toLowerCase() === checkName.toLowerCase() &&
@@ -89,24 +79,25 @@ export default function UserManagement() {
         e.preventDefault();
 
         if (editingUser) {
-             // ✅ ตรวจสอบว่ามีการเปลี่ยนแปลงข้อมูลจริงหรือไม่
-    const hasChanges =
-        name !== editingUser.name ||
-        email !== editingUser.email ||
-        role !== (editingUser.role ?? 'user') ||
-        (employeeId || '') !== (editingUser.employee_id || '') ||
-        (jobTitle || '') !== (editingUser.job_title || '') ||
-        (department || '') !== (editingUser.department || '') ||
-        (password && password.trim().length > 0);
+            // ตรวจสอบว่ามีการเปลี่ยนแปลงข้อมูลจริงหรือไม่
+            const hasChanges =
+                name !== editingUser.name ||
+                email !== editingUser.email ||
+                role !== (editingUser.role ?? 'user') ||
+                (employeeId || '') !== (editingUser.employee_id || '') ||
+                (jobTitle || '') !== (editingUser.job_title || '') ||
+                (department || '') !== (editingUser.department || '') ||
+                (password && password.trim().length > 0);
 
-    if (!hasChanges) {
-        Swal.fire({
-            icon: 'info',
-            title: 'ไม่มีการเปลี่ยนแปลง',
-            text: 'ไม่พบการแก้ไขข้อมูลใดๆ กรุณาแก้ไขข้อมูลก่อนกดบันทึก',
-        });
-        return;
-    }
+            if (!hasChanges) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ไม่มีการเปลี่ยนแปลง',
+                    text: 'ไม่พบการแก้ไขข้อมูลใดๆ กรุณาแก้ไขข้อมูลก่อนกดบันทึก',
+                });
+                return;
+            }
+
             if (isDuplicateName(name, editingUser.id)) {
                 Swal.fire({
                     icon: 'error',
@@ -115,7 +106,105 @@ export default function UserManagement() {
                 });
                 return;
             }
+
+            // ✅ แสดง loading "กำลังบันทึก..."
+            Swal.fire({
+                title: 'กำลังบันทึก...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            try {
+                // อัปเดตข้อมูลในตาราง users
+                const { error } = await supabase.from('users').update({
+                    name: name,
+                    role: role,
+                    employee_id: employeeId || null,
+                    job_title: jobTitle || null,
+                    department: department || null
+                }).eq('id', editingUser.id);
+
+                if (error) throw error;
+
+                // อัปเดตอีเมลผ่าน API ถ้ามีการเปลี่ยน
+                if (email !== editingUser.email) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session?.access_token) throw new Error('Session expired, please login again');
+                    const res = await fetch(`/api/users/${editingUser.id}/email`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ newEmail: email })
+                    });
+                    if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.error || 'Failed to update email');
+                    }
+                }
+
+                // เปลี่ยนรหัสผ่านผ่าน API ถ้ามีการระบุ
+                if (password && password.trim().length > 0) {
+                    if (password.length < 8) {
+                        throw new Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร');
+                    }
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session?.access_token) throw new Error('Session expired, please login again');
+                    const res = await fetch(`/api/users/${editingUser.id}/password`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ newPassword: password })
+                    });
+                    if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(data.error || 'Failed to update user password');
+                    }
+                }
+
+                await logAction('UPDATE_USER', {
+                    id: editingUser.id,
+                    name: name,
+                    role: role,
+                    password_changed: !!(password && password.trim().length > 0)
+                });
+
+                // สำเร็จ → แทนที่ loading ด้วยข้อความสำเร็จ
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: password ? 'อัปเดตผู้ใช้และเปลี่ยนรหัสผ่านเรียบร้อย' : 'อัปเดตผู้ใช้เรียบร้อย',
+                    timer: 1500
+                });
+
+                setShowModal(false);
+                setEditingUser(null);
+                setEmail('');
+                setName('');
+                setEmployeeId('');
+                setJobTitle('');
+                setDepartment('');
+                setPassword('');
+                setRole('user');
+                fetchUsers();
+
+            } catch (error: any) {
+                console.error(error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ข้อผิดพลาด',
+                    text: error.message || 'Failed to save user'
+                });
+            }
+
         } else {
+            // ADD NEW USER
             if (isDuplicateName(name)) {
                 Swal.fire({
                     icon: 'error',
@@ -133,99 +222,10 @@ export default function UserManagement() {
                 });
                 return;
             }
-        }
 
-        try {
-            if (editingUser) {
-                const { error } = await supabase.from('users').update({
-                    name: name,
-                    role: role,
-                    employee_id: employeeId || null,
-                    job_title: jobTitle || null,
-                    department: department || null
-                }).eq('id', editingUser.id);
+            Swal.fire({ title: 'กำลังสร้างบัญชี...', didOpen: () => { Swal.showLoading() } });
 
-                if (error) throw error;
-
-                // เพิ่มหลัง update users table สำเร็จ
-if (email !== editingUser.email) {
- await supabase.auth.getUser()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) throw new Error('Session expired, please login again')
-  const res = await fetch(`/api/users/${editingUser.id}/email`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session?.access_token || ''}`
-    },
-    body: JSON.stringify({ newEmail: email })
-  })
-
-  if (!res.ok) {
-    const data = await res.json()
-    throw new Error(data.error || 'Failed to update email')
-  }
-}
-
-                // If admin provided a new password, reset it using the API
-                if (password && password.trim().length > 0) {
-                    if (password.length < 8) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'รหัสผ่านอ่อนเกินไป',
-                            text: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'
-                        });
-                        return;
-                    }
-
-                   await supabase.auth.getUser()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) throw new Error('Session expired, please login again')
-    
-                    const res = await fetch(`/api/users/${editingUser.id}/password`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${session?.access_token || ''}`
-                        },
-                        body: JSON.stringify({ newPassword: password })
-                    });
-
-                    if (!res.ok) {
-                        const data = await res.json();
-                        throw new Error(data.error || 'Failed to update user password');
-                    }
-                }
-
-                await logAction('UPDATE_USER', {
-                    id: editingUser.id,
-                    name: name,
-                    role: role,
-                    password_changed: !!(password && password.trim().length > 0)
-                });
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Success',
-                    text: password ? `User updated and password reset successfully` : `User updated successfully`,
-                    timer: 1500
-                })
-
-                setShowModal(false);
-                setEditingUser(null);
-                setEmail('');
-                setName('');
-                setEmployeeId('');
-                setJobTitle('');
-                setDepartment('');
-                setPassword('');
-                setRole('user');
-                fetchUsers();
-            } else {
-                // ADD NEW USER
-                Swal.fire({ title: 'กำลังสร้างบัญชี...', didOpen: () => { Swal.showLoading() } });
-
-                // Create a temporary client so it doesn't log the admin out out our current session
+            try {
                 const tempSupabase = createClient(
                     supabaseUrl,
                     supabaseAnonKey,
@@ -271,19 +271,19 @@ if (email !== editingUser.email) {
                 setPassword('');
                 setRole('user');
                 fetchUsers();
-            }
-        } catch (error) {
-            console.error(error);
-            let errorMessage = (error as Error).message;
-            if (errorMessage && errorMessage.includes('users_id_fkey')) {
-                errorMessage = 'ไม่สามารถสร้างผู้ใช้ได้ เนื่องจากอีเมลนี้ถูกใช้งานไปแล้ว หรือกำลังรอการยืนยันทางอีเมลอยู่';
-            }
 
-            Swal.fire({
-                icon: 'error',
-                title: 'ข้อผิดพลาด',
-                text: errorMessage || `Failed to save user`
-            })
+            } catch (error: any) {
+                console.error(error);
+                let errorMessage = error.message;
+                if (errorMessage && errorMessage.includes('users_id_fkey')) {
+                    errorMessage = 'ไม่สามารถสร้างผู้ใช้ได้ เนื่องจากอีเมลนี้ถูกใช้งานไปแล้ว หรือกำลังรอการยืนยันทางอีเมลอยู่';
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ข้อผิดพลาด',
+                    text: errorMessage || 'Failed to save user'
+                });
+            }
         }
     }
 
@@ -295,13 +295,12 @@ if (email !== editingUser.email) {
             showCancelButton: true,
             confirmButtonText: 'Delete',
             cancelButtonText: 'Cancel'
-        })
+        });
 
         if (result.isConfirmed) {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
 
-                // Call the API route to delete from auth.users (requires service_role key on the server)
                 const res = await fetch(`/api/users/${user.id}`, {
                     method: 'DELETE',
                     headers: {
@@ -315,7 +314,6 @@ if (email !== editingUser.email) {
                 }
 
                 await supabase.from('users').delete().eq('id', user.id);
-
                 await logAction('DELETE_USER', { id: user.id, email: user.email, name: user.name });
 
                 Swal.fire({
@@ -323,29 +321,30 @@ if (email !== editingUser.email) {
                     title: 'Success',
                     text: 'User Deleted Successfully',
                     timer: 1000
-                })
+                });
 
-                fetchUsers()
+                fetchUsers();
+
             } catch (error) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
                     text: error instanceof Error ? error.message : 'Failed to delete user'
-                })
+                });
             }
         }
     }
 
     const handleEdit = (user: User) => {
-        setEditingUser(user)
-        setEmail(user.email)
-        setName(user.name)
+        setEditingUser(user);
+        setEmail(user.email);
+        setName(user.name);
         setEmployeeId(user.employee_id || '');
         setJobTitle(user.job_title || '');
         setDepartment(user.department || '');
         setRole(user.role ?? 'user');
         setPassword('');
-        setShowModal(true)
+        setShowModal(true);
     }
 
     const handleAdd = () => {
