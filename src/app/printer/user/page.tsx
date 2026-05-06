@@ -92,6 +92,7 @@ export default function UserManagement() {
              // ✅ ตรวจสอบว่ามีการเปลี่ยนแปลงข้อมูลจริงหรือไม่
     const hasChanges =
         name !== editingUser.name ||
+        email !== editingUser.email ||
         role !== (editingUser.role ?? 'user') ||
         (employeeId || '') !== (editingUser.employee_id || '') ||
         (jobTitle || '') !== (editingUser.job_title || '') ||
@@ -146,6 +147,26 @@ export default function UserManagement() {
 
                 if (error) throw error;
 
+                // เพิ่มหลัง update users table สำเร็จ
+if (email !== editingUser.email) {
+ await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) throw new Error('Session expired, please login again')
+  const res = await fetch(`/api/users/${editingUser.id}/email`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token || ''}`
+    },
+    body: JSON.stringify({ newEmail: email })
+  })
+
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to update email')
+  }
+}
+
                 // If admin provided a new password, reset it using the API
                 if (password && password.trim().length > 0) {
                     if (password.length < 8) {
@@ -157,7 +178,10 @@ export default function UserManagement() {
                         return;
                     }
 
-                    const { data: { session } } = await supabase.auth.getSession();
+                   await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) throw new Error('Session expired, please login again')
+    
                     const res = await fetch(`/api/users/${editingUser.id}/password`, {
                         method: 'PUT',
                         headers: {
@@ -432,9 +456,8 @@ export default function UserManagement() {
                                 className={`w-full form-input-dark !bg-white !text-gray-900 focus:ring-2 focus:ring-blue-400 !border-gray-300 ${editingUser ? '!bg-gray-100' : ''}`}
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
-                                disabled={!!editingUser}
+                                disabled={false}
                                 required />
-                            {editingUser && <small className="text-gray-500 mt-1 block">อีเมลไม่สามารถแก้ไขได้</small>}
                         </div>
 
                         <div className="mb-4">
