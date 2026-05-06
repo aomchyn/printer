@@ -291,7 +291,7 @@ export default function UserManagement() {
         const result = await Swal.fire({
             icon: 'warning',
             title: 'Are You Sure ?',
-            text: `Do you want to delete user ${user.name}? (This only removes their profile, they can still log in if they didn't delete their auth account)`,
+            text: `คุณต้องการลบบัญชีผู้ใช้ "${user.name}" อย่างถาวรหรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้ และผู้ใช้จะไม่สามารถเข้าสู่ระบบได้อีก`,
             showCancelButton: true,
             confirmButtonText: 'Delete',
             cancelButtonText: 'Cancel'
