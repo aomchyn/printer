@@ -89,6 +89,23 @@ export default function UserManagement() {
         e.preventDefault();
 
         if (editingUser) {
+             // ✅ ตรวจสอบว่ามีการเปลี่ยนแปลงข้อมูลจริงหรือไม่
+    const hasChanges =
+        name !== editingUser.name ||
+        role !== (editingUser.role ?? 'user') ||
+        (employeeId || '') !== (editingUser.employee_id || '') ||
+        (jobTitle || '') !== (editingUser.job_title || '') ||
+        (department || '') !== (editingUser.department || '') ||
+        (password && password.trim().length > 0);
+
+    if (!hasChanges) {
+        Swal.fire({
+            icon: 'info',
+            title: 'ไม่มีการเปลี่ยนแปลง',
+            text: 'ไม่พบการแก้ไขข้อมูลใดๆ กรุณาแก้ไขข้อมูลก่อนกดบันทึก',
+        });
+        return;
+    }
             if (isDuplicateName(name, editingUser.id)) {
                 Swal.fire({
                     icon: 'error',
