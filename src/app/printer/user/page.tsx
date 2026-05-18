@@ -74,45 +74,45 @@ function UserCard({ user, onEdit, onDelete, currentUserId }: {
     const isSelf = user.id === currentUserId
 
     return (
-        <div className={`bg-white border border-[#dde8f5] border-l-2 ${cfg.border} rounded-xl px-3.5 py-3 hover:shadow-md transition-all duration-200 shadow-sm`}>
+        <div className={`bg-white border border-[#dde8f5] border-l-4 ${cfg.border} rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 shadow-sm flex flex-col justify-between h-full`}>
             <div className="flex items-start gap-3">
-                <div className={`w-9 h-9 min-w-[36px] rounded-lg flex items-center justify-center text-[12px] font-bold text-white ${cfg.avatar} shadow-md mt-0.5 shrink-0`}>
+                <div className={`w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center text-[13px] font-bold text-white ${cfg.avatar} shadow-md mt-0.5 shrink-0`}>
                     {getInitials(user.name)}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                        <span className="text-[13px] font-semibold text-[#0f1e3d]">{user.name}</span>
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <span className="text-[13.5px] font-bold text-[#0f1e3d] truncate" title={user.name}>{user.name}</span>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wide ${cfg.badge}`}>
                             {ROLE_LABEL[role]}
                         </span>
                         {isSelf && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-600 border border-amber-400/30">คุณ</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-600 border border-amber-400/30 shrink-0">คุณ</span>
                         )}
                     </div>
-                    <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-1.5 overflow-hidden">
+                    <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-2.5 overflow-hidden">
                         <Mail className="w-3 h-3 flex-shrink-0 text-slate-300" />
-                        <span className="truncate">{user.email}</span>
+                        <span className="truncate" title={user.email}>{user.email}</span>
                     </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
+                    <div className="flex flex-wrap gap-1 mb-1">
                         <MetaChip icon={BadgeCheck} value={user.employee_id} />
                         <MetaChip icon={Briefcase} value={user.job_title} />
                         <MetaChip icon={Building2} value={user.department ? (DEPARTMENTS.find(d => d.value === user.department)?.short ?? user.department) : null} />
                     </div>
-                    <div className="flex items-center gap-1.5 pt-2 border-t border-[#eef3fb]">
-                        <button onClick={() => onEdit(user)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 text-[11.5px] font-semibold transition-all active:scale-95">
-                            <Edit2 className="w-3 h-3" /> แก้ไข
-                        </button>
-                        {isSelf ? (
-                            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-300 text-[11.5px] font-semibold cursor-not-allowed" title="ไม่สามารถลบบัญชีตัวเองได้">
-                                <Trash2 className="w-3 h-3" /> ลบ
-                            </div>
-                        ) : (
-                            <button onClick={() => onDelete(user)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 text-[11.5px] font-semibold transition-all active:scale-95">
-                                <Trash2 className="w-3 h-3" /> ลบ
-                            </button>
-                        )}
-                    </div>
                 </div>
+            </div>
+            <div className="flex items-center gap-1.5 pt-3 mt-3 border-t border-[#eef3fb] justify-end">
+                <button onClick={() => onEdit(user)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 text-slate-700 hover:text-blue-600 text-[11.5px] font-bold transition-all active:scale-95">
+                    <Edit2 className="w-3 h-3" /> แก้ไข
+                </button>
+                {isSelf ? (
+                    <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-300 text-[11.5px] font-bold cursor-not-allowed" title="ไม่สามารถลบบัญชีตัวเองได้">
+                        <Trash2 className="w-3 h-3" /> ลบ
+                    </div>
+                ) : (
+                    <button onClick={() => onDelete(user)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-red-300 hover:bg-red-50/30 text-slate-700 hover:text-red-600 text-[11.5px] font-bold transition-all active:scale-95">
+                        <Trash2 className="w-3 h-3" /> ลบ
+                    </button>
+                )}
             </div>
         </div>
     )
@@ -266,23 +266,23 @@ export default function UserManagement() {
         }}>
 
             {/* ── Page header: light, blends with content bg ── */}
-            <div className="bg-white/80 backdrop-blur-sm border-b border-[#dde8f5] px-4 py-3 flex items-center justify-between gap-3 sticky top-0 z-30">
-                <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                        <Users className="w-3.5 h-3.5 text-blue-600" />
+            <div className="bg-white/80 backdrop-blur-md border-b border-[#dde8f5] px-4 py-3.5 flex items-center justify-between gap-3 sticky top-0 z-30">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#0f1e3d] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/10 border border-blue-900/20">
+                        <Users className="w-4.5 h-4.5 text-white" />
                     </div>
                     <div className="min-w-0">
-                        <h1 className="text-[#0f1e3d] font-bold text-[14px] leading-tight tracking-wide truncate">จัดการผู้ใช้งาน</h1>
-                        <p className="text-slate-400 text-[10.5px] hidden sm:block truncate">ตั้งค่าบัญชี · กำหนดสิทธิ์ · ดูแลพนักงาน</p>
+                        <h1 className="text-[#0f1e3d] font-black text-[18px] sm:text-[20px] md:text-[22px] leading-none tracking-wide truncate">จัดการผู้ใช้งาน</h1>
+                        <p className="text-slate-400 text-[11px] sm:text-[12px] font-medium hidden sm:block truncate mt-1">ตั้งค่าบัญชี · กำหนดสิทธิ์ · ดูแลพนักงาน</p>
                     </div>
-                    <div className="hidden sm:flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[10px] font-semibold text-emerald-600">เรียลไทม์</span>
+                    <div className="hidden sm:flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-emerald-600 tracking-wide">เรียลไทม์</span>
                     </div>
                 </div>
                 <button
                     onClick={handleAdd}
-                    className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all shadow-md shadow-blue-500/20 active:scale-95 shrink-0"
+                    className="flex items-center gap-1.5 bg-[#0f1e3d] hover:bg-[#152a54] text-white text-[12px] font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm border border-[#0f1e3d]/10 active:scale-95 shrink-0"
                 >
                     <UserPlus className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">สร้างบัญชีใหม่</span>
@@ -290,48 +290,48 @@ export default function UserManagement() {
                 </button>
             </div>
 
-            <div className="p-3 sm:p-5 max-w-5xl mx-auto">
+            <div className="p-3 sm:p-5 max-w-7xl mx-auto w-full">
 
                 {/* ── Stat cards ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                     {STAT_CARDS.map(s => (
-                        <div key={s.label} className={`bg-gradient-to-br ${s.gradient} border ${s.border} rounded-xl px-3 py-2.5 flex items-center gap-3`}>
-                            <div className={`w-7 h-7 ${s.iconBg} rounded-lg flex items-center justify-center shrink-0`}>
-                                <s.icon className={`w-3.5 h-3.5 ${s.text}`} />
+                        <div key={s.label} className={`bg-gradient-to-br ${s.gradient} border ${s.border} rounded-2xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow-md transition-all duration-300`}>
+                            <div className={`w-9 h-9 ${s.iconBg} rounded-xl flex items-center justify-center shrink-0 shadow-inner`}>
+                                <s.icon className={`w-4 h-4 ${s.text}`} />
                             </div>
                             <div className="min-w-0">
-                                <div className={`text-xl font-bold leading-tight ${s.text}`}>{s.value}</div>
-                                <div className="text-[10px] font-medium text-slate-400 uppercase tracking-widest truncate">{s.label}</div>
+                                <div className={`text-2xl font-black leading-none ${s.text} mb-0.5`}>{s.value}</div>
+                                <div className="text-[9.5px] font-semibold text-slate-400 uppercase tracking-wider truncate">{s.label}</div>
                             </div>
                         </div>
                     ))}
                 </div>
 
                 {/* ── Search bar ── */}
-                <div className="relative mb-4">
-                    <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <div className="relative mb-5">
+                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     <input
                         type="text" value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="ค้นหาชื่อ, อีเมล, รหัสพนักงาน, หน่วยงาน..."
-                        className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-xl text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+                        className="w-full pl-11 pr-4 py-3 text-[13.5px] bg-white border border-[#dde8f5] rounded-2xl text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm hover:border-[#cbdbe5]"
                     />
                 </div>
 
                 {/* ── User groups ── */}
-                <div className="space-y-5">
+                <div className="space-y-6">
                     {SECTION_GROUPS.map(group => {
                         const groupUsers = filtered.filter(u => group.roles.includes((u.role ?? 'user') as RoleKey))
                         if (groupUsers.length === 0) return null
                         const Icon = group.icon
                         return (
                             <div key={group.key}>
-                                <div className="flex items-center gap-2 mb-2.5">
+                                <div className="flex items-center gap-2 mb-3.5">
                                     <Icon className={`w-3.5 h-3.5 ${group.colorClass} shrink-0`} />
                                     <span className={`text-[11px] font-bold uppercase tracking-[0.12em] ${group.colorClass}`}>{group.label}</span>
                                     <div className="flex-1 h-px bg-[#dde8f5]" />
                                     <span className="text-[10px] font-semibold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-[#dde8f5]">{groupUsers.length} คน</span>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                                     {groupUsers.map(user => (
                                         <UserCard key={user.id} user={user} onEdit={handleEdit} onDelete={handleDelete} currentUserId={currentUserId} />
                                     ))}
