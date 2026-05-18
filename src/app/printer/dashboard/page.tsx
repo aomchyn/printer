@@ -916,9 +916,9 @@ export default function DashboardPage() {
                                                 )}
                                             </h3>
                                         </div>
-                                        <h4 className="text-[13px] font-black text-indigo-950 tracking-tight flex items-center gap-2 mt-1">
-                                            <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 shrink-0">LOT NO.</span>
-                                            <span className="font-mono text-indigo-800 text-[13.5px]">{order.lot_number}</span>
+                                        <h4 className="text-[14px] font-black text-indigo-950 tracking-tight flex items-center gap-2.5 mt-2.5">
+                                            <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider bg-indigo-100/50 px-2 py-0.5 rounded-lg border border-indigo-200/60 shrink-0">LOT NO.</span>
+                                            <span className="font-mono text-indigo-950 font-black text-[16px] tracking-wide">{order.lot_number}</span>
                                         </h4>
                                     </div>
                                     <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 shrink-0 justify-center">
