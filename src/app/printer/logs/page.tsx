@@ -3,17 +3,18 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import Swal from "sweetalert2"
-import { Search, History, RefreshCcw, ShieldAlert, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, History, RefreshCcw, ShieldAlert, X, ShieldOff } from "lucide-react"
 
 interface AuditLog {
     id: string
     user_id?: string | null
-    user_name?: string | null        // ✅ จาก dashboard logAuditTrail
+    user_name?: string | null
     action: string
     details?: Record<string, unknown> | null
-    changes?: Record<string, unknown> | null  // ✅ จาก dashboard logAuditTrail
-    summary?: string | null          // ✅ จาก dashboard logAuditTrail
-    order_id?: number | null         // ✅ จาก dashboard logAuditTrail
+    changes?: Record<string, unknown> | null
+    summary?: string | null
+    order_id?: number | null
     ip_address?: string | null
     created_at: string
     users?: {
@@ -22,35 +23,93 @@ interface AuditLog {
     } | { name: string; email: string }[] | null
 }
 
+// ─── Access Denied UI ───────────────────────────────────────────────────────
+function AccessDenied() {
+    const router = useRouter()
+    return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-10 max-w-md w-full shadow-lg">
+                <ShieldOff className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                <h2 className="text-2xl font-extrabold text-red-700 mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
+                <p className="text-gray-600 text-sm mb-1">
+                    หน้านี้สงวนไว้สำหรับ <span className="font-bold text-red-600">Moderator</span> เท่านั้น
+                </p>
+                <p className="text-gray-400 text-xs mb-6">
+                    กรุณาติดต่อผู้ดูแลระบบหากคิดว่าเป็นข้อผิดพลาด
+                </p>
+                <button
+                    onClick={() => router.push('/printer/dashboard')}
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm shadow"
+                >
+                    กลับหน้าหลัก
+                </button>
+            </div>
+        </div>
+    )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function LogsManagement() {
     const [logs, setLogs] = useState<AuditLog[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const [accessStatus, setAccessStatus] = useState<'checking' | 'allowed' | 'denied'>('checking')
+    const router = useRouter()
 
-    
-     const fetchLogs = async () => {
+    // ─── Guard: เฉพาะ moderator เท่านั้น ──────────────────────────────────────
+    useEffect(() => {
+        const checkAccess = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) {
+                    router.push('/login')
+                    return
+                }
+
+                const { data } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single()
+
+                if (data?.role === 'moderator') {
+                    setAccessStatus('allowed')
+                    fetchLogs()
+                } else {
+                    setAccessStatus('denied')
+                }
+            } catch (error) {
+                console.error('Access check error:', error)
+                router.push('/login')
+            }
+        }
+
+        checkAccess()
+    }, [])
+
+    const fetchLogs = async () => {
         setLoading(true)
         try {
             const { data, error } = await supabase
                 .from('audit_logs')
                 .select(`
-                    id,
-                    user_id,
-                    user_name,
-                    action,
-                    details,
-                    changes,
-                    summary,
-                    order_id,
-                    ip_address,
-                    created_at,
-                    users (name, email)
-                `)
+          id,
+          user_id,
+          user_name,
+          action,
+          details,
+          changes,
+          summary,
+          order_id,
+          ip_address,
+          created_at,
+          users (name, email)
+        `)
                 .order('created_at', { ascending: false })
-                .limit(200);
+                .limit(200)
 
-            if (error) throw error;
-            if (data) setLogs(data as AuditLog[]);
+            if (error) throw error
+            if (data) setLogs(data as AuditLog[])
         } catch (error) {
             console.error('Error fetching logs:', error)
             Swal.fire({
@@ -63,42 +122,29 @@ export default function LogsManagement() {
         }
     }
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
-   
-
-    // ✅ ดึงชื่อผู้ใช้ — รองรับทั้ง join users และ user_name โดยตรง
     const getDisplayName = (log: AuditLog): string => {
-        // กรณี dashboard logAuditTrail บันทึก user_name โดยตรง
-        if (log.user_name) return log.user_name;
-
-        // กรณี join users table
+        if (log.user_name) return log.user_name
         if (log.users) {
-            const u = Array.isArray(log.users) ? log.users[0] : log.users;
-            if (u?.name) return u.name;
+            const u = Array.isArray(log.users) ? log.users[0] : log.users
+            if (u?.name) return u.name
         }
-
-        return 'ไม่ระบุผู้ใช้';
-    };
+        return 'ไม่ระบุผู้ใช้'
+    }
 
     const getDisplayEmail = (log: AuditLog): string => {
         if (log.users) {
-            const u = Array.isArray(log.users) ? log.users[0] : log.users;
-            if (u?.email) return u.email;
+            const u = Array.isArray(log.users) ? log.users[0] : log.users
+            if (u?.email) return u.email
         }
-        return '';
-    };
+        return ''
+    }
 
-    // ✅ ดึงรายละเอียด — รองรับทั้ง details, changes, summary
     const getDisplayDetail = (log: AuditLog) => {
-        const data = log.details || log.changes;
-        const summary = log.summary;
+        const data = log.details || log.changes
+        const summary = log.summary
 
-        // แสดง DELETE_ORDER แบบ formatted
         if ((log.action === 'DELETE_ORDER' || log.action === 'PERMANENT_DELETE_ORDER') && data) {
-            const d = data as any;
+            const d = data as any
             return (
                 <div className="text-xs space-y-0.5">
                     <div><span className="text-gray-400">สินค้า:</span> <span className="font-semibold text-gray-800">{d.product_name}</span></div>
@@ -108,22 +154,20 @@ export default function LogsManagement() {
                     <div><span className="text-gray-400">ผู้สั่ง:</span> {d.created_by}</div>
                     <div><span className="text-gray-400">ลบโดย:</span> <span className="font-semibold text-red-600">{d.deleted_by}</span></div>
                 </div>
-            );
+            )
         }
 
-        // แสดง RESTORE_FROM_TRASH แบบ formatted
         if (log.action === 'RESTORE_FROM_TRASH' && data) {
-            const d = data as any;
+            const d = data as any
             return (
                 <div className="text-xs space-y-0.5">
                     <div><span className="text-gray-400">สินค้า:</span> <span className="font-semibold text-gray-800">{d.product_name}</span></div>
                     <div><span className="text-gray-400">ลอต:</span> <span className="font-semibold text-indigo-700">{d.lot_number}</span></div>
                     <div><span className="text-gray-400">กู้คืนโดย:</span> <span className="font-semibold text-emerald-600">{d.restored_by}</span></div>
                 </div>
-            );
+            )
         }
 
-        // ✅ แสดง summary จาก dashboard (UPDATE, VERIFY, CANCEL ฯลฯ)
         if (summary) {
             return (
                 <div className="text-xs space-y-0.5">
@@ -132,49 +176,61 @@ export default function LogsManagement() {
                         <div><span className="text-gray-400">Order ID:</span> <span className="font-medium text-indigo-600">#{log.order_id}</span></div>
                     )}
                 </div>
-            );
+            )
         }
 
-        // Fallback — แสดง raw JSON
         if (data) {
             return (
                 <code className="text-xs bg-gray-50 px-2 py-1 rounded border border-gray-100 block truncate" title={JSON.stringify(data, null, 2)}>
                     {JSON.stringify(data)}
                 </code>
-            );
+            )
         }
 
-        return <span className="text-gray-400 text-xs">-</span>;
-    };
+        return <span className="text-gray-400 text-xs">-</span>
+    }
 
     const filteredLogs = logs.filter(log => {
-        const search = searchTerm.toLowerCase();
-        const displayName = getDisplayName(log).toLowerCase();
-        const action = log.action.toLowerCase();
-        const detailsString = JSON.stringify(log.details || log.changes || log.summary || '').toLowerCase();
-        return displayName.includes(search) || action.includes(search) || detailsString.includes(search);
-    });
+        const search = searchTerm.toLowerCase()
+        const displayName = getDisplayName(log).toLowerCase()
+        const action = log.action.toLowerCase()
+        const detailsString = JSON.stringify(log.details || log.changes || log.summary || '').toLowerCase()
+        return displayName.includes(search) || action.includes(search) || detailsString.includes(search)
+    })
 
     const formatAction = (action: string) => {
         switch (action) {
-            case 'LOGIN':                  return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">เข้าสู่ระบบ</span>;
-            case 'CREATE_PRODUCT':         return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">เพิ่มสินค้า</span>;
-            case 'UPDATE_PRODUCT':         return <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">แก้ไขสินค้า</span>;
-            case 'DELETE_PRODUCT':         return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold">ลบสินค้า</span>;
-            case 'CREATE_ORDER':           return <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-bold">สั่งพิมพ์ฉลาก</span>;
-            case 'DELETE_ORDER':           return <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">🗑️ ลบคำสั่งพิมพ์</span>;
-            case 'PERMANENT_DELETE_ORDER': return <span className="bg-red-800 text-white px-2 py-1 rounded text-xs font-bold">🗑️ ลบถาวร</span>;
-            case 'RESTORE_FROM_TRASH':     return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">♻️ กู้คืนจากถังขยะ</span>;
-            case 'UPDATE':                 return <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">✏️ แก้ไขคำสั่งพิมพ์</span>;
-            case 'VERIFY':                 return <span className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold">✅ ยืนยันตรวจสอบ</span>;
-            case 'CANCEL':                 return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">❌ ยกเลิกคำสั่งพิมพ์</span>;
-            case 'CREATE_USER':            return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">เพิ่มผู้ใช้</span>;
-            case 'UPDATE_USER':            return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">แก้ไขผู้ใช้</span>;
-            case 'UPDATE_PROFILE':         return <span className="bg-sky-100 text-sky-800 px-2 py-1 rounded text-xs font-bold">👤 แก้ไขโปรไฟล์</span>;
-            case 'DELETE_USER':            return <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-xs font-bold">ลบผู้ใช้</span>;
-            default:                       return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-bold">{action}</span>;
+            case 'LOGIN': return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">เข้าสู่ระบบ</span>
+            case 'CREATE_PRODUCT': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">เพิ่มสินค้า</span>
+            case 'UPDATE_PRODUCT': return <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">แก้ไขสินค้า</span>
+            case 'DELETE_PRODUCT': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold">ลบสินค้า</span>
+            case 'CREATE_ORDER': return <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-bold">สั่งพิมพ์ฉลาก</span>
+            case 'DELETE_ORDER': return <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">🗑️ ลบคำสั่งพิมพ์</span>
+            case 'PERMANENT_DELETE_ORDER': return <span className="bg-red-800 text-white px-2 py-1 rounded text-xs font-bold">🗑️ ลบถาวร</span>
+            case 'RESTORE_FROM_TRASH': return <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">♻️ กู้คืนจากถังขยะ</span>
+            case 'UPDATE': return <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">✏️ แก้ไขคำสั่งพิมพ์</span>
+            case 'VERIFY': return <span className="bg-emerald-600 text-white px-2 py-1 rounded text-xs font-bold">✅ ยืนยันตรวจสอบ</span>
+            case 'CANCEL': return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">❌ ยกเลิกคำสั่งพิมพ์</span>
+            case 'CREATE_USER': return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">เพิ่มผู้ใช้</span>
+            case 'UPDATE_USER': return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-bold">แก้ไขผู้ใช้</span>
+            case 'UPDATE_PROFILE': return <span className="bg-sky-100 text-sky-800 px-2 py-1 rounded text-xs font-bold">👤 แก้ไขโปรไฟล์</span>
+            case 'DELETE_USER': return <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-xs font-bold">ลบผู้ใช้</span>
+            default: return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-bold">{action}</span>
         }
-    };
+    }
+
+    // ─── Render states ────────────────────────────────────────────────────────
+    if (accessStatus === 'checking') {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <RefreshCcw className="w-8 h-8 text-indigo-400 animate-spin" />
+            </div>
+        )
+    }
+
+    if (accessStatus === 'denied') {
+        return <AccessDenied />
+    }
 
     return (
         <div className="container mx-auto p-4 text-gray-800">
@@ -199,9 +255,10 @@ export default function LogsManagement() {
                         </button>
                     )}
                 </div>
-
-                <button onClick={fetchLogs}
-                    className="w-full sm:w-auto bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 font-semibold py-2.5 px-6 rounded-lg transition duration-200 flex items-center justify-center shadow-sm">
+                <button
+                    onClick={fetchLogs}
+                    className="w-full sm:w-auto bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 font-semibold py-2.5 px-6 rounded-lg transition duration-200 flex items-center justify-center shadow-sm"
+                >
                     <RefreshCcw className={`mr-2 w-5 h-5 ${loading ? 'animate-spin' : ''}`} /> รีเฟรชข้อมูล
                 </button>
             </div>

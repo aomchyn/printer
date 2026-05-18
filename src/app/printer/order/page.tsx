@@ -485,8 +485,8 @@ export default function OrderPage() {
                                         p.id.toLowerCase().includes(productSearch.toLowerCase()) ||
                                         p.name.toLowerCase().includes(productSearch.toLowerCase())
                                     ).length === 0 && (
-                                        <div className="px-4 py-3 text-gray-400 text-sm text-center">ไม่พบสินค้า</div>
-                                    )}
+                                            <div className="px-4 py-3 text-gray-400 text-sm text-center">ไม่พบสินค้า</div>
+                                        )}
                                 </div>
                             )}
                         </div>
@@ -520,9 +520,17 @@ export default function OrderPage() {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                             วันที่ผลิต <span className="text-red-500">*</span>
                         </label>
-                        <input type="date" value={orderData.productionDate}
-                            onChange={handleProductionDateChange} required
-                            className={getRequiredFieldStyle(orderData.productionDate)} />
+                        <input
+                            type="date"
+                            value={orderData.productionDate}
+                            onChange={handleProductionDateChange}
+                            onKeyDown={(e) => {
+                                if (e.key !== 'Tab') e.preventDefault();
+                            }}
+                            required
+                            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition shadow-sm"
+                        />
+
                         {renderDateLabels(orderData.productionDate)}
                     </div>
 

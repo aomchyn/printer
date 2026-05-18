@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
-import { Trash2, Undo, RefreshCcw, Clock, AlertTriangle } from 'lucide-react';
+import { Trash2, Undo, RefreshCcw, Clock, AlertTriangle, ShieldOff } from 'lucide-react';
 
 interface DeletedOrder {
     id: number;
@@ -23,37 +23,87 @@ interface DeletedOrder {
     notes?: string;
 }
 
+const ALLOWED_ROLES = ['moderator', 'assistant_moderator']
+
+// ─── Access Denied UI ────────────────────────────────────────────────────────
+function AccessDenied() {
+    const router = useRouter()
+    return (
+        <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-10 max-w-md w-full shadow-lg">
+                <ShieldOff className="w-16 h-16 text-red-400 mx-auto mb-4" />
+                <h2 className="text-2xl font-extrabold text-red-700 mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
+                <p className="text-gray-600 text-sm mb-1">
+                    หน้านี้สงวนไว้สำหรับ{' '}
+                    <span className="font-bold text-red-600">Moderator</span> และ{' '}
+                    <span className="font-bold text-red-600">Assistant Moderator</span> เท่านั้น
+                </p>
+                <p className="text-gray-400 text-xs mb-6">
+                    กรุณาติดต่อผู้ดูแลระบบหากคิดว่าเป็นข้อผิดพลาด
+                </p>
+                <button
+                    onClick={() => router.push('/printer/dashboard')}
+                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm shadow"
+                >
+                    กลับหน้าหลัก
+                </button>
+            </div>
+        </div>
+    )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function TrashPage() {
     const [deletedOrders, setDeletedOrders] = useState<DeletedOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [role, setRole] = useState('');
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
+    const [accessStatus, setAccessStatus] = useState<'checking' | 'allowed' | 'denied'>('checking');
     const router = useRouter();
 
     const getCurrentUserIdentifier = () =>
         employeeId ? `${userName} (${employeeId})` : userName;
 
-     const fetchUserInfo = async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) { router.push('/login'); return; }
-            const { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-            if (data) {
-                setRole(data.role);
-                setUserName(data.name);
-                setEmployeeId(data.employee_id || '');
+    // ─── Guard: moderator และ assistant_moderator เท่านั้น ──────────────────────
+    useEffect(() => {
+        const checkAccess = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) {
+                    router.push('/login')
+                    return
+                }
+
+                const { data } = await supabase
+                    .from('users')
+                    .select('role, name, employee_id')
+                    .eq('id', session.user.id)
+                    .single()
+
+                if (!data || !ALLOWED_ROLES.includes(data.role)) {
+                    setAccessStatus('denied')
+                    return
+                }
+
+                setRole(data.role)
+                setUserName(data.name)
+                setEmployeeId(data.employee_id || '')
+                setAccessStatus('allowed')
+                loadDeletedOrders()
+            } catch (error) {
+                console.error('Access check error:', error)
+                router.push('/login')
             }
-        } catch (error) {
-            console.error('Error fetching user info:', error);
-            router.push('/login');
         }
-    };
+
+        checkAccess()
+    }, [])
 
     const loadDeletedOrders = async () => {
         setLoading(true);
         try {
-            // ✅ ลบถาวรอัตโนมัติรายการที่เกิน 7 วัน
+            // ลบถาวรอัตโนมัติรายการที่เกิน 7 วัน
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             await supabase
@@ -62,7 +112,7 @@ export default function TrashPage() {
                 .eq('is_deleted', true)
                 .lt('deleted_at', sevenDaysAgo.toISOString());
 
-            // ✅ ดึงรายการที่ soft delete ไว้
+            // ดึงรายการที่ soft delete ไว้
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
@@ -78,15 +128,7 @@ export default function TrashPage() {
             setLoading(false);
         }
     };
-    
-    useEffect(() => {
-        fetchUserInfo();
-        loadDeletedOrders();
-    }, []);
 
-   
-
-    // ✅ คำนวณวันที่เหลือก่อนลบถาวร
     const getDaysRemaining = (deletedAt: string): number => {
         const deleted = new Date(deletedAt);
         const expiry = new Date(deleted);
@@ -97,14 +139,17 @@ export default function TrashPage() {
     };
 
     const restoreOrder = async (order: DeletedOrder) => {
+        // Double-check สิทธิ์ก่อนทำงานจริง
+        if (!ALLOWED_ROLES.includes(role)) return
+
         const result = await Swal.fire({
             title: 'กู้คืนคำสั่งพิมพ์?',
             html: `
-                <div class="text-sm text-gray-600 text-left space-y-1">
-                    <p>📦 <b>สินค้า:</b> ${order.product_name}</p>
-                    <p>🔢 <b>ลอต:</b> ${order.lot_number}</p>
-                </div>
-            `,
+        <div class="text-sm text-gray-600 text-left space-y-1">
+          <p>📦 <b>สินค้า:</b> ${order.product_name}</p>
+          <p>🔢 <b>ลอต:</b> ${order.lot_number}</p>
+        </div>
+      `,
             icon: 'question', showCancelButton: true,
             confirmButtonColor: '#10b981', cancelButtonColor: '#6b7280',
             confirmButtonText: 'ยืนยันกู้คืน', cancelButtonText: 'ยกเลิก'
@@ -119,7 +164,6 @@ export default function TrashPage() {
                     is_deleted: false,
                     deleted_at: null,
                     deleted_by: null,
-                    // ✅ reset สถานะกลับเป็นปกติ
                     is_cancelled: false,
                     is_printed: false,
                     is_verified: false,
@@ -130,24 +174,22 @@ export default function TrashPage() {
 
                 if (error) throw error;
 
-                // ✅ บันทึกลง audit_logs เพื่อแสดงในประวัติ EditHistory
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                await supabase.from('audit_logs').insert([{
-                    order_id: order.id,
-                    action: 'RESTORE_FROM_TRASH',
-                    user_name: restoredBy,
-                    summary: `กู้คืนจากถังขยะโดย ${restoredBy}`,
-                    changes: {
-                        restored_by: restoredBy,
-                        restored_at: now,
-                        product_name: order.product_name,
-                        lot_number: order.lot_number,
-                    },
-                    created_at: now
-                }]);
-            }
-
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    await supabase.from('audit_logs').insert([{
+                        order_id: order.id,
+                        action: 'RESTORE_FROM_TRASH',
+                        user_name: restoredBy,
+                        summary: `กู้คืนจากถังขยะโดย ${restoredBy}`,
+                        changes: {
+                            restored_by: restoredBy,
+                            restored_at: now,
+                            product_name: order.product_name,
+                            lot_number: order.lot_number,
+                        },
+                        created_at: now
+                    }]);
+                }
 
                 setDeletedOrders(prev => prev.filter(o => o.id !== order.id));
                 Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'คำสั่งพิมพ์กลับมาใน Dashboard แล้ว', timer: 2000, showConfirmButton: false });
@@ -158,15 +200,18 @@ export default function TrashPage() {
     };
 
     const permanentDelete = async (order: DeletedOrder) => {
+        // เฉพาะ moderator เท่านั้น (ไม่รวม assistant_moderator)
+        if (role !== 'moderator') return
+
         const result = await Swal.fire({
             title: 'ลบถาวร?',
             html: `
-                <div class="text-sm text-red-600 text-left space-y-1">
-                    <p>⚠️ การลบถาวรไม่สามารถกู้คืนได้</p>
-                    <p>📦 <b>สินค้า:</b> ${order.product_name}</p>
-                    <p>🔢 <b>ลอต:</b> ${order.lot_number}</p>
-                </div>
-            `,
+        <div class="text-sm text-red-600 text-left space-y-1">
+          <p>⚠️ การลบถาวรไม่สามารถกู้คืนได้</p>
+          <p>📦 <b>สินค้า:</b> ${order.product_name}</p>
+          <p>🔢 <b>ลอต:</b> ${order.lot_number}</p>
+        </div>
+      `,
             icon: 'warning', showCancelButton: true,
             confirmButtonColor: '#dc2626', cancelButtonColor: '#6b7280',
             confirmButtonText: 'ลบถาวรเลย', cancelButtonText: 'ยกเลิก'
@@ -177,7 +222,6 @@ export default function TrashPage() {
                 const { error } = await supabase.from('orders').delete().eq('id', order.id);
                 if (error) throw error;
 
-                // ✅ Log การลบถาวร
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                     await supabase.from('audit_logs').insert([{
@@ -206,7 +250,7 @@ export default function TrashPage() {
     };
 
     const emptyTrash = async () => {
-        if (deletedOrders.length === 0) return;
+        if (deletedOrders.length === 0 || role !== 'moderator') return
 
         const result = await Swal.fire({
             title: 'ล้างถังขยะทั้งหมด?',
@@ -241,7 +285,21 @@ export default function TrashPage() {
         } catch { return isoString; }
     };
 
-    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
+    // ─── Render states ────────────────────────────────────────────────────────
+    if (accessStatus === 'checking') {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <RefreshCcw className="w-8 h-8 text-indigo-400 animate-spin" />
+            </div>
+        )
+    }
+
+    if (accessStatus === 'denied') {
+        return <AccessDenied />
+    }
+
+    // isModerator: สิทธิ์สูงสุด — ลบถาวร + ล้างถังขยะได้
+    const isModerator = role === 'moderator'
 
     return (
         <div className="text-gray-800">
@@ -256,21 +314,27 @@ export default function TrashPage() {
                             รายการที่ถูกลบจะถูกเก็บไว้ 7 วัน หลังจากนั้นจะถูกลบถาวรอัตโนมัติ
                         </p>
                     </div>
+
                     <div className="flex gap-2">
-                        <button onClick={loadDeletedOrders}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition text-sm">
+                        <button
+                            onClick={loadDeletedOrders}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition text-sm"
+                        >
                             <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> รีเฟรช
                         </button>
-                        {isAdmin && deletedOrders.length > 0 && (
-                            <button onClick={emptyTrash}
-                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition text-sm shadow-md">
+
+                        {/* ล้างถังขยะ: เฉพาะ moderator */}
+                        {isModerator && deletedOrders.length > 0 && (
+                            <button
+                                onClick={emptyTrash}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition text-sm shadow-md"
+                            >
                                 <Trash2 className="w-4 h-4" /> ล้างถังขยะ
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* ✅ แจ้งเตือนรายการที่ใกล้ถูกลบถาวร */}
                 {deletedOrders.some(o => getDaysRemaining(o.deleted_at) <= 2) && (
                     <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
                         <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
@@ -299,7 +363,10 @@ export default function TrashPage() {
                         const isUrgent = daysLeft <= 2;
 
                         return (
-                            <div key={order.id} className={`bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col ${isUrgent ? 'border-red-300' : 'border-gray-200'}`}>
+                            <div
+                                key={order.id}
+                                className={`bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col ${isUrgent ? 'border-red-300' : 'border-gray-200'}`}
+                            >
                                 {/* Header */}
                                 <div className={`p-4 border-b ${isUrgent ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
                                     <div className="flex justify-between items-start">
@@ -311,7 +378,6 @@ export default function TrashPage() {
                                                 {order.lot_number}
                                             </p>
                                         </div>
-                                        {/* ✅ countdown วันที่เหลือ */}
                                         <div className={`text-center px-3 py-1.5 rounded-xl text-xs font-bold ${isUrgent ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
                                             <Clock className="w-3.5 h-3.5 mx-auto mb-0.5" />
                                             {daysLeft > 0 ? `${daysLeft} วัน` : 'วันนี้!'}
@@ -350,14 +416,21 @@ export default function TrashPage() {
 
                                 {/* Footer Actions */}
                                 <div className="p-3 border-t border-gray-100 flex gap-2">
-                                    <button onClick={() => restoreOrder(order)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-semibold text-sm transition shadow-sm">
+                                    {/* กู้คืน: moderator + assistant_moderator */}
+                                    <button
+                                        onClick={() => restoreOrder(order)}
+                                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-semibold text-sm transition shadow-sm"
+                                    >
                                         <Undo className="w-4 h-4" /> กู้คืน
                                     </button>
-                                    {isAdmin && (
-                                        <button onClick={() => permanentDelete(order)}
+
+                                    {/* ลบถาวร: เฉพาะ moderator */}
+                                    {isModerator && (
+                                        <button
+                                            onClick={() => permanentDelete(order)}
                                             className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-semibold text-sm transition shadow-sm"
-                                            title="ลบถาวร">
+                                            title="ลบถาวร"
+                                        >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     )}
