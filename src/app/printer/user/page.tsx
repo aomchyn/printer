@@ -36,11 +36,11 @@ const ROLE_LABEL: Record<RoleKey, string> = {
     user: 'User',
 }
 
-const ROLE_CONFIG: Record<RoleKey, { badge: string; avatar: string; border: string }> = {
-    moderator: { badge: 'bg-violet-500/20 text-violet-300 border border-violet-500/30', avatar: 'bg-gradient-to-br from-violet-600 to-purple-700', border: 'border-l-violet-500' },
-    assistant_moderator: { badge: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30', avatar: 'bg-gradient-to-br from-indigo-500 to-blue-700', border: 'border-l-indigo-400' },
-    operator: { badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30', avatar: 'bg-gradient-to-br from-emerald-600 to-teal-700', border: 'border-l-emerald-500' },
-    user: { badge: 'bg-sky-500/20 text-sky-300 border border-sky-500/30', avatar: 'bg-gradient-to-br from-sky-600 to-blue-700', border: 'border-l-sky-400' },
+const ROLE_CONFIG: Record<RoleKey, { badge: string; avatar: string; border: string; cardCls: string }> = {
+    moderator: { badge: 'bg-violet-500/20 text-violet-300 border border-violet-500/30', avatar: 'bg-gradient-to-br from-violet-600 to-purple-700', border: 'border-l-violet-500', cardCls: 'bg-gradient-to-br from-violet-50/90 to-purple-50/30 border-violet-200/80 shadow-md shadow-violet-900/5' },
+    assistant_moderator: { badge: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30', avatar: 'bg-gradient-to-br from-indigo-500 to-blue-700', border: 'border-l-indigo-400', cardCls: 'bg-gradient-to-br from-indigo-50/90 to-blue-50/30 border-indigo-200/80 shadow-md shadow-indigo-900/5' },
+    operator: { badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30', avatar: 'bg-gradient-to-br from-emerald-600 to-teal-700', border: 'border-l-emerald-500', cardCls: 'bg-gradient-to-br from-emerald-50/90 to-teal-50/30 border-emerald-200/80 shadow-md shadow-emerald-900/5' },
+    user: { badge: 'bg-sky-500/20 text-sky-300 border border-sky-500/30', avatar: 'bg-gradient-to-br from-sky-600 to-blue-700', border: 'border-l-sky-400', cardCls: 'bg-gradient-to-br from-sky-50/90 to-blue-50/30 border-sky-200/80 shadow-md shadow-sky-900/5' },
 }
 
 const SECTION_GROUPS: { key: string; roles: RoleKey[]; label: string; icon: React.ElementType; colorClass: string }[] = [
@@ -74,7 +74,7 @@ function UserCard({ user, onEdit, onDelete, currentUserId }: {
     const isSelf = user.id === currentUserId
 
     return (
-        <div className={`bg-white border border-[#dde8f5] border-l-4 ${cfg.border} rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 shadow-sm flex flex-col justify-between h-full`}>
+        <div className={`${cfg.cardCls} border border-l-4 ${cfg.border} rounded-2xl p-4 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between h-full`}>
             <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center text-[13px] font-bold text-white ${cfg.avatar} shadow-md mt-0.5 shrink-0`}>
                     {getInitials(user.name)}
@@ -261,7 +261,7 @@ export default function UserManagement() {
     ]
 
     return (
-        <div className="min-h-screen bg-gray-50" style={{
+        <div className="min-h-screen bg-[#f4f7fc]" style={{
             backgroundImage: 'radial-gradient(ellipse at 0% 0%, rgba(59,102,199,0.07) 0%, transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(107,56,202,0.05) 0%, transparent 60%)',
         }}>
 
