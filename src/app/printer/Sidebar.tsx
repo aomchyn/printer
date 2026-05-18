@@ -123,36 +123,36 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             return;
         }
 
-       // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงหรือไม่
-const hasChanges =
-    profileForm.name.trim()        !== name        ||
-    profileForm.employee_id.trim() !== employeeId  ||
-    profileForm.job_title.trim()   !== jobTitle    ||
-    profileForm.department.trim()  !== department  ||
-    profileForm.new_password       !== '';
+        // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงหรือไม่
+        const hasChanges =
+            profileForm.name.trim() !== name ||
+            profileForm.employee_id.trim() !== employeeId ||
+            profileForm.job_title.trim() !== jobTitle ||
+            profileForm.department.trim() !== department ||
+            profileForm.new_password !== '';
 
-if (!hasChanges) {
-    Swal.fire({
-        icon: 'info',
-        title: 'ไม่มีการเปลี่ยนแปลง',
-        text: 'คุณยังไม่ได้แก้ไขข้อมูลโปรไฟล์ใดๆ',
-        confirmButtonText: 'รับทราบ',
-        confirmButtonColor: '#6b7280',
-    });
-    return;
-}
+        if (!hasChanges) {
+            Swal.fire({
+                icon: 'info',
+                title: 'ไม่มีการเปลี่ยนแปลง',
+                text: 'คุณยังไม่ได้แก้ไขข้อมูลโปรไฟล์ใดๆ',
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#6b7280',
+            });
+            return;
+        }
 
-setIsSavingProfile(true);
-try {
+        setIsSavingProfile(true);
+        try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
             // ✅ อัปเดต users table
             const { error: updateError } = await supabase.from('users').update({
-                name:        profileForm.name.trim(),
+                name: profileForm.name.trim(),
                 employee_id: profileForm.employee_id.trim() || null,
-                job_title:   profileForm.job_title.trim() || null,
-                department:  profileForm.department.trim() || null,
+                job_title: profileForm.job_title.trim() || null,
+                department: profileForm.department.trim() || null,
             }).eq('id', session.user.id);
 
             if (updateError) throw updateError;
@@ -163,31 +163,34 @@ try {
                     password: profileForm.new_password,
                 });
                 if (pwError) throw pwError;
+
+                // ✅ refresh เพื่อให้ได้ JWT ใหม่
+                await supabase.auth.refreshSession();
             }
 
             // ✅ บันทึก Audit Log
-const changes: Record<string, { before: string; after: string }> = {};
-if (profileForm.name.trim() !== name)              changes['ชื่อ']          = { before: name,       after: profileForm.name.trim() };
-if (profileForm.employee_id.trim() !== employeeId) changes['รหัสพนักงาน']   = { before: employeeId, after: profileForm.employee_id.trim() };
-if (profileForm.job_title.trim() !== jobTitle)     changes['ตำแหน่งงาน']    = { before: jobTitle,   after: profileForm.job_title.trim() };
-if (profileForm.department.trim() !== department)  changes['หน่วยงาน']      = { before: department, after: profileForm.department.trim() };
-if (profileForm.new_password)                       changes['รหัสผ่าน']      = { before: '••••••',   after: '(เปลี่ยนแล้ว)' };
+            const changes: Record<string, { before: string; after: string }> = {};
+            if (profileForm.name.trim() !== name) changes['ชื่อ'] = { before: name, after: profileForm.name.trim() };
+            if (profileForm.employee_id.trim() !== employeeId) changes['รหัสพนักงาน'] = { before: employeeId, after: profileForm.employee_id.trim() };
+            if (profileForm.job_title.trim() !== jobTitle) changes['ตำแหน่งงาน'] = { before: jobTitle, after: profileForm.job_title.trim() };
+            if (profileForm.department.trim() !== department) changes['หน่วยงาน'] = { before: department, after: profileForm.department.trim() };
+            if (profileForm.new_password) changes['รหัสผ่าน'] = { before: '••••••', after: '(เปลี่ยนแล้ว)' };
 
-const changeSummary = Object.entries(changes)
-    .map(([field, { before, after }]) => `${field}: "${before || '-'}" → "${after || '-'}"`)
-    .join(' | ');
+            const changeSummary = Object.entries(changes)
+                .map(([field, { before, after }]) => `${field}: "${before || '-'}" → "${after || '-'}"`)
+                .join(' | ');
 
-await supabase.from('audit_logs').insert([{
-    user_id:    session.user.id,
-    user_name:  profileForm.name.trim(),
-    action:     'UPDATE_PROFILE',
-    summary:    `แก้ไขโปรไฟล์: ${changeSummary}`,
-    changes,
-    created_at: new Date().toISOString(),
-}]);
+            await supabase.from('audit_logs').insert([{
+                user_id: session.user.id,
+                user_name: profileForm.name.trim(),
+                action: 'UPDATE_PROFILE',
+                summary: `แก้ไขโปรไฟล์: ${changeSummary}`,
+                changes,
+                created_at: new Date().toISOString(),
+            }]);
 
-// ✅ อัปเดต state ใน sidebar ทันที
-setName(profileForm.name.trim());
+            // ✅ อัปเดต state ใน sidebar ทันที
+            setName(profileForm.name.trim());
             setEmployeeId(profileForm.employee_id.trim());
             setJobTitle(profileForm.job_title.trim());
             setDepartment(profileForm.department.trim());
@@ -244,15 +247,15 @@ setName(profileForm.name.trim());
             `}>
                 <div className="sidebar-container h-full flex flex-col">
                     <div className="sidebar-title mb-6 text-center relative border-b border-b-white/10 pb-4">
-                       <div className="flex items-center gap-3 px-4 py-5">
-    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
-        <Printer className="w-5 h-5 text-white" />
-    </div>
-    <div>
-        <div className="text-lg font-extrabold text-white tracking-wider">Printer OP</div>
-        <div className="text-[11px] text-blue-200 font-medium">Label Management System</div>
-    </div>
-</div>
+                        <div className="flex items-center gap-3 px-4 py-5">
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shadow-inner">
+                                <Printer className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <div className="text-lg font-extrabold text-white tracking-wider">Printer OP</div>
+                                <div className="text-[11px] text-blue-200 font-medium">Label Management System</div>
+                            </div>
+                        </div>
 
                         {/* Mobile close button */}
                         <button
@@ -262,48 +265,49 @@ setName(profileForm.name.trim());
                             <X size={20} />
                         </button>
 
-                       <div className="mt-4 mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg">
-    {/* ชื่อผู้ใช้ */}
-    <div className="bg-white/10 px-4 py-3 flex items-center gap-3 border-b border-white/10">
-        <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow">
-            {name ? name.charAt(0).toUpperCase() : '?'}
-        </div>
-        <div className="min-w-0">
-            <div className="text-white font-bold text-sm truncate">{name || 'Loading...'}</div>
-            <div className={`text-[11px] font-semibold uppercase tracking-wider ${
-                role === 'moderator' ? 'text-purple-300' :
-                role === 'assistant_moderator' ? 'text-indigo-300' :
-                role === 'operator' ? 'text-blue-300' : 'text-emerald-300'
-            }`}>
-                {role === 'moderator' ? 'Moderator' :
-                 role === 'assistant_moderator' ? 'Asst. Moderator' :
-                 role === 'operator' ? 'Operator' : 'User'}
-            </div>
-        </div>
-    </div>
+                        <div className="mt-4 mb-4 rounded-2xl overflow-hidden border border-white/10 shadow-lg">
+                            {/* ชื่อผู้ใช้ */}
+                            <div className="bg-white/10 px-4 py-3 flex items-center gap-3 border-b border-white/10">
+                                <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow">
+                                    {name ? name.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-white font-bold text-sm truncate">{name || 'Loading...'}</div>
+                                    <div className={`text-[11px] font-semibold uppercase tracking-wider ${role === 'moderator' ? 'text-purple-300' :
+                                        role === 'assistant_moderator' ? 'text-indigo-300' :
+                                            role === 'operator' ? 'text-blue-300' : 'text-emerald-300'
+                                        }`}>
+                                        {role === 'moderator' ? 'Moderator' :
+                                            role === 'assistant_moderator' ? 'Asst. Moderator' :
+                                                role === 'operator' ? 'Operator' : 'User'}
+                                    </div>
+                                </div>
+                            </div>
 
-    {/* ข้อมูลเพิ่มเติม */}
-    <div className="bg-white/5 px-4 py-2.5 flex flex-col gap-1.5 text-xs">
-        {employeeId && (
-            <div className="flex justify-between">
-                <span className="text-blue-300">รหัสพนักงาน</span>
-                <span className="text-white font-medium">{employeeId}</span>
-            </div>
-        )}
-        {jobTitle && (
-            <div className="flex justify-between">
-                <span className="text-blue-300">ตำแหน่ง</span>
-                <span className="text-white font-medium truncate ml-2 max-w-[60%] text-right">{jobTitle}</span>
-            </div>
-        )}
-        {department && (
-            <div className="flex justify-between">
-                <span className="text-blue-300">หน่วยงาน</span>
-                <span className="text-white font-medium truncate ml-2 max-w-[60%] text-right">{department}</span>
-            </div>
-        )}
-    </div>
-</div>
+                            {/* ข้อมูลเพิ่มเติม */}
+                            <div className="bg-white/5 px-4 py-2.5 flex flex-col gap-1.5 text-xs">
+                                {employeeId && (
+                                    <div className="flex justify-between">
+                                        <span className="text-blue-300">รหัสพนักงาน</span>
+                                        <span className="text-white font-medium">{employeeId}</span>
+                                    </div>
+                                )}
+                                {jobTitle && (
+                                    <div className="flex justify-between">
+                                        <span className="text-blue-300">ตำแหน่ง</span>
+                                        <span className="text-white font-medium truncate ml-2 max-w-[60%] text-right">{jobTitle}</span>
+                                    </div>
+                                )}
+                                {department && (
+                                    <div className="flex justify-between">
+                                        <span className="text-blue-300">หน่วยงาน</span>
+                                        <span className="text-white font-medium truncate ml-2 max-w-[60%] text-right">
+                                            {department.split(' ')[0]}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                         {/* ✅ ปุ่มแก้ไขโปรไฟล์ + ออกจากระบบ */}
                         <div className="flex flex-col gap-2">
                             <button
@@ -439,12 +443,17 @@ setName(profileForm.name.trim());
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">หน่วยงาน</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={profileForm.department}
                                     onChange={e => setProfileForm(f => ({ ...f, department: e.target.value }))}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                                />
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm bg-white"
+                                >
+                                    <option value="">— เลือกหน่วยงาน —</option>
+                                    <option value="QA ประกันคุณภาพ">QA — ประกันคุณภาพ</option>
+                                    <option value="PD ฝ่ายผลิต">PD — ฝ่ายผลิต</option>
+                                    <option value="WH คลังสินค้า">WH — คลังสินค้า</option>
+                                    <option value="VD ผลิตยาสัตว์">VD — ผลิตยาสัตว์</option>
+                                </select>
                             </div>
 
                             {/* เปลี่ยนรหัสผ่าน */}

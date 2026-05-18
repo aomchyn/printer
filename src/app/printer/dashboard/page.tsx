@@ -40,7 +40,7 @@ export interface OrderInterface {
     printed_by?: string | null;         // ✅ ชื่อผู้พิมพ์
     printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
     printed_at?: string | null;         // ✅ เวลาที่พิมพ์
-    previous_product_name?: string | null;  
+    previous_product_name?: string | null;
 }
 
 export default function DashboardPage() {
@@ -67,7 +67,7 @@ export default function DashboardPage() {
                 setUserName(data.name);
                 setEmployeeId(data.employee_id || '');
                 const identifier = data.employee_id ? `${data.name} (${data.employee_id})` : data.name;
-loadOrders(identifier);
+                loadOrders(identifier);
             } else {
                 setRole('user');
                 setUserName(session.user.email?.split('@')[0] || 'User');
@@ -81,94 +81,94 @@ loadOrders(identifier);
     const [auditKey, setAuditKey] = useState(0);
 
     const loadOrders = async (userIdentifier?: string) => {
-    try {
-        let allOrders: OrderInterface[] = [];
-        let from = 0;
-        const pageSize = 1000;
-        let hasMore = true;
+        try {
+            let allOrders: OrderInterface[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
 
-        while (hasMore) {
-            const { data, error } = await supabase
-                .from('orders').select('*')
-                .eq('is_deleted', false)
-                .order('created_at', { ascending: false })
-                .range(from, from + pageSize - 1);
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('orders').select('*')
+                    .eq('is_deleted', false)
+                    .order('created_at', { ascending: false })
+                    .range(from, from + pageSize - 1);
 
-            if (error) throw error;
-            if (data && data.length > 0) {
-                allOrders = [...allOrders, ...(data as OrderInterface[])];
-                from += pageSize;
-                hasMore = data.length === pageSize;
-            } else {
-                hasMore = false;
+                if (error) throw error;
+                if (data && data.length > 0) {
+                    allOrders = [...allOrders, ...(data as OrderInterface[])];
+                    from += pageSize;
+                    hasMore = data.length === pageSize;
+                } else {
+                    hasMore = false;
+                }
             }
+
+            const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
+            if (fgcodeData && fgcodeData.length > 0) {
+                const productMap = Object.fromEntries(
+                    fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
+                );
+
+                const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
+
+                allOrders = allOrders.map(order => {
+                    const currentName = productMap[order.product_id];
+                    const nameChanged = currentName &&
+                        currentName !== order.product_name &&
+                        !processingOrderIds.has(order.id);
+
+                    if (nameChanged) {
+                        processingOrderIds.add(order.id);
+                        updatesNeeded.push({
+                            id: order.id,
+                            newName: currentName,
+                            oldName: order.product_name,
+                        });
+                    }
+
+                    return {
+                        ...order,
+                        product_name: currentName ?? order.product_name,
+                        original_product_name: order.previous_product_name ?? (nameChanged ? order.product_name : undefined),
+                    };
+                });
+
+                if (updatesNeeded.length > 0) {
+                    const now = new Date().toISOString();
+                    for (const { id, newName, oldName } of updatesNeeded) {
+                        await supabase.from('orders').update({
+                            product_name: newName,
+                            previous_product_name: oldName,
+                            updated_at: now,
+                        }).eq('id', id);
+
+                        await supabase.from('audit_logs').insert([{
+                            order_id: id,
+                            action: 'UPDATE',
+                            user_name: userIdentifier,
+                            summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
+                            created_at: now,
+                        }]);
+
+                        // ✅ อัปเดต updated_at ใน allOrders ด้วย เพื่อให้ EditHistory re-fetch
+                        allOrders = allOrders.map(o =>
+                            o.id === id ? { ...o, updated_at: now } : o
+                        );
+                    }
+                    setAuditKey(prev => prev + 1); // ✅ force EditHistory re-fetch
+                }
+            }
+
+            setOrders(allOrders);
+        } catch {
+            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
-
-        const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
-        if (fgcodeData && fgcodeData.length > 0) {
-            const productMap = Object.fromEntries(
-                fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
-            );
-
-            const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
-
-            allOrders = allOrders.map(order => {
-                const currentName = productMap[order.product_id];
-                const nameChanged = currentName &&
-                 currentName !== order.product_name &&
-                 !processingOrderIds.has(order.id);
-
-                if (nameChanged) {
-                    processingOrderIds.add(order.id);
-                    updatesNeeded.push({
-                        id: order.id,
-                        newName: currentName,
-                        oldName: order.product_name,
-                    });
-                }
-
-                return {
-                    ...order,
-                    product_name: currentName ?? order.product_name,
-                    original_product_name: order.previous_product_name ?? (nameChanged ? order.product_name : undefined),
-                };
-            });
-
-            if (updatesNeeded.length > 0) {
-                const now = new Date().toISOString();
-                for (const { id, newName, oldName } of updatesNeeded) {
-                    await supabase.from('orders').update({
-                        product_name: newName,
-                        previous_product_name: oldName,
-                        updated_at: now,
-                    }).eq('id', id);
-
-                    await supabase.from('audit_logs').insert([{
-                        order_id: id,
-                        action: 'UPDATE',
-                        user_name: userIdentifier ,
-                        summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
-                        created_at: now,
-                    }]);
-
-                    // ✅ อัปเดต updated_at ใน allOrders ด้วย เพื่อให้ EditHistory re-fetch
-        allOrders = allOrders.map(o =>
-            o.id === id ? { ...o, updated_at: now } : o
-        );
-                }
-                 setAuditKey(prev => prev + 1); // ✅ force EditHistory re-fetch
-            } 
-        } 
-
-        setOrders(allOrders);
-    } catch {
-        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-    }
-};
+    };
 
     useEffect(() => {
         fetchUserInfo();
-        
+
 
         const playNotificationSound = () => {
             try {
@@ -234,7 +234,7 @@ loadOrders(identifier);
         return () => { supabase.removeChannel(channel); };
     }, []);
 
-   
+
     const sortedOrders = useMemo(() => {
         return [...orders].sort((a, b) => {
             const timeA = new Date(a.updated_at || a.created_at).getTime();
@@ -281,118 +281,118 @@ loadOrders(identifier);
         if (result.isConfirmed) {
             try {
                 // ✅ เก็บข้อมูล order ไว้ก่อนลบ
-            const orderToDelete = orders.find(o => o.id === id);
+                const orderToDelete = orders.find(o => o.id === id);
 
-            const { error } = await supabase.from('orders').update({
-                  is_deleted:true,
-                  deleted_at: new Date().toISOString(),
-                  deleted_by:getCurrentUserIdentifier(),
-            }).eq('id', id);
-            if (error) throw error;
+                const { error } = await supabase.from('orders').update({
+                    is_deleted: true,
+                    deleted_at: new Date().toISOString(),
+                    deleted_by: getCurrentUserIdentifier(),
+                }).eq('id', id);
+                if (error) throw error;
 
-            // ✅ Log การลบพร้อมรายละเอียด order ที่ถูกลบ
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session && orderToDelete) {
-                await supabase.from('audit_logs').insert([{
-                    user_id: session.user.id,
-                    action: 'DELETE_ORDER',
-                    details: {
-                        order_id: orderToDelete.id,
-                        lot_number: orderToDelete.lot_number,
-                        product_id: orderToDelete.product_id,
-                        product_name: orderToDelete.product_name,
-                        quantity: orderToDelete.quantity,
-                        created_by: orderToDelete.created_by,
-                        deleted_by: getCurrentUserIdentifier(),
-                        deleted_at: new Date().toISOString(),
-                    },
-                    created_at: new Date().toISOString()
-                }]);
-            }
+                // ✅ Log การลบพร้อมรายละเอียด order ที่ถูกลบ
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session && orderToDelete) {
+                    await supabase.from('audit_logs').insert([{
+                        user_id: session.user.id,
+                        action: 'DELETE_ORDER',
+                        details: {
+                            order_id: orderToDelete.id,
+                            lot_number: orderToDelete.lot_number,
+                            product_id: orderToDelete.product_id,
+                            product_name: orderToDelete.product_name,
+                            quantity: orderToDelete.quantity,
+                            created_by: orderToDelete.created_by,
+                            deleted_by: getCurrentUserIdentifier(),
+                            deleted_at: new Date().toISOString(),
+                        },
+                        created_at: new Date().toISOString()
+                    }]);
+                }
                 setOrders(prev => prev.filter(order => order.id !== id));
                 Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
 
     const saveEdit = async () => {
-    if (!editingOrder) return;
-    try {
-        const now = new Date().toISOString();
-        const original = orders.find(o => o.id === editingOrder.id);
-        const changeDetails: string[] = [];
+        if (!editingOrder) return;
+        try {
+            const now = new Date().toISOString();
+            const original = orders.find(o => o.id === editingOrder.id);
+            const changeDetails: string[] = [];
 
-        if (original) {
-            const displayVal = (val: unknown) =>
-                (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
+            if (original) {
+                const displayVal = (val: unknown) =>
+                    (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
 
-            // ประเภทคำสั่ง
-            const oldType = displayVal(original.order_type);
-            const newType = displayVal(editingOrder.order_type);
-            if (oldType !== newType) changeDetails.push(`ประเภท: ${oldType} ➡️ ${newType}`);
+                // ประเภทคำสั่ง
+                const oldType = displayVal(original.order_type);
+                const newType = displayVal(editingOrder.order_type);
+                if (oldType !== newType) changeDetails.push(`ประเภท: ${oldType} ➡️ ${newType}`);
 
-            // เลขลอต
-            const oldLot = displayVal(original.lot_number);
-            const newLot = displayVal(editingOrder.lot_number);
-            if (oldLot !== newLot) changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
+                // เลขลอต
+                const oldLot = displayVal(original.lot_number);
+                const newLot = displayVal(editingOrder.lot_number);
+                if (oldLot !== newLot) changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
 
-            // จำนวน
-            const oldQty = Number(original.quantity) || 0;
-            const newQty = Number(editingOrder.quantity) || 0;
-            if (oldQty !== newQty) changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
+                // จำนวน
+                const oldQty = Number(original.quantity) || 0;
+                const newQty = Number(editingOrder.quantity) || 0;
+                if (oldQty !== newQty) changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
 
-            // วันที่ผลิต
-            const oldDateRaw = original.production_date || '';
-            const newDateRaw = editingOrder.production_date || '';
-            if (oldDateRaw !== newDateRaw) {
-                const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : 'ไม่มี';
-                changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
+                // วันที่ผลิต
+                const oldDateRaw = original.production_date || '';
+                const newDateRaw = editingOrder.production_date || '';
+                if (oldDateRaw !== newDateRaw) {
+                    const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : 'ไม่มี';
+                    changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
+                }
+
+                // หมายเหตุ
+                const oldNotes = displayVal(original.notes);
+                const newNotes = displayVal(editingOrder.notes);
+                if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
             }
 
-            // หมายเหตุ
-            const oldNotes = displayVal(original.notes);
-            const newNotes = displayVal(editingOrder.notes);
-            if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
+            if (changeDetails.length === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'ไม่มีการเปลี่ยนแปลง',
+                    text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของคำสั่งพิมพ์นี้',
+                    confirmButtonText: 'รับทราบ',
+                    confirmButtonColor: '#6b7280',
+                });
+                return;
+            }
+
+            const summary = `แก้ไข: ${changeDetails.join(' | ')}`;
+            const editorName = getCurrentUserIdentifier();
+            const updateData = {
+                order_type: editingOrder.order_type,         // ✅ เพิ่มตรงนี้
+                lot_number: editingOrder.lot_number,
+                quantity: editingOrder.quantity,
+                production_date: editingOrder.production_date,
+                expiry_date: editingOrder.expiry_date,
+                notes: editingOrder.notes,
+                updated_at: now,
+                updated_by: editorName,
+                edit_summary: summary
+            };
+
+            const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
+            if (error) throw error;
+
+            await logAuditTrail(editingOrder.id, 'UPDATE', summary);
+            setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
+            setEditingOrder(null);
+            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
+        } catch {
+            Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
-
-       if (changeDetails.length === 0) {
-            Swal.fire({
-                icon: 'info',
-                title: 'ไม่มีการเปลี่ยนแปลง',
-                text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของคำสั่งพิมพ์นี้',
-                confirmButtonText: 'รับทราบ',
-                confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
-
-        const summary = `แก้ไข: ${changeDetails.join(' | ')}`;
-        const editorName = getCurrentUserIdentifier();
-        const updateData = {
-            order_type: editingOrder.order_type,         // ✅ เพิ่มตรงนี้
-            lot_number: editingOrder.lot_number,
-            quantity: editingOrder.quantity,
-            production_date: editingOrder.production_date,
-            expiry_date: editingOrder.expiry_date,
-            notes: editingOrder.notes,
-            updated_at: now,
-            updated_by: editorName,
-            edit_summary: summary
-        };
-
-        const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
-        if (error) throw error;
-
-        await logAuditTrail(editingOrder.id, 'UPDATE', summary);
-        setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
-        setEditingOrder(null);
-        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
-    } catch  {
-        Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-    }
-};
+    };
 
     const startEdit = (order: OrderInterface) => {
         // ✅ ตรวจสอบสิทธิ์การแก้ไข
@@ -452,7 +452,7 @@ loadOrders(identifier);
                     o.id === order.id ? { ...o, is_verified: true, verified_by: verifierName, verified_at: now } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'ตรวจสอบสำเร็จ!', html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`, timer: 2000, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ตรวจสอบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -516,7 +516,7 @@ loadOrders(identifier);
                     o.id === order.id ? { ...o, is_printed: true, is_no_file: false, printed_by: printerName, printed_by_user_id: session.user.id, printed_at: now } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"', timer: 1500, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -572,7 +572,7 @@ loadOrders(identifier);
                     o.id === order.id ? { ...o, is_printed: false, printed_by: null, printed_by_user_id: null, printed_at: null } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'ยกเลิกการพิมพ์สำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -613,7 +613,7 @@ loadOrders(identifier);
                     o.id === order.id ? { ...o, is_verified: false, verified_by: null, verified_at: null } : o
                 ));
                 Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -658,7 +658,7 @@ loadOrders(identifier);
                 await logAuditTrail(order.id, 'CANCEL', summary);
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
                 Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', text: 'รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว', timer: 1500 });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -676,35 +676,35 @@ loadOrders(identifier);
                 if (error) throw error;
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: true } : o));
                 Swal.fire({ icon: 'success', title: 'ทำเครื่องหมายสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
     };
 
     const unmarkNoFile = async (order: OrderInterface) => {
-    const result = await Swal.fire({
-        title: 'ยกเลิกการแจ้งเตือนไม่มีไฟล์?',
-        text: 'สถานะ "ไม่มีไฟล์" จะถูกยกเลิก และคำสั่งจะกลับสู่ปกติ',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'ใช่, ยกเลิก',
-        cancelButtonText: 'ปิด'
-    });
+        const result = await Swal.fire({
+            title: 'ยกเลิกการแจ้งเตือนไม่มีไฟล์?',
+            text: 'สถานะ "ไม่มีไฟล์" จะถูกยกเลิก และคำสั่งจะกลับสู่ปกติ',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'ใช่, ยกเลิก',
+            cancelButtonText: 'ปิด'
+        });
 
-    if (result.isConfirmed) {
-        try {
-            const { error } = await supabase.from('orders').update({ is_no_file: false }).eq('id', order.id);
-            if (error) throw error;
-            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: false } : o));
-            Swal.fire({ icon: 'success', title: 'ยกเลิกการแจ้งเตือนสำเร็จ', timer: 1500, showConfirmButton: false });
-        } catch  {
-            Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        if (result.isConfirmed) {
+            try {
+                const { error } = await supabase.from('orders').update({ is_no_file: false }).eq('id', order.id);
+                if (error) throw error;
+                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: false } : o));
+                Swal.fire({ icon: 'success', title: 'ยกเลิกการแจ้งเตือนสำเร็จ', timer: 1500, showConfirmButton: false });
+            } catch {
+                Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+            }
         }
-    }
-};
+    };
 
     const restoreOrder = async (order: OrderInterface) => {
         const result = await Swal.fire({
@@ -724,7 +724,7 @@ loadOrders(identifier);
                 if (error) throw error;
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
                 Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'รายการกลับมาเป็นปกติแล้ว', timer: 1500 });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -748,7 +748,7 @@ loadOrders(identifier);
                 if (dbError) throw dbError;
                 setOrders(prev => prev.map(o => o.id === order.id ? { ...o, image_url: null } : o));
                 Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch  {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -799,42 +799,42 @@ loadOrders(identifier);
 
     return (
         <div className="text-gray-800">
-           <div className="bg-gradient-to-r from-blue-500 to-indigo-400 rounded-2xl shadow-xl p-5 md:p-6 mb-6 border border-blue-500/30">
-<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-    {/* Title */}
-    <div>
-        <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-1.5 h-7 bg-white/80 rounded-full"></div>
-            <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
-                Dashboard
-                <span className="text-white/80 ml-2 font-semibold">คำสั่งพิมพ์ชิ้นงาน</span>
-            </h1>
-        </div>
-        <p className="text-sm text-white/80 ml-4">
-            แสดงคำสั่งพิมพ์ฉลากและปั๊มถุงทั้งหมด
-        </p>
-    </div>
-</div>
-    {/* Search */}
-    <div className="w-full md:w-80">
-        <div className="relative">
-           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-            <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ค้นหาเลขลอตหรือชื่อสินค้า..."
-                className="w-full pl-9 pr-4 py-2.5 bg-white/15 backdrop-blur border border-white/20 rounded-xl text-white/80 placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/30 text-sm"
-            />
-        </div>
-        {searchTerm && (
-            <div className="mt-1.5 text-xs text-blue-200 flex justify-between items-center px-1">
-                <span>พบ {filteredOrders.length} รายการ</span>
-                <button onClick={() => setSearchTerm('')} className="text-white/70 hover:text-red-400 font-medium">ล้างการค้นหา</button>
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-400 rounded-2xl shadow-xl p-5 md:p-6 mb-6 border border-blue-500/30">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Title */}
+                    <div>
+                        <div className="flex items-center gap-2.5 mb-1">
+                            <div className="w-1.5 h-7 bg-white/80 rounded-full"></div>
+                            <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
+                                Dashboard
+                                <span className="text-white/80 ml-2 font-semibold">คำสั่งพิมพ์ชิ้นงาน</span>
+                            </h1>
+                        </div>
+                        <p className="text-sm text-white/80 ml-4">
+                            แสดงคำสั่งพิมพ์ฉลากและปั๊มถุงทั้งหมด
+                        </p>
+                    </div>
+                </div>
+                {/* Search */}
+                <div className="w-full md:w-80">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="ค้นหาเลขลอตหรือชื่อสินค้า..."
+                            className="w-full pl-9 pr-4 py-2.5 bg-white/15 backdrop-blur border border-white/20 rounded-xl text-white/80 placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/30 text-sm"
+                        />
+                    </div>
+                    {searchTerm && (
+                        <div className="mt-1.5 text-xs text-blue-200 flex justify-between items-center px-1">
+                            <span>พบ {filteredOrders.length} รายการ</span>
+                            <button onClick={() => setSearchTerm('')} className="text-white/70 hover:text-red-400 font-medium">ล้างการค้นหา</button>
+                        </div>
+                    )}
+                </div>
             </div>
-        )}
-    </div>
-</div>
 
             {filteredOrders.length === 0 ? (
                 <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-white/20">
@@ -947,7 +947,11 @@ loadOrders(identifier);
                                     <span className="text-gray-500">ผู้สั่ง:</span>
                                     <span className="font-semibold text-gray-900 flex items-center gap-1 text-right">
                                         <UserCircle className="w-4 h-4 text-gray-400 inline" /> {order.created_by || '-'}
-                                        <span className="text-xs text-gray-500 ml-1">({order.created_by_department || 'ไม่ระบุ'})</span>
+                                        <span className="text-xs text-gray-500 ml-1">
+                                            ({order.created_by_department
+                                                ? order.created_by_department.split(' ')[0]
+                                                : 'ไม่ระบุ'})
+                                        </span>
                                     </span>
                                 </div>
                                 <div className="my-3 border-t border-gray-100"></div>
@@ -1086,33 +1090,33 @@ loadOrders(identifier);
                                 <input type="text" value={editingOrder.lot_number} onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
                             </div>
                             {/* แก้ไขพิมพ์ฉลากหรือปั๊มถุง */}
-<div>
-    <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทคำสั่ง</label>
-    <div className="flex gap-3">
-        <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
-            <input
-                type="radio"
-                name="edit_orderType"
-                value="พิมพ์ฉลาก"
-                checked={editingOrder.order_type === 'พิมพ์ฉลาก'}
-                onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
-                className="hidden"
-            />
-            🖨️ พิมพ์ฉลาก
-        </label>
-        <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'ปั๊มถุง' ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
-            <input
-                type="radio"
-                name="edit_orderType"
-                value="ปั๊มถุง"
-                checked={editingOrder.order_type === 'ปั๊มถุง'}
-                onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
-                className="hidden"
-            />
-            🔖 ปั๊มถุง
-        </label>
-    </div>
-</div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทคำสั่ง</label>
+                                <div className="flex gap-3">
+                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
+                                        <input
+                                            type="radio"
+                                            name="edit_orderType"
+                                            value="พิมพ์ฉลาก"
+                                            checked={editingOrder.order_type === 'พิมพ์ฉลาก'}
+                                            onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
+                                            className="hidden"
+                                        />
+                                        🖨️ พิมพ์ฉลาก
+                                    </label>
+                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'ปั๊มถุง' ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
+                                        <input
+                                            type="radio"
+                                            name="edit_orderType"
+                                            value="ปั๊มถุง"
+                                            checked={editingOrder.order_type === 'ปั๊มถุง'}
+                                            onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
+                                            className="hidden"
+                                        />
+                                        🔖 ปั๊มถุง
+                                    </label>
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-1">จำนวน</label>
                                 <input type="number" value={editingOrder.quantity} onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
