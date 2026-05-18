@@ -13,17 +13,29 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
 
     return (
         <div className="flex flex-col md:flex-row bg-gradient-to-br from-slate-100 via-blue-200 to-indigo-300 min-h-screen">
-            {/* Mobile Header (Visible only on small screens) */}
-            <div className="md:hidden flex items-center justify-between bg-blue-900 text-white p-4 sticky top-0 z-40 shadow-xl border-b border-indigo-500/30 font-sans tracking-wide">
-                <div className="font-extrabold text-xl flex items-center tracking-wider">
-                    <Printer className="mr-3 text-blue-300 w-6 h-6 inline" />
-                    Printer OP
+
+            {/* Mobile Header */}
+            <div className="md:hidden sticky top-0 z-40">
+                <div className="bg-gradient-to-r from-[#0f1e3d] via-[#152a54] to-[#1e3a8a] px-4 py-3.5 flex items-center justify-between shadow-xl border-b border-white/10 relative overflow-hidden">
+                    {/* Glow decoration */}
+                    <div className="absolute right-0 top-0 w-40 h-full bg-blue-500/10 blur-2xl pointer-events-none" />
+
+                    <div className="flex items-center gap-2.5 relative">
+                        <div className="p-1.5 bg-white/10 rounded-xl border border-white/15">
+                            <Printer className="w-5 h-5 text-blue-300" />
+                        </div>
+                        <div>
+                            <span className="font-black text-white text-lg tracking-tight leading-none">Printer OP</span>
+                            <div className="w-2 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full mt-0.5" />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="relative p-2 bg-white/10 hover:bg-white/20 active:scale-95 rounded-xl border border-white/15 shadow-sm transition-all duration-200">
+                        <Menu size={20} className="text-white" />
+                    </button>
                 </div>
-                <button
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="p-2 bg-white/10 rounded-xl hover:bg-white/20 transition-all active:scale-95 border border-white/10 shadow-sm">
-                    <Menu size={24} />
-                </button>
             </div>
 
             <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
@@ -33,10 +45,16 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
                     {children}
                 </div>
 
-                {/* Global Footer */}
-                <footer className="mt-8 mb-2 w-full text-center text-sm text-black">
-                    <p>&copy; {new Date().getFullYear()} Printer OP. All rights reserved.</p>
-                    <p className="mt-1 text-xs">Created by Chaloempon Promma</p>
+                {/* Footer */}
+                <footer className="mt-8 mb-2 w-full text-center">
+                    <div className="inline-flex flex-col items-center gap-1 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl px-6 py-3 shadow-sm">
+                        <p className="text-[12px] font-bold text-[#0f1e3d]/80 tracking-wide">
+                            &copy; {new Date().getFullYear()} Printer OP. All rights reserved.
+                        </p>
+                        <p className="text-[11px] font-medium text-[#0f1e3d]/60">
+                            Created by Chaloempon Promma
+                        </p>
+                    </div>
                 </footer>
             </main>
         </div>

@@ -4,9 +4,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy } from 'lucide-react';
 import EditHistory from '../components/EditHistory';
+import { JetBrains_Mono } from 'next/font/google';
 
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    weight: ['800'],
+});
 const processingOrderIds = new Set<number>();
 
 export interface OrderInterface {
@@ -51,6 +56,7 @@ export default function DashboardPage() {
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
     const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
+    const [copiedId, setCopiedId] = useState<number | null>(null);
     const router = useRouter();
 
     const fetchUserInfo = async () => {
@@ -852,14 +858,6 @@ export default function DashboardPage() {
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredOrders.map((order, index) => {
-                        // Dynamic Smart Packaging Splitter
-                        const { brand, packageSize } = (() => {
-                            const parts = order.product_name ? order.product_name.split('/') : [];
-                            if (parts.length > 1) {
-                                return { brand: parts[0].trim(), packageSize: parts.slice(1).join('/').trim() };
-                            }
-                            return { brand: order.product_name || '', packageSize: '' };
-                        })();
 
                         // Status classes
                         let borderLeftCls = 'border-l-4 border-l-slate-300';
@@ -907,18 +905,29 @@ export default function DashboardPage() {
                                                     );
                                                 })()}
                                             </div>
-                                            <h3 className="text-[16px] md:text-[17px] font-black text-[#0f1e3d] leading-snug break-words flex flex-wrap items-center gap-1.5">
-                                                <span>{brand}</span>
-                                                {packageSize && (
-                                                    <span className="text-[10.5px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/80 inline-block shrink-0">
-                                                        📦 {packageSize}
-                                                    </span>
-                                                )}
+                                            <h3 className="text-[16px] md:text-[17px] font-black text-[#0f1e3d] leading-snug break-words">
+                                                {order.product_name}
                                             </h3>
                                         </div>
                                         <h4 className="text-[14px] font-black text-indigo-950 tracking-tight flex items-center gap-2.5 mt-2.5">
                                             <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider bg-indigo-100/50 px-2 py-0.5 rounded-lg border border-indigo-200/60 shrink-0">LOT NO.</span>
-                                            <span className="font-mono text-indigo-950 font-black text-[16px] tracking-wide">{order.lot_number}</span>
+                                            <span className="text-indigo-950 font-black text-[16px] tracking-wide">{order.lot_number}</span>
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(order.lot_number);
+                                                        setCopiedId(order.id);
+                                                        setTimeout(() => setCopiedId(null), 2000);
+                                                    }}
+                                                    className="ml-1 w-6 h-6 flex items-center justify-center rounded-md text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all duration-200"
+                                                    title="คัดลอกเลขลอต"
+                                                >
+                                                    {copiedId === order.id
+                                                        ? <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                                        : <Copy className="w-3.5 h-3.5" />
+                                                    }
+                                                </button>
+                                            )}
                                         </h4>
                                     </div>
                                     <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 shrink-0 justify-center">
@@ -1008,7 +1017,7 @@ export default function DashboardPage() {
                                     <div className="my-3 border-t border-slate-100"></div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
                                         <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">อายุผลิตภัณฑ์ (Shelf Life):</span>
-                                        <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">{order.product_exp}</span>
+                                        <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">{order.product_exp} เดือน</span>
                                     </div>
                                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
                                         <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
@@ -1138,8 +1147,8 @@ export default function DashboardPage() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">เลขลอตสินค้า (Lot Number)</label>
-                                <input type="text" value={editingOrder.lot_number} 
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })} 
+                                <input type="text" value={editingOrder.lot_number}
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
                             </div>
 
@@ -1174,8 +1183,8 @@ export default function DashboardPage() {
 
                             <div>
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">จำนวนสั่งทำ (Quantity)</label>
-                                <input type="number" value={editingOrder.quantity} 
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })} 
+                                <input type="number" value={editingOrder.quantity}
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
                             </div>
 
@@ -1197,8 +1206,8 @@ export default function DashboardPage() {
 
                             <div>
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ (Notes)</label>
-                                <textarea value={editingOrder.notes || ''} 
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })} 
+                                <textarea value={editingOrder.notes || ''}
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none shadow-sm" rows={3} />
                             </div>
                         </div>
