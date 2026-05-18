@@ -799,301 +799,355 @@ export default function DashboardPage() {
 
     return (
         <div className="text-gray-800">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-400 rounded-2xl shadow-xl p-5 md:p-6 mb-6 border border-blue-500/30">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Header Block */}
+            <div className="bg-gradient-to-br from-[#0f1e3d] via-[#152a54] to-[#1e3a8a] rounded-3xl shadow-xl p-6 md:p-8 mb-8 border border-blue-900/10 relative overflow-hidden">
+                {/* Background decorative glowing circles */}
+                <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
+                <div className="absolute bottom-0 left-0 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -ml-12 -mb-12" />
+
+                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
                     {/* Title */}
                     <div>
-                        <div className="flex items-center gap-2.5 mb-1">
-                            <div className="w-1.5 h-7 bg-white/80 rounded-full"></div>
-                            <h1 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
+                        <div className="flex items-center gap-3 mb-1.5">
+                            <div className="w-2 h-7 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-full" />
+                            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
                                 Dashboard
-                                <span className="text-white/80 ml-2 font-semibold">คำสั่งพิมพ์ชิ้นงาน</span>
+                                <span className="text-blue-200/80 ml-3 font-medium text-lg md:text-xl">คำสั่งพิมพ์ชิ้นงาน</span>
                             </h1>
                         </div>
-                        <p className="text-sm text-white/80 ml-4">
-                            แสดงคำสั่งพิมพ์ฉลากและปั๊มถุงทั้งหมด
+                        <p className="text-[12.5px] text-slate-300/90 font-bold uppercase tracking-wider ml-5">
+                            Label & Bag Stamp Production Control Center
                         </p>
                     </div>
-                </div>
-                {/* Search */}
-                <div className="w-full md:w-80">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="ค้นหาเลขลอตหรือชื่อสินค้า..."
-                            className="w-full pl-9 pr-4 py-2.5 bg-white/15 backdrop-blur border border-white/20 rounded-xl text-white/80 placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/30 text-sm"
-                        />
-                    </div>
-                    {searchTerm && (
-                        <div className="mt-1.5 text-xs text-blue-200 flex justify-between items-center px-1">
-                            <span>พบ {filteredOrders.length} รายการ</span>
-                            <button onClick={() => setSearchTerm('')} className="text-white/70 hover:text-red-400 font-medium">ล้างการค้นหา</button>
+
+                    {/* Search */}
+                    <div className="w-full md:w-80 shrink-0">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="ค้นหาเลขลอต หรือชื่อสินค้า..."
+                                className="w-full pl-9 pr-4 py-3 bg-white/10 hover:bg-white/15 focus:bg-white border border-white/15 focus:border-white rounded-2xl text-white focus:text-[#0f1e3d] placeholder-blue-200/50 focus:placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold transition-all duration-300 shadow-inner"
+                            />
                         </div>
-                    )}
+                        {searchTerm && (
+                            <div className="mt-2 text-xs text-blue-200 flex justify-between items-center px-1">
+                                <span className="font-medium">พบ {filteredOrders.length} รายการ</span>
+                                <button onClick={() => setSearchTerm('')} className="text-rose-300 hover:text-rose-400 font-bold underline transition-colors">ล้างการค้นหา</button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {filteredOrders.length === 0 ? (
-                <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-white/20">
+                <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-slate-200/80">
                     <div className="text-6xl mb-4 opacity-50">📦</div>
-                    <h2 className="text-2xl font-semibold text-gray-600">
+                    <h2 className="text-2xl font-bold text-slate-500 tracking-tight">
                         {searchTerm ? `ไม่พบเลขลอต "${searchTerm}"` : 'ไม่มีคำสั่งฉลากในขณะนี้'}
                     </h2>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredOrders.map((order, index) => (
-                        <div key={order.id} className={`
-                            ${order.is_cancelled ? 'bg-red-50/80 border-red-300 opacity-80' : index % 2 === 0 ? 'bg-white' : 'bg-blue-50/70'}
-                            rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border overflow-hidden flex flex-col group relative
-                        `}>
-                            <div className={`p-5 border-b flex justify-between items-start ${order.is_cancelled ? 'bg-red-100 border-red-200' : index % 2 === 0 ? 'bg-blue-100/80 border-blue-100' : 'bg-indigo-100/80 border-blue-100'}`}>
-                                <div className="pr-4 pointer-events-none">
-                                    <div className="flex gap-2 items-center mb-1 flex-wrap">
-                                        <h3 className="text-lg font-bold text-gray-900 line-clamp-1 break-all flex items-center gap-2">
-                                            {order.product_name}
-                                            <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 tracking-wider">{order.product_id}</span>
-                                        </h3>
-                                        {order.order_type && (
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-red-200 text-red-800 border-red-300' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                                                {order.order_type}
-                                            </span>
-                                        )}
-                                        {order.is_cancelled && <span className="bg-red-600 text-white text-[10px] px-3 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-md">ยกเลิกแล้ว</span>}
-                                        {order.updated_at && !order.is_verified && !order.is_cancelled && (
-                                            <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">แก้ไขแล้ว</span>
-                                        )}
-                                        {(() => {
-                                            const isPending = !order.is_printed && !order.is_verified && !order.is_cancelled;
-                                            const isRecent = new Date().getTime() - new Date(order.created_at).getTime() < 5 * 60 * 1000;
-                                            return isPending && isRecent && (
-                                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">New</span>
-                                            );
-                                        })()}
-                                    </div>
-                                    <h4 className="text-base font-extrabold text-indigo-700 tracking-tight flex items-center gap-1.5">
-                                        <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100 italic">LOT</span>
-                                        {order.lot_number}
-                                    </h4>
-                                </div>
-                                <div className="flex gap-1 shrink-0">
-                                    {isAdmin && !order.is_cancelled && (
-                                        <>
-                                            {!order.is_verified ? (
-                                                <>
-                                                    {!order.is_printed ? (
-                                                        <>
-                                                            <button onClick={() => markPrinted(order)} className="w-6 h-6 rounded text-white bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="พิมพ์แล้ว">
-                                                                <Printer className="w-3 h-3" />
-                                                            </button>
-                                                            {!order.is_no_file ? (
-                                                                <button onClick={() => markNoFile(order)} className="w-6 h-6 rounded text-white bg-slate-500 hover:bg-slate-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ไม่มีไฟล์">
-                                                                    <FileQuestion className="w-3 h-3" />
-                                                                </button>
-                                                            ) : (
-                                                                <button onClick={() => unmarkNoFile(order)} className="w-6 h-6 rounded text-white bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
-                                                                    <Undo className="w-3 h-3" />
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                    ) : (
-                                                        <button onClick={() => unmarkPrinted(order)} className="w-6 h-6 rounded text-white bg-gray-400 hover:bg-gray-500 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการพิมพ์">
-                                                            <Undo className="w-3 h-3" />
-                                                        </button>
-                                                    )}
-                                                    <button onClick={() => verifyOrder(order)} className="w-6 h-6 rounded text-white bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ตรวจสอบเสร็จและตัดงานจบ">
-                                                        <Check className="w-3 h-3" />
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <button onClick={() => unverifyOrder(order)} className="w-6 h-6 rounded text-white bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการตรวจสอบ">
-                                                    <Undo className="w-3 h-3" />
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                    {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
-                                        <button onClick={() => startEdit(order)} className="w-6 h-6 rounded text-white bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="แก้ไข">
-                                            <Edit2 className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                    {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
-                                        <button onClick={() => handleCancelOrder(order)} className="w-6 h-6 rounded text-white bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ยกเลิกการสั่งพิมพ์">
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                    {isAdmin && order.is_cancelled && (
-                                        <button onClick={() => restoreOrder(order)} className="w-6 h-6 rounded text-white bg-green-600 hover:bg-green-700 flex items-center justify-center transition-colors shadow-sm hover:shadow-md animate-bounce" title="กู้คืนคำสั่งพิมพ์">
-                                            <Undo className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                    {isAdmin && (
-                                        <button onClick={() => deleteOrder(order.id)} className="w-6 h-6 rounded text-white bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-sm hover:shadow-md" title="ลบ">
-                                            <Trash2 className="w-3 h-3" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                    {filteredOrders.map((order, index) => {
+                        // Dynamic Smart Packaging Splitter
+                        const { brand, packageSize } = (() => {
+                            const parts = order.product_name ? order.product_name.split('/') : [];
+                            if (parts.length > 1) {
+                                return { brand: parts[0].trim(), packageSize: parts.slice(1).join('/').trim() };
+                            }
+                            return { brand: order.product_name || '', packageSize: '' };
+                        })();
 
-                            <div className="p-5 flex-1 space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">เวลาสั่ง:</span>
-                                    <span className="font-semibold text-gray-900">{formatThaiDateTimeFromISO(order.created_at)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">ผู้สั่ง:</span>
-                                    <span className="font-semibold text-gray-900 flex items-center gap-1 text-right">
-                                        <UserCircle className="w-4 h-4 text-gray-400 inline" /> {order.created_by || '-'}
-                                        <span className="text-xs text-gray-500 ml-1">
-                                            ({order.created_by_department
-                                                ? order.created_by_department.split(' ')[0]
-                                                : 'ไม่ระบุ'})
-                                        </span>
-                                    </span>
-                                </div>
-                                <div className="my-3 border-t border-gray-100"></div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">วันที่ผลิต:</span>
-                                    <span className="font-medium text-gray-700">{formatToThaiDate(order.production_date)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">วันหมดอายุ:</span>
-                                    <span className="font-bold text-red-500">{formatToThaiDate(order.expiry_date)}</span>
-                                </div>
-                                <div className="my-3 border-t border-gray-100"></div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">อายุผลิตภัณฑ์:</span>
-                                    <span className="font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs">{order.product_exp}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-gray-500">จำนวน:</span>
-                                    <span className="font-bold text-xl text-green-600">{order.quantity}</span>
-                                </div>
+                        // Status classes
+                        let borderLeftCls = 'border-l-4 border-l-slate-300';
+                        let headerBgCls = 'bg-slate-50/50 border-b border-slate-100 px-5 py-4.5 flex flex-col gap-3.5';
+                        if (order.is_cancelled) {
+                            borderLeftCls = 'border-l-4 border-l-rose-500';
+                            headerBgCls = 'bg-rose-50/60 border-b border-rose-100/80 px-5 py-4.5 flex flex-col gap-3.5';
+                        } else if (order.is_verified) {
+                            borderLeftCls = 'border-l-4 border-l-emerald-500';
+                            headerBgCls = 'bg-emerald-50/30 border-b border-emerald-100/50 px-5 py-4.5 flex flex-col gap-3.5';
+                        } else if (order.is_no_file) {
+                            borderLeftCls = 'border-l-4 border-l-amber-500';
+                            headerBgCls = 'bg-amber-50/30 border-b border-amber-100/50 px-5 py-4.5 flex flex-col gap-3.5';
+                        } else if (order.is_printed) {
+                            borderLeftCls = 'border-l-4 border-l-blue-500';
+                            headerBgCls = 'bg-blue-50/30 border-b border-blue-100/50 px-5 py-4.5 flex flex-col gap-3.5';
+                        }
 
-                                <EditHistory orderId={order.id} updatedAt={order.updated_at} auditKey={auditKey} />
-
-                                {order.notes && order.notes !== '-' && (
-                                    <div className="mt-3 bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm">
-                                        <span className="font-semibold text-yellow-800 block mb-1">หมายเหตุ:</span>
-                                        <span className="text-yellow-900">{order.notes}</span>
-                                    </div>
-                                )}
-
-                                {order.image_url && (
-                                    <div className="mt-4 pt-4 border-t border-gray-100 relative">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-semibold text-gray-700">📷 ภาพตัวอย่างฉลาก:</span>
-                                            {isAdmin && (
-                                                <button onClick={() => deleteImage(order)} className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded border border-red-200 transition-colors flex items-center gap-1">
-                                                    <Trash2 className="w-3 h-3" /> ลบรูป
-                                                </button>
-                                            )}
-                                        </div>
-                                        <div className="w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex justify-center">
-                                            <img src={order.image_url} alt={`ตัวอย่างฉลาก ${order.lot_number}`}
-                                                className="max-h-48 object-contain w-full hover:scale-105 transition-transform duration-300 cursor-pointer"
-                                                onClick={() => window.open(order.image_url || '', '_blank')}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* ✅ Card Footer */}
-                            <div className={`p-4 text-center tracking-wide font-bold 
-                                ${order.is_cancelled ? 'bg-red-600 text-white shadow-inner animate-pulse'
-                                    : order.is_verified ? 'bg-emerald-600 text-white shadow-inner'
-                                        : order.is_no_file ? 'bg-amber-500 text-white shadow-inner'
-                                            : order.is_printed ? 'bg-blue-500 text-white shadow-inner'
-                                                : 'bg-gray-100 text-gray-400 uppercase tracking-widest'}`}
-                            >
-                                {order.is_cancelled ? (
-                                    <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
-                                        <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
-                                    </span>
-                                ) : order.is_verified ? (
-                                    <div className="flex flex-col items-center justify-center gap-2 py-1">
-                                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1.5 text-base text-center">
-                                            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 shrink-0" /> ผู้ปฏิบัติงาน:</span>
-                                            {order.verified_by && order.verified_by.includes('(') ? (
-                                                <div className="flex items-center gap-2">
-                                                    <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                                                    <span className="bg-emerald-900/60 text-emerald-100 px-2.5 py-0.5 rounded-lg text-sm border border-emerald-400/40 shadow-inner tracking-widest font-bold">
-                                                        รหัสพนักงาน: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span>{order.verified_by || '-'}</span>
-                                            )}
-                                        </div>
-                                        <span className="text-sm font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1.5 rounded-full shadow-inner mt-1">
-                                            วันที่และเวลาที่ตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
-                                        </span>
-                                    </div>
-                                ) : order.is_no_file ? (
-                                    <span className="flex items-center justify-center gap-2 text-sm">
-                                        <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
-                                    </span>
-                                ) : order.is_printed ? (
-                                    // ✅ แสดงชื่อผู้พิมพ์และเวลาด้านล่าง
-                                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                                        <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
-                                            <Printer className="w-5 h-5" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
-                                        </span>
-                                        {order.printed_by && (
-                                            <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 mt-0.5">
-                                                <span className="flex items-center gap-1 text-xs text-blue-100">
-                                                    ชื่อผู้พิมพ์ชิ้นงาน:
-                                                    {order.printed_by.includes('(') ? (
-                                                        <>
-                                                            <span>{order.printed_by.substring(0, order.printed_by.indexOf('(')).trim()}</span>
-                                                            <span className="bg-blue-700/60 px-2 py-0.5 rounded-lg border border-blue-400/40 font-bold tracking-widest text-[11px]">
-                                                                รหัสพนักงาน: {order.printed_by.substring(order.printed_by.indexOf('(') + 1, order.printed_by.indexOf(')'))}
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <span>{order.printed_by}</span>
-                                                    )}
+                        return (
+                            <div key={order.id} className={`
+                                bg-white border border-slate-200/85 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl overflow-hidden flex flex-col group relative ${borderLeftCls}
+                                ${order.is_cancelled ? 'opacity-85' : ''}
+                            `}>
+                                <div className={headerBgCls}>
+                                    <div className="w-full">
+                                        <div className="flex flex-col gap-1.5 mb-2.5">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="font-mono text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 shrink-0 tracking-wider">
+                                                    {order.product_id}
                                                 </span>
-                                                {order.printed_at && (
-                                                    <span className="text-[11px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
-                                                        วันที่และเวลาที่พิมพ์ชิ้นงาน: {formatThaiDateTimeFromISO(order.printed_at)}
+                                                {order.order_type && (
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-rose-50 text-rose-700 border-rose-200' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
+                                                        {order.order_type === 'พิมพ์ฉลาก' ? '🖨️ พิมพ์ฉลาก' : '🔖 ปั๊มถุง'}
                                                     </span>
                                                 )}
+                                                {order.is_cancelled && <span className="bg-rose-600 text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-sm">ยกเลิกแล้ว</span>}
+                                                {order.updated_at && !order.is_verified && !order.is_cancelled && (
+                                                    <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">แก้ไขแล้ว</span>
+                                                )}
+                                                {(() => {
+                                                    const isPending = !order.is_printed && !order.is_verified && !order.is_cancelled;
+                                                    const isRecent = new Date().getTime() - new Date(order.created_at).getTime() < 5 * 60 * 1000;
+                                                    return isPending && isRecent && (
+                                                        <span className="bg-rose-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">New</span>
+                                                    );
+                                                })()}
                                             </div>
+                                            <h3 className="text-[16px] md:text-[17px] font-black text-[#0f1e3d] leading-snug break-words flex flex-wrap items-center gap-1.5">
+                                                <span>{brand}</span>
+                                                {packageSize && (
+                                                    <span className="text-[10.5px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/80 inline-block shrink-0">
+                                                        📦 {packageSize}
+                                                    </span>
+                                                )}
+                                            </h3>
+                                        </div>
+                                        <h4 className="text-[13px] font-black text-indigo-950 tracking-tight flex items-center gap-2 mt-1">
+                                            <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 shrink-0">LOT NO.</span>
+                                            <span className="font-mono text-indigo-800 text-[13.5px]">{order.lot_number}</span>
+                                        </h4>
+                                    </div>
+                                    <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 shrink-0 justify-center">
+                                        {isAdmin && !order.is_cancelled && (
+                                            <>
+                                                {!order.is_verified ? (
+                                                    <>
+                                                        {!order.is_printed ? (
+                                                            <>
+                                                                <button onClick={() => markPrinted(order)} className="w-8 h-8 rounded-lg bg-transparent text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100/80 flex items-center justify-center transition-all duration-200" title="พิมพ์แล้ว">
+                                                                    <Printer className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                {!order.is_no_file ? (
+                                                                    <button onClick={() => markNoFile(order)} className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200" title="ไม่มีไฟล์">
+                                                                        <FileQuestion className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                ) : (
+                                                                    <button onClick={() => unmarkNoFile(order)} className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 flex items-center justify-center transition-all duration-200 shadow-sm" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
+                                                                        <Undo className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <button onClick={() => unmarkPrinted(order)} className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200" title="ยกเลิกการพิมพ์">
+                                                                <Undo className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => verifyOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200" title="ตรวจสอบเสร็จและตัดงานจบ">
+                                                            <Check className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button onClick={() => unverifyOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/85 flex items-center justify-center transition-all duration-200" title="ยกเลิกการตรวจสอบ">
+                                                        <Undo className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                        {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
+                                            <button onClick={() => startEdit(order)} className="w-8 h-8 rounded-lg bg-transparent text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100/80 flex items-center justify-center transition-all duration-200" title="แก้ไข">
+                                                <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                        {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
+                                            <button onClick={() => handleCancelOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200" title="ยกเลิกการสั่งพิมพ์">
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                        {isAdmin && order.is_cancelled && (
+                                            <button onClick={() => restoreOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200" title="กู้คืนคำสั่งพิมพ์">
+                                                <Undo className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                        {isAdmin && (
+                                            <button onClick={() => deleteOrder(order.id)} className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200" title="ลบ">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                         )}
                                     </div>
-                                ) : (
-                                    <span className="flex items-center justify-center gap-2 text-sm">
-                                        <Clock className="w-4 h-4 inline mr-1" /> กำลังรอการจัดทำชิ้นงาน
-                                    </span>
-                                )}
+                                </div>
+
+                                <div className="p-5 flex-1 space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">เวลาสั่ง (Order Time):</span>
+                                        <span className="font-bold text-slate-700 sm:text-right">{formatThaiDateTimeFromISO(order.created_at)}</span>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">ผู้สั่ง (Created By):</span>
+                                        <span className="font-bold text-slate-700 flex items-center gap-1.5 flex-wrap sm:justify-end">
+                                            <UserCircle className="w-4 h-4 text-slate-400 inline" /> {order.created_by || '-'}
+                                            <span className="text-[10px] font-bold text-slate-400">
+                                                ({order.created_by_department
+                                                    ? order.created_by_department.split(' ')[0]
+                                                    : 'ไม่ระบุ'})
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="my-3 border-t border-slate-100"></div>
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">วันที่ผลิต (Mfg Date):</span>
+                                        <span className="font-bold text-slate-700 sm:text-right">{formatToThaiDate(order.production_date)}</span>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">วันหมดอายุ (Exp Date):</span>
+                                        <span className="font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-100/40 sm:text-right shrink-0">{formatToThaiDate(order.expiry_date)}</span>
+                                    </div>
+                                    <div className="my-3 border-t border-slate-100"></div>
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">อายุผลิตภัณฑ์ (Shelf Life):</span>
+                                        <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">{order.product_exp}</span>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                                        <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
+                                        <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
+                                    </div>
+
+                                    <EditHistory orderId={order.id} updatedAt={order.updated_at} auditKey={auditKey} />
+
+                                    {order.notes && order.notes !== '-' && (
+                                        <div className="mt-3 bg-amber-50/50 p-3 rounded-xl border border-amber-200/50 text-[12.5px] text-amber-800 shadow-inner">
+                                            <span className="font-bold text-amber-900 block mb-1">📝 หมายเหตุ:</span>
+                                            <span className="text-amber-800 font-medium">{order.notes}</span>
+                                        </div>
+                                    )}
+
+                                    {order.image_url && (
+                                        <div className="mt-4 pt-4 border-t border-slate-100 relative">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">📷 ภาพตัวอย่างฉลาก:</span>
+                                                {isAdmin && (
+                                                    <button onClick={() => deleteImage(order)} className="text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-2 py-1 rounded-lg border border-rose-200/60 transition-all duration-300 flex items-center gap-1 shadow-sm">
+                                                        <Trash2 className="w-3 h-3" /> ลบรูป
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex justify-center group/img relative shadow-sm">
+                                                <img src={order.image_url} alt={`ตัวอย่างฉลาก ${order.lot_number}`}
+                                                    className="max-h-48 object-contain w-full hover:scale-105 transition-transform duration-500 cursor-pointer"
+                                                    onClick={() => window.open(order.image_url || '', '_blank')}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ✅ Card Footer */}
+                                <div className={`p-4 text-center tracking-wide font-bold 
+                                    ${order.is_cancelled ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-inner animate-pulse'
+                                        : order.is_verified ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-inner'
+                                            : order.is_no_file ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-inner'
+                                                : order.is_printed ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-inner'
+                                                    : 'bg-slate-100 text-slate-400 border-t border-slate-200/80'}`}
+                                >
+                                    {order.is_cancelled ? (
+                                        <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
+                                            <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
+                                        </span>
+                                    ) : order.is_verified ? (
+                                        <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                                            <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-sm text-center">
+                                                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 shrink-0" /> ผู้ปฏิบัติงาน:</span>
+                                                {order.verified_by && order.verified_by.includes('(') ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
+                                                        <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 text-[10px] font-bold tracking-wider">
+                                                            ID: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span>{order.verified_by || '-'}</span>
+                                                )}
+                                            </div>
+                                            <span className="text-[11px] font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full shadow-inner">
+                                                เวลาตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
+                                            </span>
+                                        </div>
+                                    ) : order.is_no_file ? (
+                                        <span className="flex items-center justify-center gap-2 text-sm">
+                                            <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
+                                        </span>
+                                    ) : order.is_printed ? (
+                                        <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                                            <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
+                                                <Printer className="w-4 h-4" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
+                                            </span>
+                                            {order.printed_by && (
+                                                <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1">
+                                                    <span className="flex items-center gap-1 text-[11px] text-blue-100">
+                                                        ชื่อผู้พิมพ์ชิ้นงาน:
+                                                        {order.printed_by.includes('(') ? (
+                                                            <>
+                                                                <span>{order.printed_by.substring(0, order.printed_by.indexOf('(')).trim()}</span>
+                                                                <span className="bg-white/20 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-white/20 font-bold tracking-widest text-[9.5px]">
+                                                                    ID: {order.printed_by.substring(order.printed_by.indexOf('(') + 1, order.printed_by.indexOf(')'))}
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            <span>{order.printed_by}</span>
+                                                        )}
+                                                    </span>
+                                                    {order.printed_at && (
+                                                        <span className="text-[10px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
+                                                            เวลาที่พิมพ์: {formatThaiDateTimeFromISO(order.printed_at)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <span className="flex items-center justify-center gap-2 text-[12.5px] uppercase tracking-wider font-bold">
+                                            <Clock className="w-4 h-4 inline mr-1" /> กำลังรอการจัดทำชิ้นงาน
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
+            {/* Editing Dialog Modal */}
             {editingOrder && (
-                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md animate-slide-up">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">✏️ แก้ไขคำสั่งพิมพ์ฉลาก</h2>
-                            <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md animate-slide-up relative overflow-hidden">
+                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                                    <Edit2 className="w-5 h-5" />
+                                </span>
+                                <h2 className="text-lg font-black text-[#0f1e3d] tracking-tight">แก้ไขข้อมูลคำสั่งชิ้นงาน</h2>
+                            </div>
+                            <button onClick={() => setEditingOrder(null)} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full transition-colors">
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
+
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">เลขลอต</label>
-                                <input type="text" value={editingOrder.lot_number} onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">เลขลอตสินค้า (Lot Number)</label>
+                                <input type="text" value={editingOrder.lot_number} 
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })} 
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
                             </div>
-                            {/* แก้ไขพิมพ์ฉลากหรือปั๊มถุง */}
+
+                            {/* ประเภทคำสั่ง */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">ประเภทคำสั่ง</label>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">ประเภทคำสั่ง (Order Type)</label>
                                 <div className="flex gap-3">
-                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'พิมพ์ฉลาก' ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
+                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === 'พิมพ์ฉลาก' ? 'bg-[#0f1e3d] text-white border-[#0f1e3d] shadow-md shadow-blue-900/10' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50'}`}>
                                         <input
                                             type="radio"
                                             name="edit_orderType"
@@ -1104,7 +1158,7 @@ export default function DashboardPage() {
                                         />
                                         🖨️ พิมพ์ฉลาก
                                     </label>
-                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-2.5 px-4 border rounded-xl font-medium transition-all text-sm ${editingOrder.order_type === 'ปั๊มถุง' ? 'bg-purple-600 text-white border-purple-600 shadow-md ring-2 ring-purple-600/20' : 'bg-gray-50 text-gray-600 border-gray-300 hover:bg-gray-100'}`}>
+                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === 'ปั๊มถุง' ? 'bg-indigo-950 text-white border-indigo-950 shadow-md shadow-indigo-900/10' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50'}`}>
                                         <input
                                             type="radio"
                                             name="edit_orderType"
@@ -1117,31 +1171,41 @@ export default function DashboardPage() {
                                     </label>
                                 </div>
                             </div>
+
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">จำนวน</label>
-                                <input type="number" value={editingOrder.quantity} onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm" />
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">จำนวนสั่งทำ (Quantity)</label>
+                                <input type="number" value={editingOrder.quantity} 
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })} 
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
                             </div>
+
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">วันที่ผลิต</label>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">วันที่ผลิต (Production Date)</label>
                                 <input type="date" value={editingOrder.production_date || ''}
                                     onChange={(e) => {
                                         const newDate = e.target.value;
                                         setEditingOrder({ ...editingOrder, production_date: newDate, expiry_date: calculateExpiryDate(newDate, editingOrder.product_exp) });
                                     }}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-sm"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
                                 />
                                 {editingOrder.expiry_date && (
-                                    <p className="mt-1 text-xs text-red-500 font-medium">💡 วันหมดอายุใหม่: {formatToThaiDate(editingOrder.expiry_date)}</p>
+                                    <p className="mt-2 text-xs text-rose-500 font-bold flex items-center gap-1">
+                                        <span>💡</span> วันหมดอายุใหม่: {editingOrder.expiry_date.split('-').reverse().join('/')}
+                                    </p>
                                 )}
                             </div>
+
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">หมายเหตุ</label>
-                                <textarea value={editingOrder.notes || ''} onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition resize-none shadow-sm" rows={3} />
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ (Notes)</label>
+                                <textarea value={editingOrder.notes || ''} 
+                                    onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })} 
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none shadow-sm" rows={3} />
                             </div>
                         </div>
-                        <div className="flex gap-3 mt-8">
-                            <button onClick={() => setEditingOrder(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-bold transition">ยกเลิก</button>
-                            <button onClick={saveEdit} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-lg transition">💾 บันทึก</button>
+
+                        <div className="flex gap-3 mt-6 border-t border-slate-100 pt-4">
+                            <button onClick={() => setEditingOrder(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300">ยกเลิก</button>
+                            <button onClick={saveEdit} className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] text-white py-3 rounded-xl font-bold text-xs shadow-md shadow-blue-900/10 hover:shadow-lg transition duration-300">💾 บันทึกการแก้ไข</button>
                         </div>
                     </div>
                 </div>
