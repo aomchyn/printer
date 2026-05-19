@@ -30,20 +30,22 @@ function AccessDenied() {
     const router = useRouter()
     return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-10 max-w-md w-full shadow-lg">
-                <ShieldOff className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                <h2 className="text-2xl font-extrabold text-red-700 mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
-                <p className="text-gray-600 text-sm mb-1">
+            <div className="bg-white/5 border border-rose-500/30 rounded-2xl p-10 max-w-md w-full shadow-2xl backdrop-blur-xl">
+                <div className="w-16 h-16 bg-rose-500/20 border border-rose-500/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <ShieldOff className="w-8 h-8 text-rose-400" />
+                </div>
+                <h2 className="text-2xl font-black text-white mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
+                <p className="text-white/60 text-sm mb-1">
                     หน้านี้สงวนไว้สำหรับ{' '}
-                    <span className="font-bold text-red-600">Moderator</span> และ{' '}
-                    <span className="font-bold text-red-600">Assistant Moderator</span> เท่านั้น
+                    <span className="font-bold text-rose-300">Moderator</span> และ{' '}
+                    <span className="font-bold text-rose-300">Assistant Moderator</span> เท่านั้น
                 </p>
-                <p className="text-gray-400 text-xs mb-6">
+                <p className="text-white/30 text-xs mb-7">
                     กรุณาติดต่อผู้ดูแลระบบหากคิดว่าเป็นข้อผิดพลาด
                 </p>
                 <button
                     onClick={() => router.push('/printer/dashboard')}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-lg transition text-sm shadow"
+                    className="bg-rose-500/80 hover:bg-rose-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all duration-200 text-sm border border-rose-400/30 shadow-lg shadow-rose-900/30 active:scale-95"
                 >
                     กลับหน้าหลัก
                 </button>
@@ -103,7 +105,6 @@ export default function TrashPage() {
     const loadDeletedOrders = async () => {
         setLoading(true);
         try {
-            // ลบถาวรอัตโนมัติรายการที่เกิน 7 วัน
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             await supabase
@@ -112,7 +113,6 @@ export default function TrashPage() {
                 .eq('is_deleted', true)
                 .lt('deleted_at', sevenDaysAgo.toISOString());
 
-            // ดึงรายการที่ soft delete ไว้
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
@@ -139,7 +139,6 @@ export default function TrashPage() {
     };
 
     const restoreOrder = async (order: DeletedOrder) => {
-        // Double-check สิทธิ์ก่อนทำงานจริง
         if (!ALLOWED_ROLES.includes(role)) return
 
         const result = await Swal.fire({
@@ -200,7 +199,6 @@ export default function TrashPage() {
     };
 
     const permanentDelete = async (order: DeletedOrder) => {
-        // เฉพาะ moderator เท่านั้น (ไม่รวม assistant_moderator)
         if (role !== 'moderator') return
 
         const result = await Swal.fire({
@@ -288,8 +286,9 @@ export default function TrashPage() {
     // ─── Render states ────────────────────────────────────────────────────────
     if (accessStatus === 'checking') {
         return (
-            <div className="min-h-[60vh] flex items-center justify-center">
-                <RefreshCcw className="w-8 h-8 text-indigo-400 animate-spin" />
+            <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin" />
+                <p className="text-blue-300/60 text-sm font-medium">กำลังตรวจสอบสิทธิ์...</p>
             </div>
         )
     }
@@ -298,66 +297,84 @@ export default function TrashPage() {
         return <AccessDenied />
     }
 
-    // isModerator: สิทธิ์สูงสุด — ลบถาวร + ล้างถังขยะได้
     const isModerator = role === 'moderator'
+    const hasUrgent = deletedOrders.some(o => getDaysRemaining(o.deleted_at) <= 2)
 
     return (
-        <div className="text-gray-800">
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 md:p-8 mb-6 border border-white/20">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                            <Trash2 className="w-8 h-8 text-red-500" />
-                            ถังขยะ
-                        </h1>
-                        <p className="text-sm text-gray-500 mt-1">
-                            รายการที่ถูกลบจะถูกเก็บไว้ 7 วัน หลังจากนั้นจะถูกลบถาวรอัตโนมัติ
-                        </p>
+        <div className="text-white min-h-full">
+
+            {/* ── Main header card ─────────────────────────────────────────── */}
+            <div className="bg-gradient-to-b from-[#0f1e3d]/80 to-[#0a1628]/80 backdrop-blur-xl rounded-2xl shadow-2xl p-5 md:p-7 mb-6 border border-white/8 relative overflow-hidden">
+
+                {/* Glow orbs */}
+                <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-rose-500/8 rounded-full blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-12 -left-12 w-40 h-40 bg-indigo-500/8 rounded-full blur-3xl" />
+
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative">
+                    {/* Title */}
+                    <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 bg-rose-500/20 border border-rose-500/30 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                            <Trash2 className="w-4.5 h-4.5 text-rose-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight">ถังขยะ</h1>
+                            <p className="text-[11px] md:text-xs text-blue-300/60 font-medium mt-0.5">
+                                รายการที่ถูกลบจะถูกเก็บไว้ 7 วัน หลังจากนั้นจะถูกลบถาวรอัตโนมัติ
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    {/* Action buttons */}
+                    <div className="flex gap-2 w-full sm:w-auto">
                         <button
                             onClick={loadDeletedOrders}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition text-sm"
+                            className="flex items-center gap-2 px-4 py-2 bg-white/8 hover:bg-white/15 border border-white/10 hover:border-white/20 text-white/80 hover:text-white rounded-xl font-semibold transition-all duration-200 text-sm flex-1 sm:flex-none justify-center"
                         >
-                            <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> รีเฟรช
+                            <RefreshCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                            รีเฟรช
                         </button>
 
-                        {/* ล้างถังขยะ: เฉพาะ moderator */}
                         {isModerator && deletedOrders.length > 0 && (
                             <button
                                 onClick={emptyTrash}
-                                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition text-sm shadow-md"
+                                className="flex items-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/30 hover:border-rose-400/50 text-rose-300 hover:text-rose-200 rounded-xl font-semibold transition-all duration-200 text-sm flex-1 sm:flex-none justify-center"
                             >
-                                <Trash2 className="w-4 h-4" /> ล้างถังขยะ
+                                <Trash2 className="w-3.5 h-3.5" />
+                                ล้างถังขยะ
                             </button>
                         )}
                     </div>
                 </div>
 
-                {deletedOrders.some(o => getDaysRemaining(o.deleted_at) <= 2) && (
-                    <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-sm text-amber-700">
-                            มีรายการที่จะถูกลบถาวรในอีก 1-2 วัน กรุณากู้คืนหากต้องการ
+                {/* Urgent warning banner */}
+                {hasUrgent && (
+                    <div className="mt-4 bg-amber-500/10 border border-amber-500/25 rounded-xl p-3 flex items-start gap-2.5 relative">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-300/90 font-medium">
+                            มีรายการที่จะถูกลบถาวรในอีก 1–2 วัน กรุณากู้คืนหากต้องการ
                         </p>
                     </div>
                 )}
             </div>
 
+            {/* ── Content area ─────────────────────────────────────────────── */}
             {loading ? (
-                <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-white/20">
-                    <RefreshCcw className="w-10 h-10 text-gray-300 animate-spin mx-auto mb-3" />
-                    <p className="text-gray-500">กำลังโหลด...</p>
+                <div className="bg-white/3 border border-white/8 rounded-2xl p-16 text-center">
+                    <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin mx-auto mb-3" />
+                    <p className="text-white/40 text-sm">กำลังโหลด...</p>
                 </div>
             ) : deletedOrders.length === 0 ? (
-                <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-white/20">
-                    <Trash2 className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold text-gray-400">ถังขยะว่างเปล่า</h2>
-                    <p className="text-sm text-gray-400 mt-1">ไม่มีคำสั่งพิมพ์ที่ถูกลบ</p>
+                /* Empty state */
+                <div className="bg-gradient-to-b from-[#0f1e3d]/60 to-[#0a1628]/60 border border-white/8 border-dashed rounded-2xl p-16 text-center">
+                    <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Trash2 className="w-8 h-8 text-white/20" />
+                    </div>
+                    <h2 className="text-lg font-black text-white/40">ถังขยะว่างเปล่า</h2>
+                    <p className="text-sm text-white/25 mt-1">ไม่มีคำสั่งพิมพ์ที่ถูกลบ</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                /* Order cards grid */
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {deletedOrders.map(order => {
                         const daysLeft = getDaysRemaining(order.deleted_at);
                         const isUrgent = daysLeft <= 2;
@@ -365,73 +382,89 @@ export default function TrashPage() {
                         return (
                             <div
                                 key={order.id}
-                                className={`bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col ${isUrgent ? 'border-red-300' : 'border-gray-200'}`}
+                                className={`flex flex-col rounded-2xl border overflow-hidden transition-all duration-200 backdrop-blur-xl
+                                    ${isUrgent
+                                        ? 'bg-rose-500/8 border-rose-500/30 shadow-lg shadow-rose-900/20'
+                                        : 'bg-white/5 border-white/10 hover:bg-white/8'
+                                    }`}
                             >
-                                {/* Header */}
-                                <div className={`p-4 border-b ${isUrgent ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}`}>
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-gray-800">{order.product_name}</h3>
-                                            <span className="text-[11px] text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-100">{order.product_id}</span>
-                                            <p className="text-sm font-extrabold text-indigo-700 mt-1">
-                                                <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100 mr-1">LOT</span>
-                                                {order.lot_number}
-                                            </p>
+                                {/* Card header */}
+                                <div className={`px-4 pt-4 pb-3 border-b ${isUrgent ? 'border-rose-500/20' : 'border-white/8'}`}>
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-black text-white text-sm leading-snug truncate">{order.product_name}</h3>
+                                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                <span className="text-[10px] text-white/40 bg-white/8 border border-white/10 px-1.5 py-0.5 rounded font-mono">{order.product_id}</span>
+                                                <span className="text-[10px] text-indigo-300/80 bg-indigo-500/15 border border-indigo-500/20 px-1.5 py-0.5 rounded font-bold">
+                                                    LOT {order.lot_number}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className={`text-center px-3 py-1.5 rounded-xl text-xs font-bold ${isUrgent ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
-                                            <Clock className="w-3.5 h-3.5 mx-auto mb-0.5" />
-                                            {daysLeft > 0 ? `${daysLeft} วัน` : 'วันนี้!'}
-                                            <div className="text-[10px] font-normal">ก่อนลบถาวร</div>
+
+                                        {/* Days remaining badge */}
+                                        <div className={`text-center px-2.5 py-1.5 rounded-xl shrink-0 border
+                                            ${isUrgent
+                                                ? 'bg-rose-500/20 border-rose-500/30 text-rose-300'
+                                                : 'bg-white/8 border-white/12 text-white/60'
+                                            }`}>
+                                            <Clock className="w-3 h-3 mx-auto mb-0.5" />
+                                            <div className="text-xs font-black tabular-nums leading-none">
+                                                {daysLeft > 0 ? `${daysLeft}วัน` : 'วันนี้!'}
+                                            </div>
+                                            <div className="text-[9px] font-medium opacity-70 mt-0.5 whitespace-nowrap">ก่อนลบถาวร</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Body */}
-                                <div className="p-4 flex-1 space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">ผู้สั่ง:</span>
-                                        <span className="font-medium text-gray-800">{order.created_by}</span>
+                                {/* Card body */}
+                                <div className="px-4 py-3 flex-1 space-y-2 text-xs">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-white/40 font-medium">ผู้สั่ง</span>
+                                        <span className="font-bold text-white/80">{order.created_by}</span>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">จำนวน:</span>
-                                        <span className="font-bold text-green-600 text-base">{order.quantity}</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-white/40 font-medium">จำนวน</span>
+                                        <span className="font-black text-emerald-300 text-base tabular-nums">{order.quantity}</span>
                                     </div>
                                     {order.order_type && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">ประเภท:</span>
-                                            <span className="font-medium text-gray-700">{order.order_type}</span>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-white/40 font-medium">ประเภท</span>
+                                            <span className="font-semibold text-white/70">{order.order_type}</span>
                                         </div>
                                     )}
-                                    <div className="pt-2 border-t border-gray-100 mt-2">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="text-gray-400">ลบเมื่อ:</span>
-                                            <span className="text-red-500 font-medium">{formatThaiDateTime(order.deleted_at)}</span>
+
+                                    {/* Divider + delete info */}
+                                    <div className={`pt-2 mt-1 border-t space-y-1.5 ${isUrgent ? 'border-rose-500/15' : 'border-white/8'}`}>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-white/30">ลบเมื่อ</span>
+                                            <span className="text-rose-400/90 font-semibold">{formatThaiDateTime(order.deleted_at)}</span>
                                         </div>
-                                        <div className="flex justify-between text-xs mt-0.5">
-                                            <span className="text-gray-400">ลบโดย:</span>
-                                            <span className="font-medium text-gray-700">{order.deleted_by || 'ไม่ระบุ'}</span>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-white/30">ลบโดย</span>
+                                            <span className="font-semibold text-white/60">{order.deleted_by || 'ไม่ระบุ'}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Footer Actions */}
-                                <div className="p-3 border-t border-gray-100 flex gap-2">
-                                    {/* กู้คืน: moderator + assistant_moderator */}
+                                {/* Card footer actions */}
+                                <div className={`px-3 pb-3 pt-2 border-t flex gap-2 ${isUrgent ? 'border-rose-500/15' : 'border-white/8'}`}>
+                                    {/* Restore — moderator + assistant_moderator */}
                                     <button
                                         onClick={() => restoreOrder(order)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-lg font-semibold text-sm transition shadow-sm"
+                                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-500/30 hover:border-emerald-400/50 text-emerald-300 hover:text-emerald-200 py-2 rounded-xl font-bold text-xs transition-all duration-200 active:scale-95"
                                     >
-                                        <Undo className="w-4 h-4" /> กู้คืน
+                                        <Undo className="w-3.5 h-3.5" />
+                                        กู้คืน
                                     </button>
 
-                                    {/* ลบถาวร: เฉพาะ moderator */}
+                                    {/* Permanent delete — moderator only */}
                                     {isModerator && (
                                         <button
                                             onClick={() => permanentDelete(order)}
-                                            className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-semibold text-sm transition shadow-sm"
+                                            className="flex items-center justify-center gap-1.5 bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/30 hover:border-rose-400/50 text-rose-300 hover:text-rose-200 px-3 py-2 rounded-xl font-bold text-xs transition-all duration-200 active:scale-95"
                                             title="ลบถาวร"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                     )}
                                 </div>

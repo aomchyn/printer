@@ -161,7 +161,7 @@ export default function StatisticsPage() {
     const cancelRate = orders.length > 0 ? ((totalCancelled / orders.length) * 100).toFixed(1) : '0';
 
     const chartData = getChartData();
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d', '#ffc658'];
+    const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#22d3ee', '#fb923c'];
 
     // Generate years for dropdown (e.g. from 2024 to current year)
     const currentYear = new Date().getFullYear();
@@ -477,115 +477,182 @@ export default function StatisticsPage() {
         Swal.fire({ icon: 'success', title: 'Export สำเร็จ', text: 'ดาวน์โหลดไฟล์ Excel เรียบร้อยแล้ว', timer: 2000, showConfirmButton: false });
     };
 
+    // ── Shared Recharts dark tooltip style ──────────────────────────────────
+    const darkTooltipStyle = {
+        backgroundColor: '#0f1e3d',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '10px',
+        color: '#e2e8f0',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+    };
+
+    const axisTickStyle = { fill: '#94a3b8', fontSize: 12 };
+
     return (
-        <div className="text-gray-800">
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-white/20">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                    <div>
-                        <h1 className="text-4xl font-bold text-gray-800 mb-2 gradient-title tracking-tight pt-2 leading-relaxed">
-                            📈 ประวัติสถิติย้อนหลัง
-                        </h1>
-                        <p className="text-gray-600">
-                            ดูข้อมูลสรุปยอดการสั่งพิมพ์ฉลากย้อนหลังแบบรายเดือน
-                        </p>
+        <div className="text-white min-h-full">
+            {/* ── Main card ───────────────────────────────────────────────── */}
+            <div className="bg-gradient-to-b from-[#0f1e3d]/80 to-[#0a1628]/80 backdrop-blur-xl rounded-2xl shadow-2xl p-6 md:p-8 mb-8 border border-white/8 relative overflow-hidden">
+
+                {/* Background glow orbs — decorative only */}
+                <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/8 rounded-full blur-3xl" />
+
+                {/* ── Header row ───────────────────────────────────────────── */}
+                <div className="flex flex-col gap-5 mb-8 relative">
+
+                    {/* Title block */}
+                    <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 bg-white/10 border border-white/15 rounded-xl flex items-center justify-center shadow-inner shrink-0 mt-0.5">
+                            <span className="text-lg">📈</span>
+                        </div>
+                        <div>
+                            <h1 className="text-xl md:text-3xl font-black text-white tracking-tight leading-tight">
+                                ประวัติสถิติย้อนหลัง
+                            </h1>
+                            <p className="text-blue-300/70 text-xs md:text-sm font-medium mt-0.5">
+                                ดูข้อมูลสรุปยอดการสั่งพิมพ์ฉลากย้อนหลังแบบรายเดือน
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 p-2 gap-2 w-full md:w-auto">
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                            className="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 font-semibold"
-                        >
-                            {months.map((m, index) => (
-                                <option key={index} value={index}>{m}</option>
-                            ))}
-                        </select>
+                    {/* Month / Year / Export controls — full-width stacked on mobile */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center bg-white/5 border border-white/10 rounded-xl p-3">
+                        {/* Selects row */}
+                        <div className="flex gap-2 flex-1">
+                            <div className="relative flex-1">
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                                    className="w-full appearance-none bg-white/10 border border-white/15 text-white text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 transition-all"
+                                >
+                                    {months.map((m, index) => (
+                                        <option key={index} value={index} className="bg-[#0f1e3d] text-white">{m}</option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
+                                    <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
+                            <div className="relative w-24 shrink-0">
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                                    className="w-full appearance-none bg-white/10 border border-white/15 text-white text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 transition-all"
+                                >
+                                    {years.map(y => (
+                                        <option key={y} value={y} className="bg-[#0f1e3d] text-white">{y}</option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
+                                    <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
+                        </div>
 
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(Number(e.target.value))}
-                            className="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 font-semibold"
-                        >
-                            {years.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
+                        {/* Export button — full width on mobile */}
                         <button
                             onClick={exportExcel}
                             disabled={orders.length === 0}
-                            className={`flex justify-center items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm w-full md:w-auto mt-2 md:mt-0
+                            className={`flex justify-center items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 w-full sm:w-auto shrink-0
                                ${orders.length === 0
-                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                    : 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white hover:shadow-md hover:-translate-y-0.5'
+                                    ? 'bg-white/5 text-white/25 cursor-not-allowed border border-white/8'
+                                    : 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white border border-emerald-400/30 shadow-lg shadow-emerald-900/30 active:scale-95'
                                 }`}
                         >
-                            <Download size={20} />
-                            <span className="whitespace-nowrap">Export Excel</span>
+                            <Download size={15} />
+                            <span>Export Excel</span>
                         </button>
                     </div>
                 </div>
 
+                {/* ── Loading spinner ──────────────────────────────────────── */}
                 {isLoading ? (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <div className="flex flex-col justify-center items-center py-24 gap-4">
+                        <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin" />
+                        <p className="text-blue-300/60 text-sm font-medium">กำลังโหลดข้อมูล...</p>
                     </div>
                 ) : (
-                    <div id="statistics-content" className="w-full bg-transparent p-4 -m-4 rounded-2xl">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                <p className="text-sm font-semibold text-blue-800/70 mb-1 tracking-wider relative z-10">คำสั่งทั้งหมด (เดือนที่เลือก)</p>
-                                <p className="text-5xl font-extrabold text-blue-600 relative z-10">
-                                    {orders.length}
+                    <div id="statistics-content" className="w-full">
+
+                        {/* ── KPI Cards ────────────────────────────────────────── */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+
+                            {/* Card: Total orders */}
+                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-blue-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-blue-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">คำสั่งทั้งหมด</p>
+                                <p className="text-4xl md:text-5xl font-black text-blue-300 relative z-10 tabular-nums">{orders.length}</p>
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
+                            </div>
+
+                            {/* Card: Departments */}
+                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-emerald-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-emerald-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">จำนวนหน่วยงาน</p>
+                                <p className="text-4xl md:text-5xl font-black text-emerald-300 relative z-10 tabular-nums">{chartData.length}</p>
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+                            </div>
+
+                            {/* Card: Top department — full width on 2-col mobile */}
+                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300 col-span-2 md:col-span-1">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-amber-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-amber-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">หน่วยงานสั่งพิมพ์มากที่สุด</p>
+                                <p className="text-2xl md:text-2xl font-black text-amber-300 truncate relative z-10 leading-tight">{chartData.length > 0 ? chartData[0]?.name : '—'}</p>
+                                <p className="text-xs font-medium text-amber-300/60 mt-1 relative z-10">
+                                    {chartData.length > 0 ? `${chartData[0]?.count || 0} คำสั่ง` : 'ไม่มีข้อมูล'}
                                 </p>
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
                             </div>
-                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-green-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                <p className="text-sm font-semibold text-green-800/70 mb-1 tracking-wider relative z-10">จำนวนหน่วยงานที่สั่ง</p>
-                                <p className="text-5xl font-extrabold text-green-600 relative z-10">{chartData.length}</p>
+
+                            {/* Card: Total pieces */}
+                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300 col-span-2 md:col-span-1">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-violet-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-violet-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">ชิ้นงานรวมทั้งหมด</p>
+                                <p className="text-4xl md:text-5xl font-black text-violet-300 relative z-10 tabular-nums">{totalQuantity.toLocaleString()}</p>
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
                             </div>
-                            <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-orange-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                <p className="text-sm font-semibold text-orange-800/70 mb-1 tracking-wider relative z-10">หน่วยงานที่มีคำสั่งพิมพ์มากที่สุด</p>
-                                <p className="text-3xl font-extrabold text-orange-600 truncate relative z-10">{chartData.length > 0 ? chartData[0]?.name : '-'}</p>
-                                <p className="text-sm font-medium text-orange-700/80 mt-1 relative z-10">
-                                    {chartData.length > 0 ? `(${chartData[0]?.count || 0} คำสั่ง)` : 'ไม่มีข้อมูล'}
-                                </p>
-                            </div>
-                            <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                <p className="text-sm font-semibold text-purple-800/70 mb-1 tracking-wider relative z-10">จำนวนชิ้นงานจากคำสั่งพิมพ์รวมทั้งหมด</p>
-                                <p className="text-5xl font-extrabold text-purple-600 relative z-10">
-                                    {totalQuantity.toLocaleString()}
-                                </p>
-                            </div>
-                            <div className="bg-gradient-to-br from-red-50 to-rose-50 p-6 rounded-2xl border border-red-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/10 rounded-full group-hover:scale-110 transition-transform duration-300"></div>
-                                <p className="text-sm font-semibold text-red-800/70 mb-1 tracking-wider relative z-10">คำสั่งพิมพ์ที่ยกเลิก</p>
-                                <p className="text-5xl font-extrabold text-red-600 relative z-10">{totalCancelled}</p>
-                                <p className="text-sm font-medium text-red-500/80 mt-1 relative z-10">คิดเป็น {cancelRate}% ของคำสั่งพิมพ์ทั้งหมด</p>
+
+                            {/* Card: Cancelled */}
+                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300 col-span-2 md:col-span-1">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-rose-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-rose-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">คำสั่งพิมพ์ที่ยกเลิก</p>
+                                <p className="text-4xl md:text-5xl font-black text-rose-300 relative z-10 tabular-nums">{totalCancelled}</p>
+                                <p className="text-xs font-medium text-rose-300/60 mt-1 relative z-10">คิดเป็น {cancelRate}% ของทั้งหมด</p>
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-rose-500/40 to-transparent" />
                             </div>
                         </div>
 
+                        {/* ── Section label helper ─────────────────────────────── */}
+                        {/* Reusable inline component for section headings */}
+
+                        {/* ── Chart section: Order counts ─────────────────────── */}
                         {chartData.length > 0 ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                        <i className="fas fa-chart-bar text-blue-500"></i> จำนวนคำสั่งพิมพ์แบ่งตามหน่วยงาน ({months[selectedMonth]} {selectedYear})
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+                                {/* Bar chart */}
+                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-5 bg-blue-400 rounded-full inline-block shrink-0" />
+                                        จำนวนคำสั่งพิมพ์แบ่งตามหน่วยงาน
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={chartData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                            <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={40} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickStyle} />
+                                            <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} />
+                                            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} />
+                                            <Bar dataKey="count" fill="#60a5fa" radius={[6, 6, 0, 0]} barSize={40} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                        <i className="fas fa-chart-pie text-purple-500"></i> สัดส่วนการสั่งพิมพ์แบ่งตามหน่วยงาน ({months[selectedMonth]} {selectedYear})
+
+                                {/* Pie chart */}
+                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-5 bg-violet-400 rounded-full inline-block shrink-0" />
+                                        สัดส่วนการสั่งพิมพ์ตามหน่วยงาน
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
@@ -594,56 +661,60 @@ export default function StatisticsPage() {
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
+                                                outerRadius={90}
+                                                paddingAngle={4}
                                                 dataKey="count"
                                             >
                                                 {chartData.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                            <Legend iconType="circle" />
+                                            <Tooltip contentStyle={darkTooltipStyle} />
+                                            <Legend iconType="circle" wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-gray-50 rounded-2xl p-12 text-center border border-gray-200 border-dashed">
-                                <div className="text-5xl mb-4 opacity-30">📁</div>
-                                <h2 className="text-xl font-semibold text-gray-500">
+                            /* Empty state */
+                            <div className="bg-white/3 border border-white/8 border-dashed rounded-2xl p-16 text-center mb-6">
+                                <div className="text-5xl mb-4 opacity-20">📁</div>
+                                <h2 className="text-lg font-semibold text-white/40">
                                     ไม่มีข้อมูลคำสั่งพิมพ์ฉลากในเดือน {months[selectedMonth]} {selectedYear}
                                 </h2>
                             </div>
                         )}
 
-                        {/* ✅ Section ใหม่ — จำนวนชิ้นงานต่อหน่วยงาน */}
+                        {/* ── Chart section: Piece quantities ─────────────────── */}
                         {quantityChartData.length > 0 && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                        <i className="fas fa-boxes text-purple-500"></i>
-                                        จำนวนชิ้นงานที่สั่งแบ่งตามหน่วยงาน ({months[selectedMonth]} {selectedYear})
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-5 bg-violet-400 rounded-full inline-block shrink-0" />
+                                        จำนวนชิ้นงานที่สั่งตามหน่วยงาน
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={quantityChartData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickStyle} />
+                                            <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} />
                                             <Tooltip
-                                                cursor={{ fill: 'transparent' }}
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                                contentStyle={darkTooltipStyle}
                                                 formatter={(value) => [Number(value).toLocaleString(), 'จำนวนชิ้นงาน']}
                                             />
-                                            <Bar dataKey="total" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={40} />
+                                            <Bar dataKey="total" fill="#a78bfa" radius={[6, 6, 0, 0]} barSize={40} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                        <i className="fas fa-chart-pie text-violet-500"></i>
-                                        สัดส่วนจำนวนชิ้นงานที่สั่งตามหน่วยงาน ({months[selectedMonth]} {selectedYear})
+                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-5 bg-cyan-400 rounded-full inline-block shrink-0" />
+                                        สัดส่วนชิ้นงานที่สั่งตามหน่วยงาน
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
@@ -652,8 +723,8 @@ export default function StatisticsPage() {
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
+                                                outerRadius={90}
+                                                paddingAngle={4}
                                                 dataKey="total"
                                             >
                                                 {quantityChartData.map((_, index) => (
@@ -661,47 +732,53 @@ export default function StatisticsPage() {
                                                 ))}
                                             </Pie>
                                             <Tooltip
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                contentStyle={darkTooltipStyle}
                                                 formatter={(value) => [Number(value).toLocaleString(), 'ชิ้นงาน']}
                                             />
-                                            <Legend iconType="circle" />
+                                            <Legend iconType="circle" wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
                         )}
 
+                        {/* ── Chart section: Cancellations ─────────────────────── */}
                         {cancelChartData.length > 0 && (
-                            <div className="mt-8">
-                                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                    <span className="w-2 h-6 bg-red-500 rounded-full inline-block"></span>
-                                    สถิติการยกเลิกคำสั่งพิมพ์แยกตามหน่วยงาน
-                                </h2>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                            <i className="fas fa-chart-bar text-red-500"></i>
-                                            จำนวนคำสั่งพิมพ์ที่ยกเลิกต่อหน่วยงาน ({months[selectedMonth]} {selectedYear})
+                            <div className="mt-2">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <span className="w-2 h-6 bg-rose-500 rounded-full inline-block" />
+                                    <h2 className="text-base font-black text-white/90 uppercase tracking-wider">
+                                        สถิติการยกเลิกคำสั่งพิมพ์แยกตามหน่วยงาน
+                                    </h2>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                                    <div className="bg-white/5 border border-rose-500/15 rounded-2xl p-6">
+                                        <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                            <span className="w-2 h-5 bg-rose-400 rounded-full inline-block shrink-0" />
+                                            จำนวนที่ยกเลิกต่อหน่วยงาน
+                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
                                         </h3>
                                         <ResponsiveContainer width="100%" height={300}>
                                             <BarChart data={cancelChartData}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                                <YAxis axisLine={false} tickLine={false} allowDecimals={false} />
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickStyle} />
+                                                <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
                                                 <Tooltip
-                                                    cursor={{ fill: 'transparent' }}
-                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                                    contentStyle={darkTooltipStyle}
                                                     formatter={(value) => [String(value), 'คำสั่งยกเลิก']}
                                                 />
-                                                <Bar dataKey="count" fill="#EF4444" radius={[4, 4, 0, 0]} barSize={40} />
+                                                <Bar dataKey="count" fill="#f87171" radius={[6, 6, 0, 0]} barSize={40} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
 
-                                    <div className="bg-white p-6 rounded-2xl border border-red-100 shadow-sm">
-                                        <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                                            <i className="fas fa-chart-pie text-red-500"></i>
-                                            สัดส่วนการยกเลิกคำสั่งพิมพ์ต่อหน่วยงาน ({months[selectedMonth]} {selectedYear})
+                                    <div className="bg-white/5 border border-rose-500/15 rounded-2xl p-6">
+                                        <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                            <span className="w-2 h-5 bg-orange-400 rounded-full inline-block shrink-0" />
+                                            สัดส่วนการยกเลิกต่อหน่วยงาน
+                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
                                         </h3>
                                         <ResponsiveContainer width="100%" height={300}>
                                             <PieChart>
@@ -710,8 +787,8 @@ export default function StatisticsPage() {
                                                     cx="50%"
                                                     cy="50%"
                                                     innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={5}
+                                                    outerRadius={90}
+                                                    paddingAngle={4}
                                                     dataKey="count"
                                                     label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                                                     labelLine={false}
@@ -719,33 +796,33 @@ export default function StatisticsPage() {
                                                     {cancelChartData.map((_, index) => (
                                                         <Cell
                                                             key={`cancel-cell-${index}`}
-                                                            fill={['#EF4444', '#F97316', '#F59E0B', '#DC2626', '#B91C1C', '#991B1B'][index % 6]}
+                                                            fill={['#f87171', '#fb923c', '#fbbf24', '#ef4444', '#dc2626', '#b91c1c'][index % 6]}
                                                         />
                                                     ))}
                                                 </Pie>
                                                 <Tooltip
-                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                    contentStyle={darkTooltipStyle}
                                                     formatter={(value) => [String(value), 'คำสั่งยกเลิก']}
                                                 />
-                                                <Legend iconType="circle" />
+                                                <Legend iconType="circle" wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
                                             </PieChart>
                                         </ResponsiveContainer>
 
-                                        {/* ตารางสรุปยกเลิกต่อหน่วยงาน */}
-                                        <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+                                        {/* Mini breakdown table */}
+                                        <div className="mt-4 border-t border-white/8 pt-4 space-y-2.5">
                                             {cancelChartData.map((item, index) => (
                                                 <div key={index} className="flex items-center justify-between text-sm">
-                                                    <span className="text-gray-700 font-medium">{item.name}</span>
+                                                    <span className="text-white/70 font-medium">{item.name}</span>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-28 bg-gray-100 rounded-full h-2">
+                                                        <div className="w-24 bg-white/8 rounded-full h-1.5">
                                                             <div
-                                                                className="bg-red-500 h-2 rounded-full"
+                                                                className="bg-rose-400 h-1.5 rounded-full transition-all duration-500"
                                                                 style={{ width: `${(item.count / totalCancelled) * 100}%` }}
                                                             />
                                                         </div>
-                                                        <span className="text-red-600 font-bold w-6 text-right">{item.count}</span>
-                                                        <span className="text-gray-400 text-xs w-12 text-right">
-                                                            ({((item.count / totalCancelled) * 100).toFixed(0)}%)
+                                                        <span className="text-rose-300 font-black w-5 text-right tabular-nums">{item.count}</span>
+                                                        <span className="text-white/30 text-xs w-10 text-right tabular-nums">
+                                                            {((item.count / totalCancelled) * 100).toFixed(0)}%
                                                         </span>
                                                     </div>
                                                 </div>
@@ -760,4 +837,4 @@ export default function StatisticsPage() {
             </div>
         </div>
     );
-} 
+}
