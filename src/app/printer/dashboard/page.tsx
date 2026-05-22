@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo,useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy } from 'lucide-react';
 import EditHistory from '../components/EditHistory';
 import { JetBrains_Mono } from 'next/font/google';
+import { DashboardSkeleton } from './loading-skeleton';
 
 const jetbrainsMono = JetBrains_Mono({
     subsets: ['latin'],
@@ -57,7 +58,12 @@ export default function DashboardPage() {
     const [employeeId, setEmployeeId] = useState('');
     const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
     const [copiedId, setCopiedId] = useState<number | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [visibleCount, setVisibleCount] = useState(10)
+    const sentinelRef = useRef<HTMLDivElement>(null)
+
     const router = useRouter();
+    
 
     const fetchUserInfo = async () => {
         try {
@@ -88,6 +94,8 @@ export default function DashboardPage() {
 
     const loadOrders = async (userIdentifier?: string) => {
         try {
+
+            setIsLoading(true);
             let allOrders: OrderInterface[] = [];
             let from = 0;
             const pageSize = 1000;
@@ -140,40 +148,60 @@ export default function DashboardPage() {
                     };
                 });
 
+                setOrders(allOrders);
+                setIsLoading(false);
+
                 if (updatesNeeded.length > 0) {
                     const now = new Date().toISOString();
-                    for (const { id, newName, oldName } of updatesNeeded) {
-                        await supabase.from('orders').update({
-                            product_name: newName,
-                            previous_product_name: oldName,
-                            updated_at: now,
-                        }).eq('id', id);
 
-                        await supabase.from('audit_logs').insert([{
-                            order_id: id,
-                            action: 'UPDATE',
-                            user_name: userIdentifier,
-                            summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
-                            created_at: now,
-                        }]);
+                   Promise.all(
+                              updatesNeeded.map(({ id, newName, oldName }) =>
+                   Promise.all([
+                              supabase.from('orders').update({
+                              product_name: newName,
+                              previous_product_name: oldName,
+                              updated_at: now,
+                              }).eq('id', id),
 
-                        // ✅ อัปเดต updated_at ใน allOrders ด้วย เพื่อให้ EditHistory re-fetch
-                        allOrders = allOrders.map(o =>
-                            o.id === id ? { ...o, updated_at: now } : o
-                        );
-                    }
-                    setAuditKey(prev => prev + 1); // ✅ force EditHistory re-fetch
-                }
-            }
+                              supabase.from('audit_logs').insert([{
+                              order_id: id,
+                              action: 'UPDATE',
+                              user_name: userIdentifier,
+                              summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
+                              created_at: now,
+                            }]),
+                         ])
+                       )
+                    ).then(() => {
+                        // อัปเดต updated_at ใน state หลัง sync เสร็จ
+                        setOrders(prev =>
+                        prev.map(o =>
+                        updatesNeeded.some(u => u.id === o.id)
+                       ? { ...o, updated_at: now }
+                          : o
+                        )
+                     );
+                        setAuditKey(prev => prev + 1);
+                });
+              }
 
-            setOrders(allOrders);
-        } catch {
-            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-        }
-    };
+           } else {
+                    // กรณีไม่มี fgcode (ไม่เปลี่ยนแปลง logic เดิม)
+                     setOrders(allOrders);
+                     setIsLoading(false);
+                  }
 
-    useEffect(() => {
-        fetchUserInfo();
+                  } catch {
+                           setIsLoading(false);
+                           Swal.fire({
+                                     icon: 'error',
+                                     title: 'โหลดข้อมูลไม่สำเร็จ',
+                                     text: 'กรุณาลองใหม่อีกครั้ง',
+                                     });
+                                    }
+                               };
+                 useEffect(() => {
+                          fetchUserInfo();
 
 
         const playNotificationSound = () => {
@@ -802,6 +830,30 @@ export default function DashboardPage() {
             return newDate.toISOString().split('T')[0];
         } catch { return ''; }
     };
+        useEffect(() => {
+  const sentinel = sentinelRef.current
+  if (!sentinel) return
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting) {
+        setVisibleCount(prev => prev + 10)
+      }
+    },
+    { threshold: 0.1 }
+  )
+
+  observer.observe(sentinel)
+  return () => observer.disconnect()
+               }, [filteredOrders]) 
+
+               // เพิ่มใน useEffect ที่ฟัง searchTerm หรือ filter
+useEffect(() => {
+  setVisibleCount(10)
+}, [searchTerm]) // ใส่ตัวแปร filter ที่มีด้วย
+
+
+    if (isLoading) return <DashboardSkeleton />;
 
     return (
         <div className="text-gray-800">
@@ -848,7 +900,8 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {filteredOrders.length === 0 ? (
+             {
+            filteredOrders.length === 0 ? (
                 <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-slate-200/80">
                     <div className="text-6xl mb-4 opacity-50">📦</div>
                     <h2 className="text-2xl font-bold text-slate-500 tracking-tight">
@@ -857,9 +910,8 @@ export default function DashboardPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredOrders.map((order, index) => {
-
-                        // Status classes
+                    {filteredOrders.slice(0, visibleCount).map((order, index) => {
+                         // Status classes
                         let borderLeftCls = 'border-l-4 border-l-slate-300';
                         let headerBgCls = 'bg-slate-50/50 border-b border-slate-100 px-5 py-4.5 flex flex-col gap-3.5';
                         if (order.is_cancelled) {
@@ -1127,6 +1179,27 @@ export default function DashboardPage() {
                     })}
                 </div>
             )}
+
+             {visibleCount < filteredOrders.length && (
+      <div ref={sentinelRef} className="flex justify-center py-8 col-span-full">
+        <div className="flex items-center gap-2">
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+          <span className="text-slate-400 text-xs font-medium ml-1">
+            กำลังโหลด {Math.min(10, filteredOrders.length - visibleCount)} รายการถัดไป...
+          </span>
+        </div>
+      </div>
+    )}
+
+    {visibleCount >= filteredOrders.length && filteredOrders.length > 10 && (
+      <div className="text-center py-6 text-slate-400 text-xs col-span-full">
+        แสดงครบทั้ง {filteredOrders.length} รายการแล้ว
+      </div>
+    )}
+
 
             {/* Editing Dialog Modal */}
             {editingOrder && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect,useRef } from "react"
 import Swal from "sweetalert2"
 import Modal from "../components/Modal"
 import { supabase } from "@/lib/supabase"
@@ -25,6 +25,9 @@ export default function FgcodeManagement() {
     const [userName, setUserName] = useState('')
     const [employeeId, setEmployeeId] = useState('')
     const [saving, setSaving] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [visibleCount, setVisibleCount] = useState(20)
+    const sentinelRef = useRef<HTMLDivElement>(null)
 
     const fetchUserRole = async () => {
         const { data: { session } } = await supabase.auth.getSession()
@@ -36,6 +39,7 @@ export default function FgcodeManagement() {
 
     const fetchFgcodes = async () => {
         try {
+            setIsLoading(true);
             let allData: FgcodeInterface[] = []
             let from = 0; const pageSize = 1000; let hasMore = true
             while (hasMore) {
@@ -44,7 +48,10 @@ export default function FgcodeManagement() {
                 if (data && data.length > 0) { allData = [...allData, ...data]; from += pageSize; hasMore = data.length === pageSize } else hasMore = false
             }
             setFgcodes(allData)
-        } catch { Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถดึงข้อมูลรหัสสินค้าได้' }) }
+        } catch { Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถดึงข้อมูลรหัสสินค้าได้' })
+           } finally {
+                     setIsLoading(false);
+             }
     }
 
     useEffect(() => { fetchFgcodes(); fetchUserRole() }, [])
@@ -144,6 +151,51 @@ export default function FgcodeManagement() {
     const filteredFgcodes = fgcodes.filter(f => f.id.toLowerCase().includes(searchTerm.toLowerCase()) || f.name.toLowerCase().includes(searchTerm.toLowerCase()))
     const inputCls = `w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-lg text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 transition-all`
 
+    useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+        (entries) => { if (entries[0].isIntersecting) setVisibleCount(prev => prev + 20) },
+        { threshold: 0.1 }
+    )
+       observer.observe(sentinel)
+       return () => observer.disconnect()
+        }, [filteredFgcodes])
+
+    useEffect(() => {
+    setVisibleCount(20)
+       }, [searchTerm])
+
+          if (isLoading) return (
+    <div className="min-h-screen bg-gray-50 p-4">
+        <div className="bg-white/90 border-b border-gray-200 px-4 py-3 flex items-center justify-between mb-4">
+            <div className="h-5 w-32 rounded-lg bg-slate-200 animate-pulse" />
+            <div className="h-8 w-20 rounded-lg bg-blue-100 animate-pulse" />
+        </div>
+        <div className="max-w-5xl mx-auto space-y-3 mt-4">
+            <div className="h-10 w-full rounded-xl bg-slate-100 animate-pulse mb-4" />
+            {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white border border-[#dde8f5] border-l-2 border-l-blue-200 rounded-xl px-3.5 py-3 shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-200 animate-pulse shrink-0" />
+                        <div className="flex-1 space-y-2">
+                            <div className="flex gap-2">
+                                <div className="h-4 w-40 rounded bg-slate-200 animate-pulse" />
+                                <div className="h-4 w-20 rounded-full bg-slate-100 animate-pulse" />
+                            </div>
+                            <div className="h-3 w-24 rounded bg-slate-100 animate-pulse" />
+                            <div className="flex gap-2 pt-1">
+                                <div className="h-6 w-14 rounded-lg bg-blue-50 animate-pulse" />
+                                <div className="h-6 w-10 rounded-lg bg-red-50 animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+)
+
     return (
         <div className="min-h-screen bg-gray-50" style={{
             backgroundImage: 'radial-gradient(ellipse at 0% 0%, rgba(59,102,199,0.07) 0%, transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(107,56,202,0.05) 0%, transparent 60%)',
@@ -217,7 +269,7 @@ export default function FgcodeManagement() {
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {filteredFgcodes.map(fgcode => (
+                        {filteredFgcodes.slice(0, visibleCount).map(fgcode => (
                             <div key={fgcode.id} className="bg-white border border-[#dde8f5] border-l-2 border-l-blue-400 rounded-xl px-3.5 py-3 hover:shadow-md transition-all duration-200 shadow-sm">
                                 <div className="flex items-start gap-3">
                                     <div className="w-10 h-10 min-w-[40px] rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md mt-0.5 shrink-0">
@@ -245,7 +297,28 @@ export default function FgcodeManagement() {
                                 </div>
                             </div>
                         ))}
+
+                        {visibleCount < filteredFgcodes.length && (
+                            <div ref={sentinelRef} className="flex justify-center py-6">
+                                <div className="flex items-center gap-2">
+                                    {[0,1,2].map(i => (
+                                        <div key={i} className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+                                            style={{ animationDelay: `${i * 0.15}s` }} />
+                                    ))}
+                                    <span className="text-slate-400 text-xs ml-1">
+                                        กำลังโหลด {Math.min(20, filteredFgcodes.length - visibleCount)} รายการถัดไป...
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {visibleCount >= filteredFgcodes.length && filteredFgcodes.length > 20 && (
+                            <div className="text-center py-4 text-slate-400 text-xs">
+                                แสดงครบทั้ง {filteredFgcodes.length} รายการแล้ว
+                            </div>
+                        )}
                     </div>
+                    
                 )}
             </div>
 
