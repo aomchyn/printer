@@ -1124,16 +1124,13 @@ useEffect(() => {
                                                 {order.verified_by && order.verified_by.includes('(') ? (
                                                     <div className="flex items-center gap-2">
                                                         <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                                                        <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 text-[10px] font-bold tracking-wider">
-                                                            ID: {order.verified_by.substring(order.verified_by.indexOf('(') + 1, order.verified_by.indexOf(')'))}
-                                                        </span>
                                                     </div>
                                                 ) : (
                                                     <span>{order.verified_by || '-'}</span>
                                                 )}
                                             </div>
                                             <span className="text-[11px] font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full shadow-inner">
-                                                เวลาตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
+                                               วันที่และเวลาตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
                                             </span>
                                         </div>
                                     ) : order.is_no_file ? (
@@ -1152,9 +1149,6 @@ useEffect(() => {
                                                         {order.printed_by.includes('(') ? (
                                                             <>
                                                                 <span>{order.printed_by.substring(0, order.printed_by.indexOf('(')).trim()}</span>
-                                                                <span className="bg-white/20 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-white/20 font-bold tracking-widest text-[9.5px]">
-                                                                    ID: {order.printed_by.substring(order.printed_by.indexOf('(') + 1, order.printed_by.indexOf(')'))}
-                                                                </span>
                                                             </>
                                                         ) : (
                                                             <span>{order.printed_by}</span>
@@ -1162,7 +1156,7 @@ useEffect(() => {
                                                     </span>
                                                     {order.printed_at && (
                                                         <span className="text-[10px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
-                                                            เวลาที่พิมพ์: {formatThaiDateTimeFromISO(order.printed_at)}
+                                                            วันที่และเวลาพิมพ์: {formatThaiDateTimeFromISO(order.printed_at)}
                                                         </span>
                                                     )}
                                                 </div>
