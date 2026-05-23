@@ -764,29 +764,44 @@ export default function DashboardPage() {
         }
     };
 
-    const deleteImage = async (order: OrderInterface) => {
-        if (!isAdmin || !order.image_url) return;
-        const result = await Swal.fire({
-            title: 'ยืนยันการลบรูปภาพ?', text: 'รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร', icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
-        });
-        if (result.isConfirmed) {
-            try {
-                const urlParts = order.image_url.split('/order-images/');
-                if (urlParts.length > 1) {
-                    const { error: storageError } = await supabase.storage.from('order-images').remove([urlParts[1]]);
-                    if (storageError) throw storageError;
-                }
-                const { error: dbError } = await supabase.from('orders').update({ image_url: null }).eq('id', order.id);
-                if (dbError) throw dbError;
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, image_url: null } : o));
-                Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+const deleteImage = async (order: OrderInterface) => {
+    if (!isAdmin || !order.image_url) return;
+    const result = await Swal.fire({
+        title: 'ยืนยันการลบรูปภาพ?', text: 'รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
+    });
+    if (result.isConfirmed) {
+        try {
+            const urlObj = new URL(order.image_url);
+            const marker = '/order-images/';
+            const markerIdx = urlObj.pathname.indexOf(marker);
+
+            if (markerIdx === -1) {
+                throw new Error(`ไม่สามารถระบุ path ของไฟล์ได้: ${order.image_url}`);
             }
+
+            const filePath = urlObj.pathname.substring(markerIdx + marker.length);
+
+            const { error: storageError } = await supabase.storage
+                .from('order-images')
+                .remove([filePath]);
+
+            if (storageError) throw storageError;
+
+            const { error: dbError } = await supabase.from('orders')
+                .update({ image_url: null })
+                .eq('id', order.id);
+
+            if (dbError) throw dbError;
+
+            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, image_url: null } : o));
+            Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
+        } catch {
+            Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
         }
-    };
+    }
+};
 
     const formatThaiDateTimeFromISO = (isoString?: string | null): string => {
         if (!isoString) return 'ไม่ระบุ';
