@@ -35,7 +35,7 @@ function AccessDenied() {
                     <ShieldOff className="w-8 h-8 text-rose-400" />
                 </div>
                 <h2 className="text-2xl font-black text-white mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
-                <p className="text-white/60 text-sm mb-1">
+                <p className="text-gray-300 text-sm mb-1">
                     หน้านี้สงวนไว้สำหรับ{' '}
                     <span className="font-bold text-rose-300">Moderator</span> และ{' '}
                     <span className="font-bold text-rose-300">Assistant Moderator</span> เท่านั้น
@@ -288,7 +288,7 @@ export default function TrashPage() {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
                 <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin" />
-                <p className="text-blue-300/60 text-sm font-medium">กำลังตรวจสอบสิทธิ์...</p>
+                <p className="text-gray-300 text-sm font-medium">กำลังตรวจสอบสิทธิ์...</p>
             </div>
         )
     }
@@ -300,31 +300,34 @@ export default function TrashPage() {
     const isModerator = role === 'moderator'
     const hasUrgent = deletedOrders.some(o => getDaysRemaining(o.deleted_at) <= 2)
 
+    const formatNameWithoutCode = (name: string | null | undefined): string => {
+    if (!name) return 'ไม่ระบุ';
+    const withoutParentheses = name.replace(/\s*\([^)]*\)/g, '').trim();
+    return withoutParentheses || name;
+};
+
     return (
         <div className="text-white min-h-full">
 
             {/* ── Main header card ─────────────────────────────────────────── */}
             <div className="bg-gradient-to-b from-[#0f1e3d]/80 to-[#0a1628]/80 backdrop-blur-xl rounded-2xl shadow-2xl p-5 md:p-7 mb-6 border border-white/8 relative overflow-hidden">
 
-                {/* Glow orbs */}
                 <div className="pointer-events-none absolute -top-16 -right-16 w-56 h-56 bg-rose-500/8 rounded-full blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-12 -left-12 w-40 h-40 bg-indigo-500/8 rounded-full blur-3xl" />
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative">
-                    {/* Title */}
                     <div className="flex items-start gap-3">
                         <div className="w-9 h-9 bg-rose-500/20 border border-rose-500/30 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
                             <Trash2 className="w-4.5 h-4.5 text-rose-400" />
                         </div>
                         <div>
                             <h1 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight">ถังขยะ</h1>
-                            <p className="text-[11px] md:text-xs text-blue-300/60 font-medium mt-0.5">
+                            <p className="text-[11px] md:text-xs text-gray-300 font-medium mt-0.5">
                                 รายการที่ถูกลบจะถูกเก็บไว้ 7 วัน หลังจากนั้นจะถูกลบถาวรอัตโนมัติ
                             </p>
                         </div>
                     </div>
 
-                    {/* Action buttons */}
                     <div className="flex gap-2 w-full sm:w-auto">
                         <button
                             onClick={loadDeletedOrders}
@@ -346,11 +349,10 @@ export default function TrashPage() {
                     </div>
                 </div>
 
-                {/* Urgent warning banner */}
                 {hasUrgent && (
                     <div className="mt-4 bg-amber-500/10 border border-amber-500/25 rounded-xl p-3 flex items-start gap-2.5 relative">
                         <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-300/90 font-medium">
+                        <p className="text-xs text-amber-100 font-medium">
                             มีรายการที่จะถูกลบถาวรในอีก 1–2 วัน กรุณากู้คืนหากต้องการ
                         </p>
                     </div>
@@ -359,21 +361,19 @@ export default function TrashPage() {
 
             {/* ── Content area ─────────────────────────────────────────────── */}
             {loading ? (
-                <div className="bg-white/3 border border-white/8 rounded-2xl p-16 text-center">
+                <div className="bg-gray-900/40 border border-white/8 rounded-2xl p-16 text-center">
                     <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin mx-auto mb-3" />
-                    <p className="text-white/40 text-sm">กำลังโหลด...</p>
+                    <p className="text-gray-300 text-sm">กำลังโหลด...</p>
                 </div>
             ) : deletedOrders.length === 0 ? (
-                /* Empty state */
                 <div className="bg-gradient-to-b from-[#0f1e3d]/60 to-[#0a1628]/60 border border-white/8 border-dashed rounded-2xl p-16 text-center">
                     <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <Trash2 className="w-8 h-8 text-white/20" />
                     </div>
-                    <h2 className="text-lg font-black text-white/40">ถังขยะว่างเปล่า</h2>
-                    <p className="text-sm text-white/25 mt-1">ไม่มีคำสั่งพิมพ์ที่ถูกลบ</p>
+                    <h2 className="text-lg font-black text-gray-300">ถังขยะว่างเปล่า</h2>
+                    <p className="text-sm text-gray-400 mt-1">ไม่มีคำสั่งพิมพ์ที่ถูกลบ</p>
                 </div>
             ) : (
-                /* Order cards grid */
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {deletedOrders.map(order => {
                         const daysLeft = getDaysRemaining(order.deleted_at);
@@ -384,71 +384,65 @@ export default function TrashPage() {
                                 key={order.id}
                                 className={`flex flex-col rounded-2xl border overflow-hidden transition-all duration-200 backdrop-blur-xl
                                     ${isUrgent
-                                        ? 'bg-rose-500/8 border-rose-500/30 shadow-lg shadow-rose-900/20'
-                                        : 'bg-white/5 border-white/10 hover:bg-white/8'
+                                        ? 'bg-rose-500/10 border-rose-500/40 shadow-lg shadow-rose-900/30'
+                                        : 'bg-gray-900/60 border-white/15 hover:bg-gray-900/70'
                                     }`}
                             >
-                                {/* Card header */}
-                                <div className={`px-4 pt-4 pb-3 border-b ${isUrgent ? 'border-rose-500/20' : 'border-white/8'}`}>
+                                <div className={`px-4 pt-4 pb-3 border-b ${isUrgent ? 'border-rose-500/30' : 'border-white/15'}`}>
                                     <div className="flex justify-between items-start gap-2">
                                         <div className="min-w-0 flex-1">
                                             <h3 className="font-black text-white text-sm leading-snug truncate">{order.product_name}</h3>
                                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                                <span className="text-[10px] text-white/40 bg-white/8 border border-white/10 px-1.5 py-0.5 rounded font-mono">{order.product_id}</span>
-                                                <span className="text-[10px] text-indigo-300/80 bg-indigo-500/15 border border-indigo-500/20 px-1.5 py-0.5 rounded font-bold">
+                                                <span className="text-[10px] text-gray-300 bg-white/8 border border-white/15 px-1.5 py-0.5 rounded font-mono">{order.product_id}</span>
+                                                <span className="text-[10px] text-indigo-200 bg-indigo-500/20 border border-indigo-400/30 px-1.5 py-0.5 rounded font-bold">
                                                     LOT {order.lot_number}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        {/* Days remaining badge */}
                                         <div className={`text-center px-2.5 py-1.5 rounded-xl shrink-0 border
                                             ${isUrgent
-                                                ? 'bg-rose-500/20 border-rose-500/30 text-rose-300'
-                                                : 'bg-white/8 border-white/12 text-white/60'
+                                                ? 'bg-rose-500/30 border-rose-400/40 text-rose-100'
+                                                : 'bg-gray-800/80 border-white/20 text-gray-200'
                                             }`}>
                                             <Clock className="w-3 h-3 mx-auto mb-0.5" />
                                             <div className="text-xs font-black tabular-nums leading-none">
                                                 {daysLeft > 0 ? `${daysLeft}วัน` : 'วันนี้!'}
                                             </div>
-                                            <div className="text-[9px] font-medium opacity-70 mt-0.5 whitespace-nowrap">ก่อนลบถาวร</div>
+                                            <div className="text-[9px] font-medium opacity-80 mt-0.5 whitespace-nowrap">ก่อนลบถาวร</div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Card body */}
                                 <div className="px-4 py-3 flex-1 space-y-2 text-xs">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-white/40 font-medium">ผู้สั่ง</span>
-                                        <span className="font-bold text-white/80">{order.created_by}</span>
+                                        <span className="text-gray-300 font-medium">ผู้สั่ง</span>
+                                        <span className="font-bold text-white">{formatNameWithoutCode(order.created_by)}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-white/40 font-medium">จำนวน</span>
+                                        <span className="text-gray-300 font-medium">จำนวน</span>
                                         <span className="font-black text-emerald-300 text-base tabular-nums">{order.quantity}</span>
                                     </div>
                                     {order.order_type && (
                                         <div className="flex justify-between items-center">
-                                            <span className="text-white/40 font-medium">ประเภท</span>
-                                            <span className="font-semibold text-white/70">{order.order_type}</span>
+                                            <span className="text-gray-300 font-medium">ประเภท</span>
+                                            <span className="font-semibold text-gray-100">{order.order_type}</span>
                                         </div>
                                     )}
 
-                                    {/* Divider + delete info */}
-                                    <div className={`pt-2 mt-1 border-t space-y-1.5 ${isUrgent ? 'border-rose-500/15' : 'border-white/8'}`}>
+                                    <div className={`pt-2 mt-1 border-t space-y-1.5 ${isUrgent ? 'border-rose-500/25' : 'border-white/15'}`}>
                                         <div className="flex justify-between items-center">
-                                            <span className="text-white/30">ลบเมื่อ</span>
-                                            <span className="text-rose-400/90 font-semibold">{formatThaiDateTime(order.deleted_at)}</span>
+                                            <span className="text-gray-300">ลบเมื่อ</span>
+                                            <span className="text-rose-200 font-semibold">{formatThaiDateTime(order.deleted_at)}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
-                                            <span className="text-white/30">ลบโดย</span>
-                                            <span className="font-semibold text-white/60">{order.deleted_by || 'ไม่ระบุ'}</span>
+                                            <span className="text-gray-300">ลบโดย</span>
+                                            <span className="font-semibold text-gray-100">{formatNameWithoutCode(order.deleted_by)}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Card footer actions */}
-                                <div className={`px-3 pb-3 pt-2 border-t flex gap-2 ${isUrgent ? 'border-rose-500/15' : 'border-white/8'}`}>
-                                    {/* Restore — moderator + assistant_moderator */}
+                                <div className={`px-3 pb-3 pt-2 border-t flex gap-2 ${isUrgent ? 'border-rose-500/25' : 'border-white/15'}`}>
                                     <button
                                         onClick={() => restoreOrder(order)}
                                         className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-500/30 hover:border-emerald-400/50 text-emerald-300 hover:text-emerald-200 py-2 rounded-xl font-bold text-xs transition-all duration-200 active:scale-95"
@@ -457,7 +451,6 @@ export default function TrashPage() {
                                         กู้คืน
                                     </button>
 
-                                    {/* Permanent delete — moderator only */}
                                     {isModerator && (
                                         <button
                                             onClick={() => permanentDelete(order)}
