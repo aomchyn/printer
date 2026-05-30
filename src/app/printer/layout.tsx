@@ -52,7 +52,7 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
                             &copy; {new Date().getFullYear()} Printer OP. All rights reserved.
                         </p>
                         <p className="text-[11px] font-medium text-[#0f1e3d]/60">
-                            Created by Chaloempon Promma
+                            Created by Rapinlapatchaya Thananpatwarin 🫶🏻
                         </p>
                     </div>
                 </footer>
