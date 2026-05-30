@@ -235,7 +235,7 @@ export default function DashboardPage() {
 
         const channel = supabase.channel('schema-db-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
-                (payload: { eventType: string; new?: Record<string, unknown> }) => {
+                (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
                     const nowTS = Date.now();
                     if (payload.eventType === 'INSERT') {
                         playNotificationSound();
@@ -245,6 +245,7 @@ export default function DashboardPage() {
                             showConfirmButton: false, timer: 4000, timerProgressBar: true,
                             background: '#eff6ff', color: '#1e3a8a'
                         });
+                        loadOrders();
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
                         const newData = payload.new as Record<string, unknown>;
                         if (newData.updated_at) {
@@ -263,6 +264,11 @@ export default function DashboardPage() {
                                 });
                             }
                         }
+                        // Update local state without fetching to prevent refresh flickers on status changes
+                        setOrders(prev => prev.map(o => o.id === newData.id ? { ...o, ...newData } : o));
+                    } else if (payload.eventType === 'DELETE' && payload.old) {
+                        const oldId = payload.old.id;
+                        setOrders(prev => prev.filter(o => o.id !== oldId));
                     }
                 }
             ).subscribe();
