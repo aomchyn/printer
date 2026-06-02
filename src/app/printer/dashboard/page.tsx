@@ -14,6 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
     weight: ['800'],
 });
 const processingOrderIds = new Set<number>();
+const auditLockSet = new Set<string>();
 
 export interface OrderInterface {
     id: number;
@@ -53,6 +54,7 @@ export default function DashboardPage() {
     const [orders, setOrders] = useState<OrderInterface[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [editingOrder, setEditingOrder] = useState<OrderInterface | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [role, setRole] = useState('');
     const [userName, setUserName] = useState('');
     const [employeeId, setEmployeeId] = useState('');
@@ -158,34 +160,44 @@ export default function DashboardPage() {
                     const now = new Date().toISOString();
 
                     Promise.all(
-                        updatesNeeded.map(({ id, newName, oldName }) =>
-                            Promise.all([
+                        updatesNeeded.map(({ id, newName, oldName }) => {
+                            const lockKey = `${id}:UPDATE:ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`;
+                            const shouldLog = !auditLockSet.has(lockKey);
+                            if (shouldLog) {
+                                auditLockSet.add(lockKey);
+                                setTimeout(() => auditLockSet.delete(lockKey), 15000);
+                            }
+
+                            return Promise.all([
                                 supabase.from('orders').update({
                                     product_name: newName,
                                     previous_product_name: oldName,
                                     updated_at: now,
                                 }).eq('id', id),
 
-                                supabase.from('audit_logs').insert([{
-                                    order_id: id,
-                                    action: 'UPDATE',
-                                    user_name: userIdentifier,
-                                    summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
-                                    created_at: now,
-                                }]),
-                            ])
-                        )
-                    ).then(() => {
-                        // อัปเดต updated_at ใน state หลัง sync เสร็จ
-                        setOrders(prev =>
-                            prev.map(o =>
-                                updatesNeeded.some(u => u.id === o.id)
-                                    ? { ...o, updated_at: now }
-                                    : o
-                            )
-                        );
-                        setAuditKey(prev => prev + 1);
-                    });
+                                shouldLog
+                                    ? supabase.from('audit_logs').insert([{
+                                        order_id: id,
+                                        action: 'UPDATE',
+                                        user_name: userIdentifier,
+                                        summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
+                                        created_at: now,
+                                    }])
+                                    : Promise.resolve(),
+                            ]);
+                        })
+                    )
+                        .then(() => {
+                            // อัปเดต updated_at ใน state หลัง sync เสร็จ
+                            setOrders(prev =>
+                                prev.map(o =>
+                                    updatesNeeded.some(u => u.id === o.id)
+                                        ? { ...o, updated_at: now }
+                                        : o
+                                )
+                            );
+                            setAuditKey(prev => prev + 1);
+                        });
                 }
 
             } else {
@@ -297,18 +309,39 @@ export default function DashboardPage() {
     const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: Record<string, unknown>) => {
         try {
             const userIdentifier = getCurrentUserIdentifier();
+            const tenSecondsAgo = new Date(Date.now() - 10_000).toISOString();
+
+            // ✅ เช็คจาก DB โดยตรง — ไม่พึ่ง in-memory ที่ reset ได้
+            const { data: existing } = await supabase
+                .from('audit_logs')
+                .select('id')
+                .eq('order_id', orderId)
+                .eq('action', action)
+                .eq('summary', summary)
+                .gte('created_at', tenSecondsAgo)
+                .limit(1);
+
+            if (existing && existing.length > 0) {
+                return;
+            }
+
             const { error } = await supabase.from('audit_logs').insert([{
                 order_id: orderId, action, user_name: userIdentifier,
-                summary, changes: changes || null, created_at: new Date().toISOString()
+                summary, changes: changes || null,
+                created_at: new Date().toISOString()
             }]);
+
             if (error) {
-                console.warn('audit_logs insert failed, falling back:', error);
-                await supabase.from('orders').update({ edit_summary: summary, updated_by: userIdentifier }).eq('id', orderId);
+                console.warn('audit_logs insert failed:', error);
+                await supabase.from('orders')
+                    .update({ edit_summary: summary, updated_by: userIdentifier })
+                    .eq('id', orderId);
             }
         } catch (err) {
             console.error('logAuditTrail error:', err);
         }
     };
+
 
     const deleteOrder = async (id: number) => {
         if (!isAdmin) {
@@ -361,6 +394,9 @@ export default function DashboardPage() {
 
     const saveEdit = async () => {
         if (!editingOrder) return;
+        if (isSaving) return;
+        setIsSaving(true);
+
         try {
             const now = new Date().toISOString();
             const original = orders.find(o => o.id === editingOrder.id);
@@ -407,6 +443,7 @@ export default function DashboardPage() {
                     confirmButtonText: 'รับทราบ',
                     confirmButtonColor: '#6b7280',
                 });
+                setIsSaving(false);
                 return;
             }
 
@@ -433,6 +470,8 @@ export default function DashboardPage() {
             Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
         } catch {
             Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -1365,7 +1404,9 @@ export default function DashboardPage() {
 
                         <div className="flex gap-3 mt-6 border-t border-slate-100 pt-4">
                             <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300">ยกเลิก</button>
-                            <button type="button" onClick={saveEdit} className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] text-white py-3 rounded-xl font-bold text-xs shadow-md shadow-blue-900/10 hover:shadow-lg transition duration-300">💾 บันทึกการแก้ไข</button>
+                            <button type="button" onClick={saveEdit} disabled={isSaving} className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] text-white py-3 rounded-xl font-bold text-xs shadow-md  disabled:opacity-50 disabled:cursor-not-allowed transition duration-300">
+                                {isSaving ? 'กำลังบันทึก...' : '💾 บันทึกการแก้ไข'}
+                            </button>
                         </div>
                     </div>
                 </div>
