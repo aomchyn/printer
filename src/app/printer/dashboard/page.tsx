@@ -435,6 +435,18 @@ export default function DashboardPage() {
                 if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
             }
 
+            if (!editingOrder.quantity || editingOrder.quantity <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'จำนวนไม่ถูกต้อง',
+                    text: 'จำนวนสั่งทำต้องมากกว่า 0',
+                    confirmButtonText: 'รับทราบ',
+                    confirmButtonColor: '#6b7280',
+                });
+                setIsSaving(false);
+                return;
+            }
+
             if (changeDetails.length === 0) {
                 Swal.fire({
                     icon: 'info',
@@ -447,10 +459,48 @@ export default function DashboardPage() {
                 return;
             }
 
+
             const summary = `แก้ไข: ${changeDetails.join(' | ')}`;
             const editorName = getCurrentUserIdentifier();
+
+            const confirmResult = await Swal.fire({
+                icon: 'question',
+                title: 'ยืนยันการแก้ไข?',
+                html: `
+        <div style="text-align:left; font-size:13px;">
+            <p style="color:#6b7280; margin-bottom:8px;">รายการที่แก้ไข:</p>
+            <table style="width:100%; border-collapse:collapse;">
+                ${changeDetails.map(detail => {
+                    const [label, rest] = detail.split(': ');
+                    const [oldVal, newVal] = (rest || '').split(' ➡️ ');
+                    return `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:6px 8px; color:#6b7280; font-weight:600; white-space:nowrap;">${label}</td>
+                            <td style="padding:6px 8px; color:#ef4444; text-decoration:line-through; font-size:12px;">${oldVal || ''}</td>
+                            <td style="padding:6px 4px; color:#6b7280;">→</td>
+                            <td style="padding:6px 8px; color:#10b981; font-weight:700;">${newVal || ''}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </table>
+        </div>
+    `,
+                showCancelButton: true,
+                confirmButtonText: '✓ ยืนยันบันทึก',
+                cancelButtonText: 'กลับไปแก้ไข',
+                confirmButtonColor: '#0f1e3d',
+                cancelButtonColor: '#6b7280',
+                customClass: { popup: 'rounded-xl text-sm' },
+                width: 'clamp(320px, 90vw, 480px)',
+            });
+
+            if (!confirmResult.isConfirmed) {
+                setIsSaving(false);
+                return;
+            }
+
             const updateData = {
-                order_type: editingOrder.order_type,         // ✅ เพิ่มตรงนี้
+                order_type: editingOrder.order_type,
                 lot_number: editingOrder.lot_number,
                 quantity: editingOrder.quantity,
                 production_date: editingOrder.production_date,
@@ -1373,8 +1423,12 @@ export default function DashboardPage() {
 
                             <div>
                                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">จำนวนสั่งทำ (Quantity)</label>
-                                <input type="number" value={editingOrder.quantity}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, quantity: parseInt(e.target.value) || 0 })}
+                                <input type="number" min="1" value={editingOrder.quantity}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value) || 1;
+                                        setEditingOrder({ ...editingOrder, quantity: Math.max(1, val) });
+                                    }}
+                                    onWheel={(e) => e.currentTarget.blur()}
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
                             </div>
 
