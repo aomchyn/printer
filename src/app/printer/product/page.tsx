@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect,useRef } from "react"
+import { useState, useEffect, useRef } from "react"
 import Swal from "sweetalert2"
 import Modal from "../components/Modal"
 import { supabase } from "@/lib/supabase"
@@ -48,10 +48,11 @@ export default function FgcodeManagement() {
                 if (data && data.length > 0) { allData = [...allData, ...data]; from += pageSize; hasMore = data.length === pageSize } else hasMore = false
             }
             setFgcodes(allData)
-        } catch { Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถดึงข้อมูลรหัสสินค้าได้' })
-           } finally {
-                     setIsLoading(false);
-             }
+        } catch {
+            Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: 'ไม่สามารถดึงข้อมูลรหัสสินค้าได้' })
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     useEffect(() => { fetchFgcodes(); fetchUserRole() }, [])
@@ -63,13 +64,21 @@ export default function FgcodeManagement() {
         const currentEditing = editingFgcode
         const cleanId = id.trim(); const cleanName = name.trim(); const cleanExp = exp.trim()
         if (!cleanId || !cleanName || !cleanExp) { Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบ', text: 'กรุณากรอกข้อมูลให้ครบทุกช่อง' }); return }
+        if (parseInt(cleanExp) <= 0) {
+            Swal.fire({ icon: 'warning', title: 'อายุผลิตภัณท์ไม่ถูกต้อง', text: 'อายุผลิตภัณท์ต้องมากกว่า 0', confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280' }); return
+        }
         const thaiCharRegex = /[ก-๙]/
         if (thaiCharRegex.test(cleanId)) { await Swal.fire({ icon: 'warning', title: 'รหัสสินค้าไม่ถูกต้อง', text: 'รหัสสินค้าต้องเป็นภาษาอังกฤษ ตัวเลข หรือเครื่องหมายขีด (-) เท่านั้น', confirmButtonText: 'รับทราบ' }); setShowModal(true); return }
         if (!isAdminRole && thaiCharRegex.test(cleanName)) { await Swal.fire({ icon: 'warning', title: 'ไม่อนุญาตให้ใช้ภาษาไทย', text: 'ชื่อสินค้าภาษาไทยไม่อนุญาตให้ใช้', confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280' }); setShowModal(true); return }
         if (currentEditing) {
             if (cleanName === (currentEditing.name || '') && cleanExp === (currentEditing.exp || '') && cleanId === currentEditing.id) {
                 await Swal.fire({ icon: 'info', title: 'ไม่มีการเปลี่ยนแปลง', text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ', confirmButtonText: 'รับทราบ' })
-                setEditingFgcode(currentEditing); setShowModal(true); return
+                setEditingFgcode(currentEditing)
+                setId(currentEditing.id)
+                setName(currentEditing.name)
+                setExp(currentEditing.exp)
+                setShowModal(true)
+                return
             }
         }
 
@@ -123,6 +132,32 @@ export default function FgcodeManagement() {
             } else {
                 const { data: existing } = await supabase.from('fgcode').select('id').eq('id', cleanId).single()
                 if (existing) { await Swal.fire({ icon: 'error', title: 'รหัสสินค้าซ้ำ', text: 'มีสินค้ารหัสนี้อยู่ในระบบเรียบร้อยแล้ว' }); setShowModal(true); return }
+
+                // confirm create
+                const confirm = await Swal.fire({
+                    icon: 'question',
+                    title: 'ยืนยันการเพิ่มสินค้า?',
+                    html: `
+            <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+                <tr><td style="padding:5px 8px; color:#6b7280;">🏷️ รหัสสินค้า</td><td style="padding:5px 8px; font-weight:700;">${cleanId}</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:5px 8px; color:#6b7280;">📝 ชื่อสินค้า</td><td style="padding:5px 8px; font-weight:700;">${cleanName}</td></tr>
+                <tr><td style="padding:5px 8px; color:#6b7280;">⏳ อายุผลิตภัณฑ์</td><td style="padding:5px 8px; font-weight:700;">${cleanExp} เดือน</td></tr>
+            </table>
+        `,
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยัน เพิ่มสินค้า',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#2563eb',
+                    cancelButtonColor: '#6b7280',
+                    customClass: { popup: 'rounded-xl text-sm' },
+                })
+                if (!confirm.isConfirmed) {
+                    setId(cleanId)
+                    setName(cleanName)
+                    setExp(cleanExp)
+                    setShowModal(true)
+                    return
+                }
                 const { error } = await supabase.from('fgcode').insert({ id: cleanId, name: cleanName, exp: cleanExp })
                 if (error) throw error
                 await logAction('CREATE_PRODUCT', { id: cleanId, name: cleanName, exp: cleanExp })
@@ -152,49 +187,49 @@ export default function FgcodeManagement() {
     const inputCls = `w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-lg text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 transition-all`
 
     useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-        (entries) => { if (entries[0].isIntersecting) setVisibleCount(prev => prev + 20) },
-        { threshold: 0.1 }
-    )
-       observer.observe(sentinel)
-       return () => observer.disconnect()
-        }, [filteredFgcodes])
+        const sentinel = sentinelRef.current
+        if (!sentinel) return
+        const observer = new IntersectionObserver(
+            (entries) => { if (entries[0].isIntersecting) setVisibleCount(prev => prev + 20) },
+            { threshold: 0.1 }
+        )
+        observer.observe(sentinel)
+        return () => observer.disconnect()
+    }, [filteredFgcodes])
 
     useEffect(() => {
-    setVisibleCount(20)
-       }, [searchTerm])
+        setVisibleCount(20)
+    }, [searchTerm])
 
-          if (isLoading) return (
-    <div className="min-h-screen bg-gray-50 p-4">
-        <div className="bg-white/90 border-b border-gray-200 px-4 py-3 flex items-center justify-between mb-4">
-            <div className="h-5 w-32 rounded-lg bg-slate-200 animate-pulse" />
-            <div className="h-8 w-20 rounded-lg bg-blue-100 animate-pulse" />
-        </div>
-        <div className="max-w-5xl mx-auto space-y-3 mt-4">
-            <div className="h-10 w-full rounded-xl bg-slate-100 animate-pulse mb-4" />
-            {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white border border-[#dde8f5] border-l-2 border-l-blue-200 rounded-xl px-3.5 py-3 shadow-sm">
-                    <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-200 animate-pulse shrink-0" />
-                        <div className="flex-1 space-y-2">
-                            <div className="flex gap-2">
-                                <div className="h-4 w-40 rounded bg-slate-200 animate-pulse" />
-                                <div className="h-4 w-20 rounded-full bg-slate-100 animate-pulse" />
-                            </div>
-                            <div className="h-3 w-24 rounded bg-slate-100 animate-pulse" />
-                            <div className="flex gap-2 pt-1">
-                                <div className="h-6 w-14 rounded-lg bg-blue-50 animate-pulse" />
-                                <div className="h-6 w-10 rounded-lg bg-red-50 animate-pulse" />
+    if (isLoading) return (
+        <div className="min-h-screen bg-gray-50 p-4">
+            <div className="bg-white/90 border-b border-gray-200 px-4 py-3 flex items-center justify-between mb-4">
+                <div className="h-5 w-32 rounded-lg bg-slate-200 animate-pulse" />
+                <div className="h-8 w-20 rounded-lg bg-blue-100 animate-pulse" />
+            </div>
+            <div className="max-w-5xl mx-auto space-y-3 mt-4">
+                <div className="h-10 w-full rounded-xl bg-slate-100 animate-pulse mb-4" />
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className="bg-white border border-[#dde8f5] border-l-2 border-l-blue-200 rounded-xl px-3.5 py-3 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-200 animate-pulse shrink-0" />
+                            <div className="flex-1 space-y-2">
+                                <div className="flex gap-2">
+                                    <div className="h-4 w-40 rounded bg-slate-200 animate-pulse" />
+                                    <div className="h-4 w-20 rounded-full bg-slate-100 animate-pulse" />
+                                </div>
+                                <div className="h-3 w-24 rounded bg-slate-100 animate-pulse" />
+                                <div className="flex gap-2 pt-1">
+                                    <div className="h-6 w-14 rounded-lg bg-blue-50 animate-pulse" />
+                                    <div className="h-6 w-10 rounded-lg bg-red-50 animate-pulse" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
-    </div>
-)
+    )
 
     return (
         <div className="min-h-screen bg-gray-50" style={{
@@ -301,7 +336,7 @@ export default function FgcodeManagement() {
                         {visibleCount < filteredFgcodes.length && (
                             <div ref={sentinelRef} className="flex justify-center py-6">
                                 <div className="flex items-center gap-2">
-                                    {[0,1,2].map(i => (
+                                    {[0, 1, 2].map(i => (
                                         <div key={i} className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
                                             style={{ animationDelay: `${i * 0.15}s` }} />
                                     ))}
@@ -318,7 +353,7 @@ export default function FgcodeManagement() {
                             </div>
                         )}
                     </div>
-                    
+
                 )}
             </div>
 
@@ -343,7 +378,19 @@ export default function FgcodeManagement() {
                             </div>
                             <div>
                                 <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">อายุผลิตภัณฑ์ (เดือน) <span className="text-red-500">*</span></label>
-                                <input type="number" min="0" className={inputCls} value={exp} onChange={e => setExp(e.target.value)} placeholder="เช่น 12" required />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    className={inputCls}
+                                    value={exp}
+                                    onChange={e => {
+                                        const val = parseInt(e.target.value) || 1;
+                                        setExp(String(Math.max(1, val)));
+                                    }}
+                                    onWheel={e => e.currentTarget.blur()}
+                                    placeholder="เช่น 12"
+                                    required
+                                />
                             </div>
                             <div className="border-t border-[#e8eef8] pt-4 flex justify-end gap-3">
                                 <button type="button" onClick={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp('') }} className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#d0daf0] text-slate-600 font-semibold rounded-lg text-[13px] transition-all">
