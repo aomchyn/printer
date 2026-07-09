@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Loader2, Mail, Lock, Shield, Printer, Eye, EyeOff } from "lucide-react";
 import { logAction } from "@/lib/logger";
+
+// Deterministic bar pattern for the barcode graphic (no Math.random -> no hydration mismatch)
+const BAR_COUNT = 34;
+const BAR_WIDTHS = Array.from({ length: BAR_COUNT }, (_, i) => 2 + ((i * 37) % 5));
+const stripThai = (value: string) => value.replace(/[\u0E00-\u0E7F]/g, "");
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -13,6 +18,8 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
+
+    const bars = useMemo(() => BAR_WIDTHS, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,211 +57,163 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="login-page-root">
-            {/* ── Backgrounds ── */}
-            <div className="login-bg-mesh" />
-            <div className="login-grid-overlay" />
-            <div className="login-orb login-orb-1" />
-            <div className="login-orb login-orb-2" />
-            <div className="login-orb login-orb-3" />
+        <div className="lp-root">
+            {/* ── Ambient backdrop ── */}
+            <div className="lp-grid" aria-hidden="true" />
+            <div className="lp-vignette" aria-hidden="true" />
+            <div className="lp-floorline" aria-hidden="true" />
 
-            {/* ── Page wrapper ── */}
-            <div className="login-page">
-                <div className="login-container">
+            <div className="lp-page">
+                <div className="lp-container">
 
-                    {/* ── Left brand panel ── */}
-                    <div className="login-brand-panel">
-                        <div className="login-brand-icon">
-                            <Printer size={30} color="white" />
+                    {/* ── Brand column ── */}
+                    <div className="lp-brand">
+                        <div className="lp-brand-mark">
+                            <Printer size={18} strokeWidth={2.25} />
+                            <span>PRINTER&nbsp;·&nbsp;OP</span>
                         </div>
 
-                        <h1 className="login-brand-title">
-                            Printer OP<br />
-                            <span>Label System</span>
+                        <h1 className="lp-brand-title">
+                            ระบบควบคุม
+                            <br />
+                            การพิมพ์ฉลาก
                         </h1>
 
-                        <p className="login-brand-subtitle">
-                            ระบบจัดการคำสั่งพิมพ์ฉลากสินค้าและปั๊มถุง
+                        <p className="lp-brand-sub">
+                            ติดตามคำสั่งพิมพ์ฉลากสินค้า
                         </p>
-
-                        <div className="husky-scene">
-    <svg className="husky-dog" viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">
-
-  {/* หางม้วนฟู - signature husky */}
-  <path d="M58,75 C32,62 20,38 30,16 C36,5 50,8 52,22"
-        stroke="#8faec8" strokeWidth="16" fill="none" strokeLinecap="round"/>
-  <path d="M58,75 C32,62 20,38 30,16 C36,5 50,8 52,22"
-        stroke="#d0e6f4" strokeWidth="8" fill="none" strokeLinecap="round"/>
-  <path d="M58,75 C32,62 20,38 30,16"
-        stroke="rgba(255,255,255,0.25)" strokeWidth="4" fill="none" strokeLinecap="round"/>
-
-  {/* ตัว */}
-  <ellipse cx="115" cy="78" rx="58" ry="30" fill="#7898b2"/>
-  {/* ท้องขาว */}
-  <ellipse cx="120" cy="87" rx="42" ry="18" fill="#cce0ef"/>
-
-  {/* คอ + ขนรอบคอ */}
-  <ellipse cx="158" cy="64" rx="24" ry="22" fill="#89adc6"/>
-  <ellipse cx="160" cy="70" rx="17" ry="14" fill="#bfd5e8" opacity="0.45"/>
-
-  {/* หัว */}
-  <ellipse cx="185" cy="46" rx="30" ry="28" fill="#89adc6"/>
-
-  {/* หมวกสีเข้ม - husky mask บนหัว */}
-  <ellipse cx="181" cy="30" rx="24" ry="17" fill="#4e6d86"/>
-
-  {/* แก้มขาว / ใบหน้าขาว */}
-  <ellipse cx="192" cy="53" rx="20" ry="15" fill="#d8eaf6"/>
-
-  {/* ปากกระบอก (snout) */}
-  <ellipse cx="210" cy="57" rx="14" ry="10" fill="#c6daea"/>
-  <path d="M196,46 C204,43 214,47 218,52"
-        stroke="#6a8ea8" strokeWidth="2" fill="none" strokeLinecap="round"/>
-
-  {/* จมูก */}
-  <ellipse cx="221" cy="54" rx="7" ry="6" fill="#111820"/>
-  <ellipse cx="219" cy="52" rx="3" ry="2" fill="rgba(255,255,255,0.38)"/>
-
-  {/* ===== ตา — จุดเด่นที่สุดของไซบีเรียน ===== */}
-  <circle cx="194" cy="42" r="10" fill="white"/>
-  <circle cx="194" cy="42" r="8" fill="#28b4e0"/>
-  <circle cx="194" cy="42" r="4.5" fill="#0c1824"/>
-  <circle cx="196.5" cy="39" r="2.5" fill="white"/>
-  <circle cx="194" cy="42" r="10" fill="none" stroke="#3d6a86" strokeWidth="1"/>
-
-  {/* จุดคิ้ว (husky มีจุดสีอ่อนเหนือตาเสมอ) */}
-  <ellipse cx="192" cy="30" rx="5" ry="3" fill="#d8eaf6" opacity="0.95"/>
-
-  {/* หู ข้างหน้า */}
-  <polygon points="166,28 175,4 188,30" fill="#3d5e78"/>
-  <polygon points="169,28 175,11 185,29" fill="#d47890" opacity="0.8"/>
-
-  {/* หู ข้างหลัง */}
-  <polygon points="180,26 190,4 202,28" fill="#304e65"/>
-  <polygon points="183,26 190,11 199,27" fill="#b86878" opacity="0.65"/>
-
-  {/* ปาก */}
-  <path d="M216,61 Q220,66 224,61"
-        stroke="#4a6878" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-
-  {/* ลิ้น */}
-  <ellipse cx="220" cy="67" rx="6" ry="5" fill="#e8728a" className="husky-tongue"/>
-  <line x1="220" y1="63" x2="220" y2="71" stroke="#cc5870" strokeWidth="1.2" strokeLinecap="round"/>
-
-  {/* ===== ขา ===== */}
-  <g className="leg-back-l">
-    <rect x="82" y="102" width="12" height="28" rx="6" fill="#5a7a96"/>
-    <ellipse cx="88" cy="131" rx="10" ry="5" fill="#486880"/>
-  </g>
-  <g className="leg-back-r">
-    <rect x="100" y="102" width="12" height="28" rx="6" fill="#6a8aaa"/>
-    <ellipse cx="106" cy="131" rx="10" ry="5" fill="#587898"/>
-  </g>
-  <g className="leg-front-l">
-    <rect x="138" y="102" width="12" height="28" rx="6" fill="#6a8aaa"/>
-    <ellipse cx="144" cy="131" rx="10" ry="5" fill="#587898"/>
-  </g>
-  <g className="leg-front-r">
-    <rect x="156" y="102" width="12" height="28" rx="6" fill="#5a7a96"/>
-    <ellipse cx="162" cy="131" rx="10" ry="5" fill="#486880"/>
-  </g>
-
-</svg>
-    <div className="husky-ground"/>
-</div>
                     </div>
 
-                    {/* ── Login card ── */}
-                    <div className="login-card">
-                        <div className="login-card-accent" />
+                    {/* ── Ticket / login card ── */}
+                    <div className="lp-ticket">
+                        <div className="lp-ticket-inner">
 
-                        <h2 className="login-card-title">เข้าสู่ระบบ</h2>
-                        <p className="login-card-subtitle">
-                            ยินดีต้อนรับกลับมา<br></br>กรุณายืนยันตัวตนเพื่อดำเนินการต่อ
-                        </p>
-
-                        {/* Error */}
-                        {error && (
-                            <div className="login-error-box">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
-                                <span>{error}</span>
-                            </div>
-                        )}
-
-                        <form onSubmit={handleLogin} className="login-form">
-                            {/* Email */}
-                            <div className="login-form-group">
-                                <label className="login-form-label" htmlFor="email">
-                                    อีเมล
-                                </label>
-                                <div className="login-input-wrapper">
-                                    <div className="login-input-icon">
-                                        <Mail size={16} />
-                                    </div>
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        required
-                                        className="login-form-input"
-                                        placeholder="กรอกอีเมลของคุณ"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                    />
+                            {/* ticket head: barcode + meta */}
+                            <div className="lp-ticket-head">
+                                <div className="lp-ticket-meta">
+                                    <span className="lp-ticket-no">NO. 000482</span>
+                                    <span className="lp-ticket-dot" />
+                                    <span className="lp-ticket-line">LINE&nbsp;A3</span>
+                                </div>
+                                <div className="lp-barcode" aria-hidden="true">
+                                    {bars.map((w, i) => (
+                                        <span key={i} style={{ width: `${w}px` }} />
+                                    ))}
+                                    <div className="lp-scanline" />
                                 </div>
                             </div>
 
-                            {/* Password */}
-                            <div className="login-form-group">
-                                <label className="login-form-label" htmlFor="password">
-                                    รหัสผ่าน
-                                </label>
-                                <div className="login-input-wrapper">
-                                    <div className="login-input-icon">
-                                        <Lock size={16} />
-                                    </div>
-                                    <input
-                                        id="password"
-                                        type={showPassword ? "text" : "password"}
-                                        required
-                                        className="login-form-input login-form-input--password"
-                                        placeholder="ป้อนรหัสผ่านของคุณ"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="login-password-toggle"
-                                        onClick={() => setShowPassword((v) => !v)}
-                                        aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
-                                    >
-                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
-                                </div>
+                            {/* tear-off perforation */}
+                            <div className="lp-tear" aria-hidden="true">
+                                <span className="lp-notch lp-notch-l" />
+                                <i className="lp-tear-rule" />
+                                <span className="lp-notch lp-notch-r" />
                             </div>
 
-                            <div className="login-divider" />
+                            {/* form body */}
+                            <div className="lp-body">
+                                <h2 className="lp-title">เข้าสู่ระบบ</h2>
+                                <p className="lp-subtitle">
+                                    ยินดีต้อนรับกลับมา กรุณายืนยันตัวตนเพื่อดำเนินการต่อ
+                                </p>
 
-                            <button
-                                type="submit"
-                                className="login-btn-submit"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="animate-spin" size={18} />
-                                        <span>กำลังเข้าสู่ระบบ...</span>
-                                    </>
-                                ) : (
-                                    "เข้าสู่ระบบ"
+                                {error && (
+                                    <div className="lp-error" role="alert">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="15"
+                                            height="15"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        >
+                                            <circle cx="12" cy="12" r="10" />
+                                            <line x1="12" y1="8" x2="12" y2="12" />
+                                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                                        </svg>
+                                        <span>{error}</span>
+                                    </div>
                                 )}
-                            </button>
-                        </form>
+
+                                <form onSubmit={handleLogin} className="lp-form" noValidate>
+                                    <div className="lp-field">
+                                        <label className="lp-label" htmlFor="email">
+                                            อีเมล
+                                        </label>
+                                        <div className="lp-input-wrap">
+                                            <span className="lp-input-icon">
+                                                <Mail size={15} />
+                                            </span>
+                                            <input
+                                                id="email"
+                                                type="email"
+                                                required
+                                                autoComplete="email"
+                                                className="lp-input"
+                                                placeholder="กรอกอีเมลของคุณ"
+                                                value={email}
+                                                onChange={(e) => setEmail(stripThai(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="lp-field">
+                                        <label className="lp-label" htmlFor="password">
+                                            รหัสผ่าน
+                                        </label>
+                                        <div className="lp-input-wrap">
+                                            <span className="lp-input-icon">
+                                                <Lock size={15} />
+                                            </span>
+                                            <input
+                                                id="password"
+                                                type={showPassword ? "text" : "password"}
+                                                required
+                                                autoComplete="current-password"
+                                                className="lp-input lp-input--pw"
+                                                placeholder="ป้อนรหัสผ่านของคุณ"
+                                                value={password}
+                                                onChange={(e) => setPassword(stripThai(e.target.value))}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="lp-pw-toggle"
+                                                onClick={() => setShowPassword((v) => !v)}
+                                                aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                                            >
+                                                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="lp-submit"
+                                        disabled={loading}
+                                        aria-busy={loading}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <span className="lp-spin">
+                                                    <Loader2 size={16} />
+                                                </span>
+                                                <span>กำลังตรวจสอบข้อมูล...</span>
+                                            </>
+                                        ) : (
+                                            "เข้าสู่ระบบ"
+                                        )}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div className="lp-ticket-foot">
+                                <span>PRINTER OP LABEL SYSTEM</span>
+                                <span>Created by Rapinlapatchaya </span>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -262,430 +221,509 @@ export default function LoginPage() {
 
             {/* ── Scoped styles ── */}
             <style jsx>{`
-                .login-page-root {
-                    font-family: 'Sarabun', 'Kanit', sans-serif;
-                    background: #060e1f;
+                :global(:root) {
+                    --lp-steel-950: #10141b;
+                    --lp-steel-900: #171d26;
+                    --lp-steel-800: #1e2632;
+                    --lp-steel-700: #2b3542;
+                    --lp-steel-600: #3c4756;
+                    --lp-paper: #f6f1e6;
+                    --lp-paper-dim: #e7dfc9;
+                    --lp-ink: #211d18;
+                    --lp-accent: #4d8fe0;
+                    --lp-accent-deep: #2a63a8;
+                    --lp-mist: #8a93a3;
+                    --lp-mist-dim: #565f6f;
+                }
+
+                .lp-root {
+                    font-family: "Sarabun", "Kanit", sans-serif;
+                    background: var(--lp-steel-950);
                     min-height: 100vh;
+                    min-height: 100dvh;
                     position: relative;
-                    overflow: hidden;
+                    overflow-x: hidden;
                 }
 
-                /* Mesh background */
-                .login-bg-mesh {
-                    position: fixed;
-                    inset: 0;
-                    background:
-                        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(30,80,180,0.35) 0%, transparent 60%),
-                        radial-gradient(ellipse 60% 80% at 80% 80%, rgba(14,50,120,0.4) 0%, transparent 60%),
-                        radial-gradient(ellipse 50% 50% at 50% 50%, rgba(10,30,80,0.5) 0%, transparent 70%),
-                        #060e1f;
-                    z-index: 0;
+                .lp-root,
+                .lp-root *,
+                .lp-root *::before,
+                .lp-root *::after {
+                    box-sizing: border-box;
                 }
 
-                /* Grid overlay */
-                .login-grid-overlay {
+                .lp-grid {
                     position: fixed;
                     inset: 0;
                     background-image:
-                        linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
-                    background-size: 48px 48px;
+                        linear-gradient(rgba(77, 143, 224, 0.035) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(77, 143, 224, 0.035) 1px, transparent 1px);
+                    background-size: 44px 44px;
+                    z-index: 0;
+                }
+
+                .lp-vignette {
+                    position: fixed;
+                    inset: 0;
+                    background:
+                        radial-gradient(ellipse 60% 50% at 82% 8%, rgba(77, 143, 224, 0.1) 0%, transparent 60%),
+                        radial-gradient(ellipse 70% 60% at 10% 100%, rgba(59, 90, 140, 0.16) 0%, transparent 65%);
                     z-index: 1;
                 }
 
-                /* Floating orbs */
-                .login-orb {
+                .lp-floorline {
                     position: fixed;
-                    border-radius: 50%;
-                    filter: blur(60px);
-                    opacity: 0.18;
-                    animation: loginFloat 8s ease-in-out infinite;
-                    z-index: 2;
-                }
-                .login-orb-1 {
-                    width: 500px; height: 500px;
-                    background: #1d4ed8;
-                    top: -150px; left: -150px;
-                    animation-delay: 0s;
-                }
-                .login-orb-2 {
-                    width: 350px; height: 350px;
-                    background: #1e40af;
-                    bottom: -100px; right: -100px;
-                    animation-delay: -4s;
-                }
-                .login-orb-3 {
-                    width: 220px; height: 220px;
-                    background: #3b82f6;
-                    top: 50%; right: 15%;
-                    animation-delay: -2s;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    height: 1px;
+                    background: repeating-linear-gradient(
+                        90deg,
+                        rgba(77, 143, 224, 0.28) 0px,
+                        rgba(77, 143, 224, 0.28) 22px,
+                        transparent 22px,
+                        transparent 44px
+                    );
+                    animation: lpFloorScroll 5s linear infinite;
+                    z-index: 1;
                 }
 
-                @keyframes loginFloat {
-                    0%, 100% { transform: translateY(0px) scale(1); }
-                    50%       { transform: translateY(-24px) scale(1.05); }
+                @keyframes lpFloorScroll {
+                    from { background-position: 0 0; }
+                    to   { background-position: -44px 0; }
                 }
 
-                /* Page layout */
-                .login-page {
+                .lp-page {
                     position: relative;
                     z-index: 10;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     min-height: 100vh;
+                    min-height: 100dvh;
                     padding: 2rem;
+                    padding-top: calc(2rem + env(safe-area-inset-top));
+                    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+                    padding-left: calc(2rem + env(safe-area-inset-left));
+                    padding-right: calc(2rem + env(safe-area-inset-right));
                 }
 
-                .login-container {
+                .lp-container {
                     display: flex;
                     align-items: center;
                     gap: 4.5rem;
-                    max-width: 960px;
+                    max-width: 980px;
                     width: 100%;
                 }
 
-                /* Brand panel */
-                .login-brand-panel {
+                /* ── Brand column ── */
+                .lp-brand {
                     flex: 1;
                     color: white;
-                    animation: loginSlideLeft 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+                    animation: lpSlideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
 
-                @keyframes loginSlideLeft {
-                    from { opacity: 0; transform: translateX(-28px); }
+                @keyframes lpSlideLeft {
+                    from { opacity: 0; transform: translateX(-24px); }
                     to   { opacity: 1; transform: translateX(0); }
                 }
 
-                .login-brand-icon {
-                    width: 60px; height: 60px;
-                    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-                    border-radius: 16px;
-                    display: flex;
+                .lp-brand-mark {
+                    display: inline-flex;
                     align-items: center;
-                    justify-content: center;
+                    gap: 0.5rem;
+                    padding: 0.4rem 0.8rem;
+                    border: 1px solid rgba(77, 143, 224, 0.35);
+                    border-radius: 999px;
+                    color: var(--lp-accent);
+                    font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+                    font-size: 0.72rem;
+                    font-weight: 600;
+                    letter-spacing: 0.14em;
                     margin-bottom: 1.75rem;
-                    box-shadow: 0 0 36px rgba(59,130,246,0.35);
                 }
 
-                .login-brand-title {
-                    font-family: 'Kanit', sans-serif;
-                    font-size: 2.25rem;
+                .lp-brand-title {
+                    font-family: "Kanit", sans-serif;
+                    font-size: 2.35rem;
                     font-weight: 600;
                     color: white;
-                    line-height: 1.15;
-                    margin-bottom: 0.75rem;
+                    line-height: 1.2;
+                    margin-bottom: 1rem;
                 }
 
-                .login-brand-title span {
-                    background: linear-gradient(90deg, #60a5fa, #93c5fd);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                }
-
-                .login-brand-subtitle {
+                .lp-brand-sub {
                     font-size: 0.95rem;
-                    color: rgba(148,163,184,0.82);
-                    line-height: 1.75;
-                    max-width: 320px;
+                    color: var(--lp-mist);
+                    line-height: 1.8;
+                    max-width: 340px;
                 }
 
-                .login-features {
-                    margin-top: 2.25rem;
+                .lp-chips {
+                    margin-top: 2rem;
                     display: flex;
-                    flex-direction: column;
-                    gap: 0.9rem;
+                    flex-wrap: wrap;
+                    gap: 0.55rem;
                 }
 
-                .login-feature-item {
+                .lp-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    padding: 0.35rem 0.7rem;
+                    font-size: 0.72rem;
+                    font-weight: 500;
+                    color: var(--lp-mist);
+                    border: 1px dashed var(--lp-steel-600);
+                    border-radius: 6px;
+                    background: rgba(255, 255, 255, 0.02);
+                    letter-spacing: 0.02em;
+                }
+
+                /* ── Ticket card ── */
+                .lp-ticket {
+                    width: 420px;
+                    flex-shrink: 0;
+                    animation: lpTicketFeed 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    filter: drop-shadow(0 26px 60px rgba(0, 0, 0, 0.5));
+                }
+
+                @keyframes lpTicketFeed {
+                    from { opacity: 0; transform: translateY(22px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                }
+
+                .lp-ticket-inner {
+                    background: var(--lp-paper);
+                    border-radius: 14px;
+                    overflow: hidden;
+                    position: relative;
+                }
+
+                .lp-ticket-head {
+                    padding: 1.3rem 1.6rem 1.1rem;
+                    background: var(--lp-paper-dim);
+                }
+
+                .lp-ticket-meta {
                     display: flex;
                     align-items: center;
-                    gap: 0.7rem;
-                    color: rgba(203,213,225,0.78);
-                    font-size: 0.875rem;
-                }
-
-                .login-feature-dot {
-                    width: 7px; height: 7px;
-                    border-radius: 50%;
-                    background: linear-gradient(135deg, #2563eb, #60a5fa);
-                    flex-shrink: 0;
-                    box-shadow: 0 0 8px rgba(96,165,250,0.55);
-                }
-
-                /* Login card */
-                .login-card {
-                    width: 410px;
-                    flex-shrink: 0;
-                    background: rgba(13,22,45,0.85);
-                    border: 1px solid rgba(59,130,246,0.18);
-                    border-radius: 24px;
-                    padding: 2.25rem;
-                    backdrop-filter: blur(24px);
-                    box-shadow:
-                        0 0 0 1px rgba(59,130,246,0.07),
-                        0 24px 64px rgba(0,0,0,0.55),
-                        inset 0 1px 0 rgba(255,255,255,0.05);
-                    animation: loginSlideRight 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
-                }
-
-                @keyframes loginSlideRight {
-                    from { opacity: 0; transform: translateX(28px); }
-                    to   { opacity: 1; transform: translateX(0); }
-                }
-
-                .login-card-accent {
-                    width: 44px; height: 3px;
-                    background: linear-gradient(90deg, #1d4ed8, #60a5fa);
-                    border-radius: 99px;
-                    margin-bottom: 1.6rem;
-                }
-
-                .login-card-title {
-                    font-family: 'Kanit', sans-serif;
-                    font-size: 1.7rem;
+                    gap: 0.5rem;
+                    font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+                    font-size: 0.68rem;
                     font-weight: 600;
-                    color: white;
-                    margin-bottom: 0.35rem;
+                    letter-spacing: 0.08em;
+                    color: var(--lp-mist-dim);
+                    margin-bottom: 0.7rem;
                 }
 
-                .login-card-subtitle {
-                    font-size: 0.85rem;
-                    color: rgba(148,163,184,0.72);
-                    margin-bottom: 1.75rem;
+                .lp-ticket-no { color: var(--lp-ink); }
+
+                .lp-ticket-dot {
+                    width: 3px;
+                    height: 3px;
+                    border-radius: 50%;
+                    background: var(--lp-mist-dim);
+                }
+
+                .lp-barcode {
+                    position: relative;
+                    display: flex;
+                    align-items: stretch;
+                    gap: 2px;
+                    height: 34px;
+                    overflow: hidden;
+                    border-radius: 3px;
+                }
+
+                .lp-barcode span {
+                    display: block;
+                    background: var(--lp-ink);
+                    opacity: 0.82;
+                }
+
+                .lp-scanline {
+                    position: absolute;
+                    top: 0;
+                    left: -10%;
+                    width: 10%;
+                    height: 100%;
+                    background: linear-gradient(
+                        90deg,
+                        transparent,
+                        rgba(77, 143, 224, 0.55),
+                        transparent
+                    );
+                    animation: lpScan 3.2s ease-in-out infinite;
+                }
+
+                @keyframes lpScan {
+                    0%   { left: -10%; }
+                    50%  { left: 100%; }
+                    100% { left: 100%; }
+                }
+
+                /* tear-off perforation */
+                .lp-tear {
+                    position: relative;
+                    height: 14px;
+                    background: var(--lp-paper);
+                }
+
+                .lp-tear-rule {
+                    position: absolute;
+                    left: 22px;
+                    right: 22px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    border-top: 1.5px dashed rgba(33, 29, 24, 0.22);
+                }
+
+                .lp-notch {
+                    position: absolute;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    background: var(--lp-steel-950);
+                }
+
+                .lp-notch-l { left: -10px; }
+                .lp-notch-r { right: -10px; }
+
+                /* form body */
+                .lp-body {
+                    padding: 0.6rem 1.6rem 1.7rem;
+                }
+
+                .lp-title {
+                    font-family: "Kanit", sans-serif;
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                    color: var(--lp-ink);
+                    margin-bottom: 0.3rem;
+                }
+
+                .lp-subtitle {
+                    font-size: 0.82rem;
+                    color: rgba(33, 29, 24, 0.58);
+                    margin-bottom: 1.4rem;
                     line-height: 1.5;
                 }
 
-                /* Error box */
-                .login-error-box {
+                .lp-error {
                     display: flex;
                     align-items: center;
-                    gap: 0.6rem;
-                    padding: 0.75rem 1rem;
-                    border-radius: 10px;
-                    background: rgba(239,68,68,0.12);
-                    border: 1px solid rgba(239,68,68,0.25);
-                    color: #fca5a5;
-                    font-size: 0.85rem;
-                    margin-bottom: 1.25rem;
+                    gap: 0.55rem;
+                    padding: 0.65rem 0.9rem;
+                    border-radius: 8px;
+                    background: rgba(200, 50, 40, 0.08);
+                    border: 1px solid rgba(200, 50, 40, 0.22);
+                    color: #a3271c;
+                    font-size: 0.8rem;
+                    margin-bottom: 1.1rem;
                 }
 
-                /* Form */
-                .login-form { display: flex; flex-direction: column; gap: 0; }
+                .lp-form { display: flex; flex-direction: column; }
 
-                .login-form-group { margin-bottom: 1.1rem; }
+                .lp-field { margin-bottom: 1rem; }
 
-                .login-form-label {
+                .lp-label {
                     display: block;
-                    font-size: 0.75rem;
-                    font-weight: 500;
-                    color: rgba(148,163,184,0.88);
-                    margin-bottom: 0.45rem;
-                    letter-spacing: 0.06em;
+                    font-size: 0.7rem;
+                    font-weight: 600;
+                    color: rgba(33, 29, 24, 0.55);
+                    margin-bottom: 0.4rem;
+                    letter-spacing: 0.08em;
                     text-transform: uppercase;
                 }
 
-                .login-input-wrapper { position: relative; }
+                .lp-input-wrap { position: relative; }
 
-                .login-input-icon {
+                .lp-input-icon {
                     position: absolute;
-                    left: 13px;
+                    left: 12px;
                     top: 50%;
                     transform: translateY(-50%);
-                    color: rgba(100,116,139,0.65);
-                    pointer-events: none;
-                    display: flex;
-                    align-items: center;
-                }
-
-                .login-form-input {
-                    width: 100%;
-                    padding: 0.7rem 1rem 0.7rem 2.6rem;
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(59,130,246,0.18);
-                    border-radius: 11px;
-                    color: white;
-                    font-size: 0.92rem;
-                    outline: none;
-                    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-                }
-
-                .login-form-input::placeholder { color: rgba(100,116,139,0.55); }
-
-                .login-form-input:focus {
-                    border-color: rgba(59,130,246,0.55);
-                    background: rgba(59,130,246,0.07);
-                    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
-                }
-
-                .login-divider {
-                    height: 1px;
-                    background: rgba(59,130,246,0.1);
-                    margin: 1.25rem 0;
-                }
-
-                /* Submit button */
-                .login-btn-submit {
-                    width: 100%;
-                    padding: 0.82rem;
-                    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%);
-                    border: none;
-                    border-radius: 12px;
-                    color: white;
-                    font-family: 'Kanit', sans-serif;
-                    font-size: 1rem;
-                    font-weight: 500;
-                    cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 0.5rem;
-                    letter-spacing: 0.03em;
-                    box-shadow: 0 4px 20px rgba(29,78,216,0.38);
-                    transition: all 0.22s;
+                    color: rgba(33, 29, 24, 0.38);
+                    pointer-events: none;
+                    line-height: 0;
                 }
 
-                .login-btn-submit:hover:not(:disabled) {
-                    transform: translateY(-1px);
-                    box-shadow: 0 8px 28px rgba(29,78,216,0.5);
+                .lp-input {
+                    width: 100%;
+                    padding: 0.68rem 1rem 0.68rem 2.4rem;
+                    background: rgba(33, 29, 24, 0.035);
+                    border: 1px solid rgba(33, 29, 24, 0.14);
+                    border-radius: 9px;
+                    color: var(--lp-ink);
+                    font-size: 16px; /* keeps iOS Safari from auto-zooming on focus */
+                    outline: none;
+                    transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
                 }
 
-                .login-btn-submit:active:not(:disabled) { transform: translateY(0); }
+                .lp-input::placeholder { color: rgba(33, 29, 24, 0.35); }
 
-                .login-btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
-
-                .login-form-input--password {
-                    padding-right: 2.75rem;
+                .lp-input:focus-visible {
+                    border-color: var(--lp-accent-deep);
+                    background: rgba(77, 143, 224, 0.06);
+                    box-shadow: 0 0 0 3px rgba(77, 143, 224, 0.18);
                 }
 
-                .login-password-toggle {
+                .lp-input--pw { padding-right: 2.9rem; }
+
+                .lp-pw-toggle {
                     position: absolute;
-                    right: 12px;
+                    right: 4px;
                     top: 50%;
                     transform: translateY(-50%);
                     background: none;
                     border: none;
                     cursor: pointer;
-                    color: rgba(100,116,139,0.6);
-                    display: flex;
-                    align-items: center;
-                    padding: 4px;
-                    border-radius: 6px;
-                    transition: color 0.18s, background 0.18s;
-                }
-
-                .login-password-toggle:hover {
-                    color: rgba(148,163,184,0.95);
-                    background: rgba(59,130,246,0.12);
-                }
-
-                .login-form-input--password::-ms-reveal,
-                .login-form-input--password::-ms-clear {
-                 display: none;
-                }
-
-                .husky-scene {
-    position: relative;
-    height: 120px;
-    margin-top: 2.5rem;
-    overflow: hidden;
-}
-
-.husky-ground {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: rgba(59,130,246,0.3);
-}
-.husky-ground::after {
-    content: '';
-    position: absolute;
-    top: 3px; left: 0; right: 0;
-    height: 2px;
-    background: repeating-linear-gradient(
-        90deg,
-        rgba(59,130,246,0.18) 0px, rgba(59,130,246,0.18) 5px,
-        transparent 5px, transparent 14px
-    );
-}
-
-.husky-cloud { position: absolute; top: 4px; }
-.husky-cloud-1 { animation: cloudDrift 9s linear infinite; }
-.husky-cloud-2 { animation: cloudDrift 13s linear infinite; animation-delay: -5s; top: 14px; }
-
-@keyframes cloudDrift {
-    from { left: 110%; }
-    to   { left: -120px; }
-}
-
-.husky-dog {
-    position: absolute;
-    bottom: 2px;
-    width: 150px;
-    animation: huskyRunAcross 5s linear infinite, huskyBounce 0.4s ease-in-out infinite;
-    filter: drop-shadow(0 6px 10px rgba(30,80,180,0.3));
-}
-
-@keyframes huskyRunAcross {
-    from { left: -170px; }
-    to   { left: calc(100% + 20px); }
-}
-@keyframes huskyBounce {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-6px); }
-}
-
-.leg-front-r { transform-origin: 162px 102px; transform-box: fill-box; animation: legSwingA 0.4s ease-in-out infinite; }
-.leg-back-l  { transform-origin: 88px 102px;  transform-box: fill-box; animation: legSwingA 0.4s ease-in-out infinite; }
-.leg-front-l { transform-origin: 144px 102px; transform-box: fill-box; animation: legSwingB 0.4s ease-in-out infinite; }
-.leg-back-r  { transform-origin: 106px 102px; transform-box: fill-box; animation: legSwingB 0.4s ease-in-out infinite; }
-
-@keyframes legSwingA {
-    0%, 100% { transform: rotate(-25deg); }
-    50%       { transform: rotate(25deg); }
-}
-@keyframes legSwingB {
-    0%, 100% { transform: rotate(25deg); }
-    50%       { transform: rotate(-25deg); }
-}
-
-.husky-tongue {
-    transform-origin: 178px 48px;
-    transform-box: fill-box;
-    animation: tongueWag 0.8s ease-in-out infinite;
-}
-@keyframes tongueWag {
-    0%, 100% { transform: rotate(-10deg) scaleY(1); }
-    50%       { transform: rotate(10deg) scaleY(1.2); }
-}
-
-                /* Security badge */
-                .login-security-badge {
+                    color: rgba(33, 29, 24, 0.4);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 0.45rem;
-                    margin-top: 1.4rem;
-                    color: rgba(100,116,139,0.55);
-                    font-size: 0.72rem;
+                    width: 40px;
+                    height: 40px;
+                    padding: 0;
+                    border-radius: 8px;
+                    transition: color 0.15s, background 0.15s;
+                    -webkit-tap-highlight-color: transparent;
                 }
 
-                /* Responsive */
-                @media (max-width: 768px) {
-                    .login-container {
+                .lp-pw-toggle:hover {
+                    color: rgba(33, 29, 24, 0.75);
+                    background: rgba(33, 29, 24, 0.06);
+                }
+
+                .lp-pw-toggle:focus-visible {
+                    outline: 2px solid var(--lp-accent-deep);
+                    outline-offset: 1px;
+                }
+
+                .lp-submit {
+                    margin-top: 0.4rem;
+                    width: 100%;
+                    min-height: 48px;
+                    padding: 0.78rem;
+                    background: linear-gradient(135deg, var(--lp-accent-deep), var(--lp-accent));
+                    border: none;
+                    border-radius: 10px;
+                    color: #f4f8ff;
+                    font-family: "Kanit", sans-serif;
+                    font-size: 0.98rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    letter-spacing: 0.01em;
+                    box-shadow: 0 8px 22px rgba(42, 99, 168, 0.32);
+                    transition: transform 0.16s, box-shadow 0.16s, opacity 0.16s;
+                    -webkit-tap-highlight-color: transparent;
+                }
+
+                .lp-submit:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    box-shadow: 0 10px 26px rgba(42, 99, 168, 0.42);
+                }
+
+                .lp-submit:active:not(:disabled) { transform: translateY(0) scale(0.99); }
+
+                .lp-submit:focus-visible {
+                    outline: 2px solid var(--lp-ink);
+                    outline-offset: 2px;
+                }
+
+                .lp-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+
+               .lp-spin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    animation: lpSpin 0.8s linear infinite;
+}
+
+                @keyframes lpSpin {
+                    to { transform: rotate(360deg); }
+                }
+
+                .lp-ticket-foot {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 0.65rem 1.6rem;
+                    background: var(--lp-steel-900);
+                    color: var(--lp-mist-dim);
+                    font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+                    font-size: 0.62rem;
+                    letter-spacing: 0.06em;
+                }
+
+                /* ── Responsive ── */
+                @media (max-width: 800px) {
+                    .lp-page { padding: 1.5rem; }
+                    .lp-container {
                         flex-direction: column;
-                        gap: 2rem;
-                        align-items: center;
+                        gap: 1.75rem;
                     }
-                    .login-brand-panel {
-                        text-align: center;
-                        align-items: center;
+                    .lp-brand { text-align: center; }
+                    .lp-brand-mark { margin-left: auto; margin-right: auto; }
+                    .lp-brand-sub { margin-left: auto; margin-right: auto; }
+                    .lp-chips { justify-content: center; }
+                    .lp-ticket { width: 100%; max-width: 420px; }
+                }
+
+                @media (max-width: 480px) {
+                    .lp-page {
+                        padding: 1rem;
+                        padding-top: calc(1.25rem + env(safe-area-inset-top));
+                        padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+                        padding-left: calc(1rem + env(safe-area-inset-left));
+                        padding-right: calc(1rem + env(safe-area-inset-right));
+                        align-items: flex-start;
                     }
-                    .login-brand-icon { margin: 0 auto 1.5rem; }
-                    .login-brand-subtitle { max-width: 100%; }
-                    .login-features { align-items: center; }
-                    .login-card { width: 100%; max-width: 400px; }
+                    .lp-container { gap: 1.5rem; }
+
+                    .lp-brand-mark { font-size: 0.66rem; margin-bottom: 1.1rem; }
+                    .lp-brand-title { font-size: 1.7rem; margin-bottom: 0.7rem; }
+                    .lp-brand-sub { font-size: 0.85rem; max-width: 100%; }
+                    .lp-chips { margin-top: 1.25rem; gap: 0.4rem; }
+                    .lp-chip { font-size: 0.68rem; padding: 0.3rem 0.6rem; }
+
+                    .lp-ticket-head { padding: 1.1rem 1.15rem 0.9rem; }
+                    .lp-body { padding: 0.6rem 1.15rem 1.35rem; }
+                    .lp-ticket-foot { padding: 0.6rem 1.15rem; flex-wrap: wrap; gap: 0.25rem; }
+                    .lp-title { font-size: 1.3rem; }
+                    .lp-subtitle { font-size: 0.8rem; margin-bottom: 1.15rem; }
+                    .lp-tear-rule { left: 16px; right: 16px; }
+
+                    .lp-barcode { height: 28px; }
+                }
+
+                /* Very short viewports (landscape phones, small tablets) */
+                @media (max-height: 640px) and (max-width: 800px) {
+                    .lp-page { align-items: flex-start; }
+                    .lp-brand { display: none; }
+                    .lp-container { justify-content: center; }
+                }
+
+                /* ── Reduced motion ── */
+                @media (prefers-reduced-motion: reduce) {
+                    .lp-brand,
+                    .lp-ticket,
+                    .lp-floorline,
+                    .lp-scanline,
+                    .lp-spin {
+                        animation: none !important;
+                    }
                 }
             `}</style>
         </div>
