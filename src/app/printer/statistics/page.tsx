@@ -38,6 +38,7 @@ export default function StatisticsPage() {
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [isLoading, setIsLoading] = useState(false);
+    const [availableDates, setAvailableDates] = useState<{ year: number, month: number }[]>([]);
 
 
     // We only need basic auth check
@@ -65,7 +66,45 @@ export default function StatisticsPage() {
             }
         };
         checkAuth();
+
+        const loadAvailableDates = async () => {
+            const { data, error } = await supabase.from('orders').select('created_at');
+            if (data && !error) {
+                const dates = data.map(d => new Date(d.created_at));
+                const uniqueDates = new Set(dates.map(d => `${d.getFullYear()}-${d.getMonth()}`));
+                const parsed = Array.from(uniqueDates).map(str => {
+                    const [year, month] = str.split('-');
+                    return { year: parseInt(year), month: parseInt(month) };
+                });
+                
+                parsed.sort((a, b) => {
+                    if (a.year !== b.year) return b.year - a.year;
+                    return b.month - a.month;
+                });
+                
+                setAvailableDates(parsed);
+
+                if (parsed.length > 0) {
+                    const currentSelected = parsed.find(d => d.year === new Date().getFullYear() && d.month === new Date().getMonth());
+                    if (!currentSelected) {
+                        setSelectedYear(parsed[0].year);
+                        setSelectedMonth(parsed[0].month);
+                    }
+                }
+            }
+        };
+        loadAvailableDates();
     }, [router]);
+
+    // Ensure selectedMonth is valid when selectedYear changes
+    useEffect(() => {
+        if (availableDates.length > 0) {
+            const validMonths = availableDates.filter(d => d.year === selectedYear).map(d => d.month);
+            if (validMonths.length > 0 && !validMonths.includes(selectedMonth)) {
+                setSelectedMonth(Math.max(...validMonths));
+            }
+        }
+    }, [selectedYear, availableDates, selectedMonth]);
 
     const loadHistoricalOrders = async () => {
         setIsLoading(true);
@@ -163,14 +202,16 @@ export default function StatisticsPage() {
     const chartData = getChartData();
     const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#22d3ee', '#fb923c'];
 
-    // Generate years for dropdown (e.g. from 2024 to current year)
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: currentYear - 2024 + 1 }, (_, i) => currentYear - i);
-
-    const months = [
+    const ALL_MONTHS = [
         "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
         "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
     ];
+
+    const availableYears = Array.from(new Set(availableDates.map(d => d.year)));
+    const years = availableYears.length > 0 ? availableYears : [new Date().getFullYear()];
+
+    const availableMonths = availableDates.filter(d => d.year === selectedYear).map(d => d.month);
+    const months = availableMonths.length > 0 ? availableMonths : [new Date().getMonth()];
 
     const exportExcel = async () => {
         if (orders.length === 0) return;
@@ -525,8 +566,8 @@ export default function StatisticsPage() {
                                     onChange={(e) => setSelectedMonth(Number(e.target.value))}
                                     className="w-full appearance-none bg-white/10 border border-white/15 text-white text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 transition-all"
                                 >
-                                    {months.map((m, index) => (
-                                        <option key={index} value={index} className="bg-[#0f1e3d] text-white">{m}</option>
+                                    {months.map((m) => (
+                                        <option key={m} value={m} className="bg-[#0f1e3d] text-white">{ALL_MONTHS[m]}</option>
                                     ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">

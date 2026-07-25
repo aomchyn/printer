@@ -216,7 +216,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
                     {navItem('/printer/dashboard', <LineChart className="w-4 h-4" />, 'Dashboard')}
                     {(role === 'moderator' || role === 'assistant_moderator' || role === 'operator') &&
-                        navItem('/printer/statistics', <History className="w-4 h-4" />, 'สถิติย้อนหลัง')}
+                        navItem('/printer/statistics', <History className="w-4 h-4" />, 'Statistics')}
                     {navItem('/printer/product', <Package className="w-4 h-4" />, 'Product')}
                     {navItem('/printer/order', <ShoppingCart className="w-4 h-4" />, 'Orders')}
 
@@ -227,7 +227,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                                 {navItem('/printer/user', <Users className="w-4 h-4" />, 'Manage Users', 'bg-purple-500/20 text-purple-200 border-purple-500/25')}
                                 {role === 'moderator' &&
                                     navItem('/printer/logs', <ShieldAlert className="w-4 h-4" />, 'Audit Logs', 'bg-indigo-500/20 text-indigo-200 border-indigo-500/25')}
-                                {navItem('/printer/trash', <Trash2 className="w-4 h-4" />, 'ถังขยะ', 'bg-rose-500/20 text-rose-200 border-rose-500/25')}
+                                {navItem('/printer/trash', <Trash2 className="w-4 h-4" />, 'Trash', 'bg-rose-500/20 text-rose-200 border-rose-500/25')}
                             </div>
                         </div>
                     )}
