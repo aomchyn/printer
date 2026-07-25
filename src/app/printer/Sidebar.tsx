@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert, Trash2 } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert, Trash2, Activity } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -111,6 +111,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         operator: { label: 'Operator', cls: 'text-blue-300 bg-blue-500/20 border-blue-500/30' },
     };
     const { label: roleLabel, cls: roleCls } = roleBadge[role] ?? { label: 'User', cls: 'text-emerald-300 bg-emerald-500/20 border-emerald-500/30' };
+
+    const isQaUser = role === 'user' && department?.startsWith('QA');
 
     const navItem = (path: string, icon: React.ReactNode, label: string, activeCls = 'bg-white/15 text-white shadow-sm') => (
         <button
@@ -219,6 +221,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         navItem('/printer/statistics', <History className="w-4 h-4" />, 'Statistics')}
                     {navItem('/printer/product', <Package className="w-4 h-4" />, 'Product')}
                     {navItem('/printer/order', <ShoppingCart className="w-4 h-4" />, 'Orders')}
+                    {(role === 'moderator' || role === 'assistant_moderator' || role === 'operator' || isQaUser) &&
+                        navItem('/printer/stability', <Activity className="w-4 h-4" />, 'Stability Feed')}
 
                     {(role === 'moderator' || role === 'assistant_moderator') && (
                         <div className="pt-4 mt-2 border-t border-white/8">

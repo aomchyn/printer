@@ -1,14 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
-import { Menu, Printer } from "lucide-react";
+import { Menu, Printer, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useRouter, usePathname } from "next/navigation";
+import Swal from "sweetalert2";
+
 type PrinterLayoutProps = {
     children: React.ReactNode;
 };
 
 export default function PrinterLayout({ children }: PrinterLayoutProps) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isAuthorized, setIsAuthorized] = useState(false);
+    const router = useRouter();
+    const pathname = usePathname();
+
+    useEffect(() => {
+        const checkRole = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                router.push('/login');
+                return;
+            }
+
+            const { data, error } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+            if (error) console.error("Error fetching user in layout:", error);
+            
+            const isQaUser = data?.role === 'user' && data?.department?.startsWith('QA');
+            const isAdminOrMod = ['admin', 'moderator', 'assistant_moderator', 'operator'].includes(data?.role);
+
+            // เตะออกแค่คนไม่มีข้อมูลในฐานข้อมูล
+            if (!data) {
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'ไม่พบข้อมูลผู้ใช้งาน กรุณาติดต่อผู้ดูแลระบบ',
+                    confirmButtonColor: '#3085d6',
+                });
+                await supabase.auth.signOut();
+                router.push('/login');
+            } else if (pathname === '/printer/stability' && !isQaUser && !isAdminOrMod) {
+                // ถ้าพยายามเข้าหน้า stability แต่ไม่ใช่ QA และไม่ใช่ Admin ให้เตะกลับไป dashboard
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'ไม่มีสิทธิ์เข้าถึง',
+                    text: 'หน้านี้สงวนสิทธิ์สำหรับแผนก QA เท่านั้น',
+                    confirmButtonColor: '#3085d6',
+                });
+                router.push('/printer/dashboard');
+            } else {
+                setIsAuthorized(true);
+            }
+        };
+
+        checkRole();
+    }, [router, pathname]);
+
+    if (!isAuthorized) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-100 text-blue-900">
+                <Loader2 className="animate-spin mr-2" size={32} />
+                <span className="text-lg font-bold">กำลังตรวจสอบสิทธิ์...</span>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col md:flex-row bg-gradient-to-br from-slate-100 via-blue-200 to-indigo-300 h-[100dvh] overflow-hidden">

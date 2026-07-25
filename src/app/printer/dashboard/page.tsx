@@ -110,6 +110,7 @@ export default function DashboardPage() {
                 const { data, error } = await supabase
                     .from('orders').select('*')
                     .eq('is_deleted', false)
+                    .neq('order_type', 'Stability Feed')
                     .order('created_at', { ascending: false })
                     .range(from, from + pageSize - 1);
 

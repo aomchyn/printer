@@ -68,7 +68,7 @@ export default function StatisticsPage() {
         checkAuth();
 
         const loadAvailableDates = async () => {
-            const { data, error } = await supabase.from('orders').select('created_at');
+            const { data, error } = await supabase.from('orders').select('created_at').neq('order_type', 'Stability Feed');
             if (data && !error) {
                 const dates = data.map(d => new Date(d.created_at));
                 const uniqueDates = new Set(dates.map(d => `${d.getFullYear()}-${d.getMonth()}`));
@@ -119,6 +119,7 @@ export default function StatisticsPage() {
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
+                .neq('order_type', 'Stability Feed')
                 .gte('created_at', startIso)
                 .lte('created_at', endIso)
                 .order('created_at', { ascending: false });
