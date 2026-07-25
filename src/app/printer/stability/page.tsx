@@ -238,10 +238,9 @@ export default function StabilityPage() {
             html: `
                 <div style="font-family: sans-serif;">
                     <table style="width:100%; border-collapse:collapse; font-size:13px; margin:auto;">
-                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">🔢 เลขลอต</td><td style="padding:4px 6px; font-weight:600;">${orderData.lotNumber}</td></tr>
-                        <tr><td style="padding:4px 6px; color:#4b5563;">🏷️ รหัสสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productId}</td></tr>
-                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productName}</td></tr>
-                        <tr><td style="padding:4px 6px; color:#4b5563;">📅 วันที่ผลิต</td><td style="padding:4px 6px; font-weight:600;">${orderData.productionDate}</td></tr>
+                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">🔢 ลอต</td><td style="padding:4px 6px; font-weight:600;">${orderData.lotNumber}</td></tr>
+                        <tr><td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productName}</td></tr>
+                        <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📅 เดือนที่ทดสอบ</td><td style="padding:4px 6px; font-weight:600; color:#059669;">${selectedIntervals.length > 0 ? selectedIntervals.map(m => m === 0 ? 'Initial' : m + ' เดือน').join(', ') : '-'}</td></tr>
                     </table>
                 </div>
             `,
@@ -308,7 +307,8 @@ export default function StabilityPage() {
 
             await logAction('CREATE_STABILITY_FEED', {
                 product_id: orderData.productId,
-                lot_number: orderData.lotNumber
+                lot_number: orderData.lotNumber,
+                product_name: orderData.productName
             });
 
             Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: 'บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว' });
@@ -446,10 +446,24 @@ export default function StabilityPage() {
 
             const { error } = await supabase
                 .from('orders')
-                .update({ is_deleted: true })
+                .update({ 
+                    is_deleted: true,
+                    deleted_by: username,
+                    deleted_at: new Date().toISOString()
+                })
                 .eq('id', logId);
 
             if (error) throw error;
+
+            const deletedOrder = stabilityLogs.find(log => log.id === logId);
+            if (deletedOrder) {
+                await logAction('DELETE_STABILITY_FEED', {
+                    product_id: deletedOrder.productId,
+                    lot_number: deletedOrder.lotNumber,
+                    product_name: deletedOrder.productName,
+                    deleted_by: username
+                });
+            }
 
             Swal.fire({
                 icon: 'success',
@@ -503,8 +517,8 @@ export default function StabilityPage() {
             testDate.setHours(0, 0, 0, 0);
 
             const diffDays = Math.ceil((testDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            // แจ้งเตือนล่วงหน้า 3 วัน และเลยกำหนดไปแล้วไม่เกิน 30 วัน
-            if (diffDays <= 3 && diffDays >= -30) {
+            // แจ้งเตือนล่วงหน้า 1 วัน และเลยกำหนดไปแล้วไม่เกิน 30 วัน
+            if (diffDays <= 1 && diffDays >= -30) {
                 upcoming.push({
                     ...log,
                     intervalMonths: months,

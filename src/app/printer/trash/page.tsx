@@ -384,7 +384,7 @@ export default function TrashPage() {
                                 key={order.id}
                                 className={`flex flex-col rounded-2xl border overflow-hidden transition-all duration-200 backdrop-blur-xl
                                     ${isUrgent
-                                        ? 'bg-rose-500/10 border-rose-500/40 shadow-lg shadow-rose-900/30'
+                                        ? 'bg-rose-950/80 border-rose-500/40 shadow-lg shadow-rose-900/30'
                                         : 'bg-gray-900/60 border-white/15 hover:bg-gray-900/70'
                                     }`}
                             >
@@ -419,10 +419,12 @@ export default function TrashPage() {
                                         <span className="text-gray-300 font-medium">ผู้สั่ง</span>
                                         <span className="font-bold text-white">{formatNameWithoutCode(order.created_by)}</span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-300 font-medium">จำนวน</span>
-                                        <span className="font-black text-emerald-300 text-base tabular-nums">{order.quantity}</span>
-                                    </div>
+                                    {order.order_type !== 'Stability Feed' && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-300 font-medium">จำนวน</span>
+                                            <span className="font-black text-emerald-300 text-base tabular-nums">{order.quantity}</span>
+                                        </div>
+                                    )}
                                     {order.order_type && (
                                         <div className="flex justify-between items-center">
                                             <span className="text-gray-300 font-medium">ประเภท</span>

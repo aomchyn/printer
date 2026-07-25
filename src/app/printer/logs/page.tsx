@@ -152,9 +152,34 @@ export default function LogsManagement() {
                     <div><span className="text-blue-300/60">สินค้า:</span> <span className="font-semibold text-white">{d.product_name}</span></div>
                     <div><span className="text-blue-300/60">รหัส:</span> <span className="text-white/70">{d.product_id}</span></div>
                     <div><span className="text-blue-300/60">ลอต:</span> <span className="font-semibold text-indigo-300">{d.lot_number}</span></div>
-                    <div><span className="text-blue-300/60">จำนวน:</span> <span className="text-white/70">{d.quantity}</span></div>
+                    {d.order_type !== 'Stability Feed' && (
+                        <div><span className="text-blue-300/60">จำนวน:</span> <span className="text-white/70">{d.quantity}</span></div>
+                    )}
                     <div><span className="text-blue-300/60">ผู้สั่ง:</span> <span className="text-white/70">{d.created_by}</span></div>
                     <div><span className="text-blue-300/60">ลบโดย:</span> <span className="font-semibold text-rose-400">{d.deleted_by}</span></div>
+                </div>
+            )
+        }
+
+        if (log.action === 'CREATE_STABILITY_FEED' && data) {
+            const d = data as any
+            return (
+                <div className="text-xs space-y-0.5">
+                    {d.product_name && <div><span className="text-blue-300/60">สินค้า:</span> <span className="font-semibold text-white">{d.product_name}</span></div>}
+                    <div><span className="text-blue-300/60">รหัส:</span> <span className="text-white/70">{d.product_id}</span></div>
+                    <div><span className="text-blue-300/60">ลอต:</span> <span className="font-semibold text-indigo-300">{d.lot_number}</span></div>
+                </div>
+            )
+        }
+
+        if (log.action === 'DELETE_STABILITY_FEED' && data) {
+            const d = data as any
+            return (
+                <div className="text-xs space-y-0.5">
+                    {d.product_name && <div><span className="text-blue-300/60">สินค้า:</span> <span className="font-semibold text-white">{d.product_name}</span></div>}
+                    <div><span className="text-blue-300/60">รหัส:</span> <span className="text-white/70">{d.product_id}</span></div>
+                    <div><span className="text-blue-300/60">ลอต:</span> <span className="font-semibold text-indigo-300">{d.lot_number}</span></div>
+                    {d.deleted_by && <div><span className="text-blue-300/60">ลบโดย:</span> <span className="font-semibold text-rose-400">{d.deleted_by}</span></div>}
                 </div>
             )
         }

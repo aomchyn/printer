@@ -251,14 +251,17 @@ export default function DashboardPage() {
                 (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
                     const nowTS = Date.now();
                     if (payload.eventType === 'INSERT') {
-                        playNotificationSound();
-                        Swal.fire({
-                            toast: true, position: 'top-end', icon: 'info',
-                            title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
-                            showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                            background: '#eff6ff', color: '#1e3a8a'
-                        });
-                        loadOrders();
+                        const newData = payload.new as Record<string, unknown>;
+                        if (newData?.order_type !== 'Stability Feed') {
+                            playNotificationSound();
+                            Swal.fire({
+                                toast: true, position: 'top-end', icon: 'info',
+                                title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
+                                showConfirmButton: false, timer: 4000, timerProgressBar: true,
+                                background: '#eff6ff', color: '#1e3a8a'
+                            });
+                            loadOrders();
+                        }
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
                         const newData = payload.new as Record<string, unknown>;
                         if (newData.updated_at) {
@@ -1245,10 +1248,12 @@ export default function DashboardPage() {
                                             <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">อายุผลิตภัณฑ์ (Shelf Life):</span>
                                             <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">{order.product_exp} เดือน</span>
                                         </div>
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
-                                            <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
-                                        </div>
+                                        {order.order_type !== 'Stability Feed' && (
+                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                                                <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
+                                                <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
+                                            </div>
+                                        )}
 
                                         <EditHistory orderId={order.id} updatedAt={order.updated_at} auditKey={auditKey} />
 
