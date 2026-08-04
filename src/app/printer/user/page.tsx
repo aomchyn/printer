@@ -296,6 +296,10 @@ export default function UserManagement() {
     }
 
     const handleDelete = async (user: User) => {
+        if (user.role === 'moderator' && currentUserRole === 'assistant_moderator') {
+            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'คุณไม่สามารถลบบัญชีของ Moderator ได้' });
+            return;
+        }
         if (user.id === currentUserId) { Swal.fire({ icon: 'warning', title: 'ไม่สามารถดำเนินการได้', text: 'คุณไม่สามารถลบบัญชีของตัวเองได้' }); return }
         const result = await Swal.fire({ icon: 'warning', title: 'Are You Sure?', text: `คุณต้องการลบบัญชีผู้ใช้ "${user.name}" อย่างถาวรหรือไม่?`, showCancelButton: true, confirmButtonText: 'Delete', cancelButtonText: 'Cancel' })
         if (!result.isConfirmed) return
@@ -311,6 +315,10 @@ export default function UserManagement() {
     }
 
     const handleEdit = (user: User) => {
+        if (user.role === 'moderator' && currentUserRole === 'assistant_moderator') {
+            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'คุณไม่สามารถแก้ไขข้อมูลของ Moderator ได้' });
+            return;
+        }
         setEditingUser(user); setEmail(user.email); setName(user.name)
         setEmployeeId(user.employee_id || ''); setJobTitle(user.job_title || '')
         setDepartment(user.department || ''); setRole(user.role ?? 'user'); setPassword('')
@@ -482,7 +490,7 @@ export default function UserManagement() {
                             <div>
                                 <label className={labelCls}>ระดับสิทธิ์ (Role)</label>
                                 <select className={inputCls} value={role} onChange={e => setRole(e.target.value)}>
-                                    <option value="moderator">Moderator</option>
+                                    {currentUserRole === 'moderator' && <option value="moderator">Moderator</option>}
                                     <option value="assistant_moderator">Assistant Moderator</option>
                                     <option value="operator">Operator</option>
                                     <option value="user">User</option>
