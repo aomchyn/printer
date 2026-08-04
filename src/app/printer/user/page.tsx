@@ -19,6 +19,7 @@ interface User {
     employee_id?: string
     job_title?: string
     department?: string
+    signature_url?: string
 }
 
 function getInitials(name: string): string {
@@ -135,6 +136,8 @@ export default function UserManagement() {
     const [role, setRole] = useState('user')
     const [isAdmin, setIsAdmin] = useState(false)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+    const [signatureFile, setSignatureFile] = useState<File | null>(null)
+    const [signaturePreview, setSignaturePreview] = useState<string | null>(null)
 
     const fetchUsers = async () => {
         try {
@@ -162,17 +165,84 @@ export default function UserManagement() {
     const resetForm = () => {
         setShowModal(false); setEditingUser(null)
         setEmail(''); setName(''); setEmployeeId(''); setJobTitle(''); setDepartment(''); setPassword(''); setRole('user')
+        setSignatureFile(null); setSignaturePreview(null)
+    }
+
+    const handleDeleteSignature = async () => {
+        if (!editingUser?.signature_url || signaturePreview !== editingUser.signature_url) {
+            setSignaturePreview(null);
+            setSignatureFile(null);
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบลายเซ็น?',
+            text: 'ลายเซ็นนี้จะถูกลบออกจากฐานข้อมูลทันที ไม่สามารถกู้คืนได้',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ลบทันที',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+            try {
+                const oldFileName = editingUser.signature_url.split('/').pop();
+                if (oldFileName) {
+                    await supabase.storage.from('signatures').remove([oldFileName]);
+                }
+                const { error } = await supabase.from('users').update({ signature_url: null }).eq('id', editingUser.id);
+                if (error) throw error;
+                
+                setSignaturePreview(null);
+                setSignatureFile(null);
+                setEditingUser({ ...editingUser, signature_url: null });
+                fetchUsers();
+                
+                Swal.fire({ icon: 'success', title: 'ลบลายเซ็นเรียบร้อย', timer: 1500 });
+            } catch (err: any) {
+                Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: err.message || 'ไม่สามารถลบลายเซ็นได้' });
+            }
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (editingUser) {
-            const hasChanges = name !== editingUser.name || email !== editingUser.email || role !== (editingUser.role ?? 'user') || (employeeId || '') !== (editingUser.employee_id || '') || (jobTitle || '') !== (editingUser.job_title || '') || (department || '') !== (editingUser.department || '') || (password && password.trim().length > 0)
+            const hasChanges = name !== editingUser.name || email !== editingUser.email || role !== (editingUser.role ?? 'user') || (employeeId || '') !== (editingUser.employee_id || '') || (jobTitle || '') !== (editingUser.job_title || '') || (department || '') !== (editingUser.department || '') || (password && password.trim().length > 0) || signatureFile !== null || signaturePreview !== (editingUser.signature_url || null)
             if (!hasChanges) { Swal.fire({ icon: 'info', title: 'ไม่มีการเปลี่ยนแปลง', text: 'ไม่พบการแก้ไขข้อมูลใดๆ' }); return }
             if (isDuplicateName(name, editingUser.id)) { Swal.fire({ icon: 'error', title: 'ชื่อผู้ใช้ซ้ำ', text: 'มีชื่อผู้ใช้นี้ในระบบแล้ว' }); return }
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, allowEscapeKey: false, didOpen: () => { Swal.showLoading() } })
             try {
-                const { error } = await supabase.from('users').update({ name, role, employee_id: employeeId || null, job_title: jobTitle || null, department: department || null }).eq('id', editingUser.id)
+                let finalSignatureUrl: string | null = editingUser.signature_url || null;
+                
+                // หากมีการอัพโหลดรูปใหม่ทับของเดิม ให้ไปลบรูปเก่าออกจาก Storage ด้วย
+                if (signatureFile !== null && editingUser.signature_url) {
+                    try {
+                        const oldFileName = editingUser.signature_url.split('/').pop();
+                        if (oldFileName) {
+                            await supabase.storage.from('signatures').remove([oldFileName]);
+                        }
+                    } catch (err) {
+                        console.error('Failed to delete old signature:', err);
+                    }
+                }
+
+                if (signaturePreview === null) {
+                    finalSignatureUrl = null;
+                }
+                if (signatureFile) {
+                    const fileExt = signatureFile.name.split('.').pop();
+                    const fileName = `${editingUser.id}-${Date.now()}.${fileExt}`;
+                    const { error: uploadError } = await supabase.storage.from('signatures').upload(fileName, signatureFile, { upsert: true });
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = supabase.storage.from('signatures').getPublicUrl(fileName);
+                    finalSignatureUrl = publicUrl;
+                }
+
+                const { error } = await supabase.from('users').update({ name, role, employee_id: employeeId || null, job_title: jobTitle || null, department: department || null, signature_url: finalSignatureUrl }).eq('id', editingUser.id)
                 if (error) throw error
                 if (email !== editingUser.email) {
                     const { data: { session } } = await supabase.auth.getSession()
@@ -189,7 +259,7 @@ export default function UserManagement() {
                     const res = await fetch(`/api/users/${editingUser.id}/password`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }, body: JSON.stringify({ newPassword: password }) })
                     if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update password') }
                 }
-                await logAction('UPDATE_USER', { id: editingUser.id, name, role, password_changed: !!(password && password.trim().length > 0) })
+                await logAction('UPDATE_USER', { id: editingUser.id, name, role, password_changed: !!(password && password.trim().length > 0), signature_changed: signatureFile !== null || signaturePreview === null })
                 Swal.fire({ icon: 'success', title: 'สำเร็จ', text: password ? 'อัปเดตผู้ใช้และเปลี่ยนรหัสผ่านเรียบร้อย' : 'อัปเดตผู้ใช้เรียบร้อย', timer: 1500 })
                 resetForm(); fetchUsers()
             } catch (error: any) { Swal.fire({ icon: 'error', title: 'ข้อผิดพลาด', text: error.message || 'Failed to save user' }) }
@@ -235,6 +305,7 @@ export default function UserManagement() {
         setEditingUser(user); setEmail(user.email); setName(user.name)
         setEmployeeId(user.employee_id || ''); setJobTitle(user.job_title || '')
         setDepartment(user.department || ''); setRole(user.role ?? 'user'); setPassword('')
+        setSignatureFile(null); setSignaturePreview(user.signature_url || null)
         setShowModal(true)
     }
 
@@ -408,6 +479,39 @@ export default function UserManagement() {
                                     <option value="user">User</option>
                                 </select>
                             </div>
+                            
+                            {editingUser && (
+                                <div>
+                                    <label className={labelCls}>ลายเซ็น</label>
+                                    <div className="mt-2">
+                                        {signaturePreview ? (
+                                            <div className="flex flex-col items-center gap-3 border border-[#dde8f5] bg-white p-3 rounded-xl shadow-sm">
+                                                <img src={signaturePreview} alt="Signature Preview" className="max-h-24 object-contain rounded border border-slate-100" />
+                                                <button type="button" onClick={handleDeleteSignature} className="flex items-center justify-center w-full gap-1.5 py-1.5 px-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-sm font-semibold transition-colors">
+                                                    <X className="w-4 h-4" />
+                                                    ลบลายเซ็น
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center w-full">
+                                                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-[#dde8f5] border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-400">
+                                                        <svg className="w-6 h-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                                        <p className="text-xs font-semibold">อัปโหลดภาพลายเซ็น</p>
+                                                    </div>
+                                                    <input type="file" className="hidden" accept="image/jpeg, image/png, image/jpg" onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            setSignatureFile(file);
+                                                            setSignaturePreview(URL.createObjectURL(file));
+                                                        }
+                                                    }} />
+                                                </label>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             <div className="border-t border-[#e8eef8] pt-4 flex justify-end gap-3">
                                 <button type="button" onClick={resetForm} className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#d0daf0] text-slate-600 font-semibold rounded-lg text-[13px] transition-all">
                                     <X className="w-4 h-4" /> ยกเลิก
