@@ -34,6 +34,29 @@ export interface FgcodeInterface {
     exp: string;
 }
 
+const FormWrapper = ({ isModal, onClose, children }: { isModal: boolean, onClose: () => void, children: React.ReactNode }) => {
+    if (isModal) {
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl w-full max-w-2xl md:max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-8 relative">
+                    <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h2 className="text-xl font-bold text-[#0f1e3d]">แก้ไขข้อมูล Stability</h2>
+                        <button type="button" onClick={onClose} className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    {children}
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className="mt-8 border-t border-slate-100 pt-8 animate-in fade-in slide-in-from-top-4 duration-300">
+            {children}
+        </div>
+    );
+};
+
 export default function StabilityPage() {
     // ✅ ใส่ค่า initial time ตรงนี้แทน useEffect เพื่อหลีกเลี่ยง setState in effect
     const [orderData, setOrderData] = useState<OrderInterface>(() => {
@@ -64,6 +87,10 @@ export default function StabilityPage() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [stabilityLogs, setStabilityLogs] = useState<OrderInterface[]>([]);
     const [selectedIntervals, setSelectedIntervals] = useState<number[]>([0, 3, 6, 9, 12]);
+    const [completedIntervals, setCompletedIntervals] = useState<number[]>([]);
+    const [feedType, setFeedType] = useState('');
+    const [remark, setRemark] = useState('');
+    const [editOrderId, setEditOrderId] = useState<number | null>(null);
     const [globalSearch, setGlobalSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -234,13 +261,15 @@ export default function StabilityPage() {
 
         const confirm = await Swal.fire({
             icon: 'question',
-            title: 'ยืนยันการบันทึก?',
+            title: editOrderId ? 'ยืนยันการอัปเดตข้อมูล?' : 'ยืนยันการบันทึก?',
             html: `
                 <div style="font-family: sans-serif;">
                     <table style="width:100%; border-collapse:collapse; font-size:13px; margin:auto;">
                         <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">🔢 ลอต</td><td style="padding:4px 6px; font-weight:600;">${orderData.lotNumber}</td></tr>
                         <tr><td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productName}</td></tr>
                         <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📅 เดือนที่ทดสอบ</td><td style="padding:4px 6px; font-weight:600; color:#059669;">${selectedIntervals.length > 0 ? selectedIntervals.map(m => m === 0 ? 'Initial' : m + ' เดือน').join(', ') : '-'}</td></tr>
+                        ${feedType ? `<tr><td style="padding:4px 6px; color:#4b5563;">ประเภทอาหาร</td><td style="padding:4px 6px;"><span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:12px; font-weight:600;"><svg style="width:12px; height:12px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>${feedType}</span></td></tr>` : ''}
+                        ${remark ? `<tr style="${feedType ? 'background:#f9fafb;' : ''}"><td style="padding:4px 6px; color:#4b5563;">หมายเหตุ</td><td style="padding:4px 6px;"><span style="display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb; font-size:12px; font-weight:600;"><svg style="width:12px; height:12px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>${remark}</span></td></tr>` : ''}
                     </table>
                 </div>
             `,
@@ -282,7 +311,14 @@ export default function StabilityPage() {
 
             setUploading(true);
 
-            const { error } = await supabase.from('orders').insert({
+            const notesPayload = JSON.stringify({
+                selected: selectedIntervals.sort((a, b) => a - b),
+                completed: completedIntervals,
+                feedType,
+                remark
+            });
+
+            const payload = {
                 order_date: orderData.orderDate,
                 order_time: orderData.orderTime,
                 order_datetime: orderData.orderDateTime,
@@ -294,29 +330,51 @@ export default function StabilityPage() {
                 production_date: orderData.productionDate,
                 expiry_date: orderData.expiryDate,
                 quantity: 1,
-                notes: JSON.stringify(selectedIntervals.sort((a, b) => a - b)),
+                notes: notesPayload,
                 created_by: username,
                 created_by_department: department || 'ไม่ระบุหน่วยงาน',
                 is_verified: false,
                 verified_by: null,
                 verified_at: null,
                 image_url: null
-            }).select('id');
+            };
 
-            if (error) throw new Error(error.message);
+            let submitError;
+            if (editOrderId) {
+                const { error } = await supabase.from('orders').update(payload).eq('id', editOrderId);
+                submitError = error;
+            } else {
+                const { error } = await supabase.from('orders').insert(payload);
+                submitError = error;
+            }
 
-            await logAction('CREATE_STABILITY_FEED', {
-                product_id: orderData.productId,
-                lot_number: orderData.lotNumber,
-                product_name: orderData.productName
-            });
+            if (submitError) throw new Error(submitError.message);
 
-            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: 'บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว' });
+            if (!editOrderId) {
+                await logAction('CREATE_STABILITY_FEED', {
+                    product_id: orderData.productId,
+                    lot_number: orderData.lotNumber,
+                    product_name: orderData.productName
+                });
+            } else {
+                await logAction('UPDATE_STABILITY_FEED', {
+                    order_id: editOrderId,
+                    product_id: orderData.productId,
+                    lot_number: orderData.lotNumber
+                });
+            }
+
+            Swal.fire({ icon: 'success', title: 'สำเร็จ', text: editOrderId ? 'อัปเดตข้อมูลสำเร็จแล้ว' : 'บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว' });
 
             fetchStabilityLogs();
 
             // Reset form
             setSelectedIntervals([0, 3, 6, 9, 12]);
+            setCompletedIntervals([]);
+            setFeedType('');
+            setRemark('');
+            setEditOrderId(null);
+            setIsFormOpen(false);
             removeImage();
             setProductSearch('');
             const resetNow = new Date();
@@ -430,6 +488,52 @@ export default function StabilityPage() {
         }
     };
 
+    const handleEditLog = (log: OrderInterface) => {
+        setOrderData({
+            ...log,
+            orderDate: log.orderDate || new Date().toISOString().split('T')[0],
+            orderTime: log.orderTime || new Date().toTimeString().split(' ')[0].substring(0, 5),
+            orderDateTime: log.orderDateTime || new Date().toISOString(),
+            productName: log.productName || '',
+            productId: log.productId || '',
+            lotNumber: log.lotNumber || '',
+            productExp: log.productExp || '',
+            productionDate: log.productionDate || '',
+            expiryDate: log.expiryDate || '',
+        });
+        setEditOrderId(log.id || null);
+        setIsFormOpen(true);
+        setProductSearch(log.productId || '');
+        
+        if (log.notes && (log.notes.startsWith('[') || log.notes.startsWith('{'))) {
+            try {
+                const parsed = JSON.parse(log.notes);
+                if (Array.isArray(parsed)) {
+                    setSelectedIntervals(parsed);
+                    setCompletedIntervals([]);
+                    setFeedType('');
+                    setRemark('');
+                } else if (parsed && typeof parsed === 'object') {
+                    setSelectedIntervals(parsed.selected || []);
+                    setCompletedIntervals(parsed.completed || []);
+                    setFeedType(parsed.feedType || '');
+                    setRemark(parsed.remark || '');
+                }
+            } catch {
+                setSelectedIntervals([0, 3, 6, 9, 12]);
+                setCompletedIntervals([]);
+                setFeedType('');
+                setRemark('');
+            }
+        } else {
+            setSelectedIntervals([0, 3, 6, 9, 12]);
+            setCompletedIntervals([]);
+            setFeedType('');
+            setRemark('');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const handleDeleteLog = async (logId: number) => {
         try {
             const confirm = await Swal.fire({
@@ -480,6 +584,27 @@ export default function StabilityPage() {
         }
     };
 
+    const parseNotes = (notesStr: string | undefined | null) => {
+        let intervals = [0, 3, 6, 9, 12];
+        let completed: number[] = [];
+        let feedType = '';
+        let remark = '';
+        if (notesStr && (notesStr.startsWith('[') || notesStr.startsWith('{'))) {
+            try {
+                const parsed = JSON.parse(notesStr);
+                if (Array.isArray(parsed)) {
+                    intervals = parsed;
+                } else if (parsed && typeof parsed === 'object') {
+                    intervals = parsed.selected || [];
+                    completed = parsed.completed || [];
+                    feedType = parsed.feedType || '';
+                    remark = parsed.remark || '';
+                }
+            } catch { }
+        }
+        return { intervals, completed, feedType, remark };
+    };
+
     const filteredLogs = stabilityLogs.filter(log => {
         const search = globalSearch.toLowerCase();
         return (log.productName || '').toLowerCase().includes(search) ||
@@ -490,20 +615,7 @@ export default function StabilityPage() {
     const upcomingTests = filteredLogs.flatMap(log => {
         if (!log.productionDate) return [];
 
-        let selected = [0, 3, 6, 9, 12];
-        let completed: number[] = [];
-
-        if (log.notes && (log.notes.startsWith('{') || log.notes.startsWith('['))) {
-            try {
-                const parsed = JSON.parse(log.notes);
-                if (Array.isArray(parsed)) {
-                    selected = parsed;
-                } else if (parsed && typeof parsed === 'object') {
-                    selected = parsed.selected || [];
-                    completed = parsed.completed || [];
-                }
-            } catch { }
-        }
+        const { intervals: selected, completed } = parseNotes(log.notes);
 
         const upcoming: any[] = [];
         const today = new Date();
@@ -555,7 +667,7 @@ export default function StabilityPage() {
                 </div>
 
                 {isFormOpen && (
-                    <div className="mt-8 border-t border-slate-100 pt-8 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <FormWrapper isModal={!!editOrderId} onClose={() => { setIsFormOpen(false); setEditOrderId(null); }}>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                 {/* วันที่และเวลา */}
@@ -708,6 +820,36 @@ export default function StabilityPage() {
                                     />
                                 </div>
 
+                                {/* ประเภทอาหารสัตว์ */}
+                                <div>
+                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">ประเภทอาหารสัตว์ (Feed Type)</label>
+                                    <select
+                                        value={feedType}
+                                        onChange={(e) => setFeedType(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl text-[13.5px] font-medium border border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all shadow-sm"
+                                    >
+                                        <option value="">-- เลือกประเภทอาหารสัตว์ --</option>
+                                        <option value="พรีมิกส์">พรีมิกส์</option>
+                                        <option value="เสริมโปรตีน">เสริมโปรตีน</option>
+                                        <option value="เสริมไขมัน">เสริมไขมัน</option>
+                                        <option value="สำเร็จรูป">สำเร็จรูป</option>
+                                        <option value="นม">นม</option>
+                                        <option value="อื่นๆ">อื่นๆ</option>
+                                    </select>
+                                </div>
+
+                                {/* หมายเหตุ */}
+                                <div>
+                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ (Remark)</label>
+                                    <input
+                                        type="text"
+                                        value={remark}
+                                        onChange={(e) => setRemark(e.target.value)}
+                                        placeholder="ระบุหมายเหตุ (ถ้ามี)"
+                                        className="w-full px-4 py-3 rounded-xl text-[13.5px] font-medium border border-slate-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all shadow-sm"
+                                    />
+                                </div>
+
                                 {/* ช่วงเวลา Stability */}
                                 {orderData.productionDate && (
                                     <div className="md:col-span-2">
@@ -785,7 +927,7 @@ export default function StabilityPage() {
                                 </div>
                             </div>
                         </form>
-                    </div>
+                    </FormWrapper>
                 )}
             </div>
 
@@ -976,22 +1118,9 @@ export default function StabilityPage() {
                         </div>
                     ) : (
                         filteredLogs.map((log) => {
+                            const { intervals, completed, feedType, remark } = parseNotes(log.notes);
                             const calculateDate = (months: number) => {
                                 if (!log.productionDate) return '-';
-
-                                let intervals = [0, 3, 6, 9, 12];
-                                let completed: number[] = [];
-                                if (log.notes && (log.notes.startsWith('[') || log.notes.startsWith('{'))) {
-                                    try {
-                                        const parsed = JSON.parse(log.notes);
-                                        if (Array.isArray(parsed)) {
-                                            intervals = parsed;
-                                        } else if (parsed && typeof parsed === 'object') {
-                                            intervals = parsed.selected || [];
-                                            completed = parsed.completed || [];
-                                        }
-                                    } catch { }
-                                }
 
                                 if (!intervals.includes(months)) return <span className="text-slate-300 font-normal">-</span>;
 
@@ -1015,8 +1144,13 @@ export default function StabilityPage() {
 
                             return (
                                 <div key={`mobile-log-${log.id}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col relative">
-                                    <div className="absolute top-4 right-4">
-                                        <button onClick={() => handleDeleteLog(log.id!)} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors">
+                                    <div className="absolute top-4 right-4 flex items-center gap-1">
+                                        <button onClick={() => handleEditLog(log)} className="p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors" title="แก้ไขรายการ">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                        </button>
+                                        <button onClick={() => handleDeleteLog(log.id!)} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors" title="ลบรายการนี้">
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
@@ -1027,7 +1161,25 @@ export default function StabilityPage() {
                                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             {log.createdAt ? `${new Date(log.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })} ${new Date(log.createdAt).toLocaleTimeString('th-TH').slice(0, 5)} น.` : '-'}
                                         </div>
-                                        <div className="font-bold text-[#0f1e3d] text-[14.5px] leading-tight mb-1">{log.productName}</div>
+                                        <div className="font-bold text-[#0f1e3d] text-[14.5px] leading-tight mb-1">
+                                            {(feedType || remark) && (
+                                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                                    {feedType && (
+                                                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200/60 shadow-sm text-[10px] font-medium">
+                                                            <svg className="w-3 h-3 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                                                            {feedType}
+                                                        </div>
+                                                    )}
+                                                    {remark && (
+                                                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shadow-sm text-[10px] font-medium">
+                                                            <svg className="w-3 h-3 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                                                            {remark}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {log.productName}
+                                        </div>
                                         <div className="flex flex-wrap items-center gap-2 text-[12px]">
                                             <span className="text-slate-500">{log.productId}</span>
                                             <span className="text-slate-300">|</span>
@@ -1097,22 +1249,9 @@ export default function StabilityPage() {
                                 </tr>
                             ) : (
                                 filteredLogs.map((log) => {
+                                    const { intervals, completed, feedType, remark } = parseNotes(log.notes);
                                     const calculateDate = (months: number) => {
                                         if (!log.productionDate) return '-';
-
-                                        let intervals = [0, 3, 6, 9, 12];
-                                        let completed: number[] = [];
-                                        if (log.notes && (log.notes.startsWith('[') || log.notes.startsWith('{'))) {
-                                            try {
-                                                const parsed = JSON.parse(log.notes);
-                                                if (Array.isArray(parsed)) {
-                                                    intervals = parsed;
-                                                } else if (parsed && typeof parsed === 'object') {
-                                                    intervals = parsed.selected || [];
-                                                    completed = parsed.completed || [];
-                                                }
-                                            } catch { }
-                                        }
 
                                         if (!intervals.includes(months)) return <span className="text-slate-300 font-normal">-</span>;
 
@@ -1149,8 +1288,28 @@ export default function StabilityPage() {
                                             </td>
                                             <td className="px-3 py-3 font-bold text-[#0f1e3d] whitespace-nowrap">{log.lotNumber}</td>
                                             <td className="px-3 py-3">
-                                                <div className="font-semibold text-[#0f1e3d]">{log.productName}</div>
-                                                <div className="text-[11px] text-slate-500">{log.productId}</div>
+                                                <div className="font-semibold text-[#0f1e3d]">
+                                                    {(feedType || remark) && (
+                                                        <div className="flex flex-wrap gap-1.5 mb-1">
+                                                            {feedType && (
+                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200/60 text-[10.5px] font-medium">
+                                                                    <svg className="w-3 h-3 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                                                                    {feedType}
+                                                                </span>
+                                                            )}
+                                                            {remark && (
+                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10.5px] font-medium">
+                                                                    <svg className="w-3 h-3 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                                                                    {remark}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {log.productName}
+                                                </div>
+                                                <div className="text-[11px] text-slate-500 flex flex-wrap gap-x-3 gap-y-1 mt-0.5">
+                                                    <span>{log.productId}</span>
+                                                </div>
                                             </td>
                                             <td className="px-3 py-3 text-center font-medium text-emerald-700 bg-emerald-50/30">{calculateDate(0)}</td>
                                             <td className="px-3 py-3 text-center font-medium text-emerald-700">{calculateDate(3)}</td>
@@ -1158,15 +1317,26 @@ export default function StabilityPage() {
                                             <td className="px-3 py-3 text-center font-medium text-emerald-700">{calculateDate(9)}</td>
                                             <td className="px-3 py-3 text-center font-medium text-emerald-700 bg-emerald-50/30">{calculateDate(12)}</td>
                                             <td className="px-3 py-3 text-center">
-                                                <button
-                                                    onClick={() => handleDeleteLog(log.id!)}
-                                                    className="p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors"
-                                                    title="ลบรายการนี้"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => handleEditLog(log)}
+                                                        className="p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
+                                                        title="แก้ไขรายการ"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteLog(log.id!)}
+                                                        className="p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors"
+                                                        title="ลบรายการนี้"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
