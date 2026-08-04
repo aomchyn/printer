@@ -6,11 +6,14 @@ import Modal from "../components/Modal"
 import { supabase } from "@/lib/supabase"
 import { Search, Plus, X, Check, Edit2, Trash2, Package } from "lucide-react"
 import { logAction } from "@/lib/logger"
+import { PAPER_TYPES } from "../stock/page"
 
 export interface FgcodeInterface {
     id: string;
     name: string;
     exp: string;
+    qty_per_a3?: number | null;
+    default_paper_type?: string | null;
 }
 
 export default function FgcodeManagement() {
@@ -20,6 +23,8 @@ export default function FgcodeManagement() {
     const [id, setId] = useState('')
     const [name, setName] = useState('')
     const [exp, setExp] = useState('')
+    const [qtyPerA3, setQtyPerA3] = useState('')
+    const [defaultPaperType, setDefaultPaperType] = useState(PAPER_TYPES[0])
     const [searchTerm, setSearchTerm] = useState('')
     const [userRole, setUserRole] = useState<string>('user')
     const [userName, setUserName] = useState('')
@@ -71,7 +76,13 @@ export default function FgcodeManagement() {
         if (thaiCharRegex.test(cleanId)) { await Swal.fire({ icon: 'warning', title: 'รหัสสินค้าไม่ถูกต้อง', text: 'รหัสสินค้าต้องเป็นภาษาอังกฤษ ตัวเลข หรือเครื่องหมายขีด (-) เท่านั้น', confirmButtonText: 'รับทราบ' }); setShowModal(true); return }
         if (!isAdminRole && thaiCharRegex.test(cleanName)) { await Swal.fire({ icon: 'warning', title: 'ไม่อนุญาตให้ใช้ภาษาไทย', text: 'ชื่อสินค้าภาษาไทยไม่อนุญาตให้ใช้', confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280' }); setShowModal(true); return }
         if (currentEditing) {
-            if (cleanName === (currentEditing.name || '') && cleanExp === (currentEditing.exp || '') && cleanId === currentEditing.id) {
+            const cleanQtyPerA3 = isAdminRole ? (qtyPerA3.trim() || null) : null
+            const currentQtyPerA3 = currentEditing.qty_per_a3 != null ? String(currentEditing.qty_per_a3) : null
+            const noAdminFieldChange = !isAdminRole || (
+                (cleanQtyPerA3 ?? '') === (currentQtyPerA3 ?? '') &&
+                defaultPaperType === (currentEditing.default_paper_type || defaultPaperType)
+            )
+            if (cleanName === (currentEditing.name || '') && cleanExp === (currentEditing.exp || '') && cleanId === currentEditing.id && noAdminFieldChange) {
                 await Swal.fire({ icon: 'info', title: 'ไม่มีการเปลี่ยนแปลง', text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ', confirmButtonText: 'รับทราบ' })
                 setEditingFgcode(currentEditing)
                 setId(currentEditing.id)
@@ -90,11 +101,17 @@ export default function FgcodeManagement() {
                     const { data: existingId } = await supabase.from('fgcode').select('id').eq('id', cleanId).single()
                     if (existingId) { await Swal.fire({ icon: 'error', title: 'รหัสสินค้าซ้ำ', text: `รหัส "${cleanId}" มีอยู่ในระบบแล้ว`, confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280' }); setEditingFgcode(currentEditing); setId(cleanId); setName(cleanName); setExp(cleanExp); setShowModal(true); return }
                 }
-                const { error } = await supabase.from('fgcode').update({ name: cleanName, exp: cleanExp }).eq('id', currentEditing.id)
+                const updatePayload: Record<string, unknown> = { name: cleanName, exp: cleanExp }
+                if (isAdminRole) { updatePayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3) : null; updatePayload.default_paper_type = defaultPaperType || null }
+                const { error } = await supabase.from('fgcode').update(updatePayload).eq('id', currentEditing.id)
                 if (error) throw error
                 await logAction('UPDATE_PRODUCT', { id: currentEditing.id, name: cleanName, exp: cleanExp })
                 if (idChanged) {
-                    const { error: insertErr } = await supabase.from('fgcode').insert({ id: cleanId, name: cleanName, exp: cleanExp })
+                    const { error: insertErr } = await supabase.from('fgcode').insert({
+                        id: cleanId, name: cleanName, exp: cleanExp,
+                        qty_per_a3: isAdminRole ? (qtyPerA3 ? parseInt(qtyPerA3) : null) : currentEditing.qty_per_a3,
+                        default_paper_type: isAdminRole ? (defaultPaperType || null) : currentEditing.default_paper_type,
+                    })
                     if (insertErr) throw insertErr
                     await supabase.from('orders').update({ product_id: cleanId }).eq('product_id', currentEditing.id)
                     await supabase.from('fgcode').delete().eq('id', currentEditing.id)
@@ -158,18 +175,20 @@ export default function FgcodeManagement() {
                     setShowModal(true)
                     return
                 }
-                const { error } = await supabase.from('fgcode').insert({ id: cleanId, name: cleanName, exp: cleanExp })
+                const createPayload: Record<string, unknown> = { id: cleanId, name: cleanName, exp: cleanExp }
+                if (isAdminRole) { createPayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3) : null; createPayload.default_paper_type = defaultPaperType || null }
+                const { error } = await supabase.from('fgcode').insert(createPayload)
                 if (error) throw error
                 await logAction('CREATE_PRODUCT', { id: cleanId, name: cleanName, exp: cleanExp })
             }
             Swal.fire({ icon: 'success', title: 'สำเร็จ', text: `${currentEditing ? 'แก้ไข' : 'สร้าง'}รหัสสินค้าสำเร็จ`, timer: 1500, showConfirmButton: false })
-            setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp(''); fetchFgcodes()
+            setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp(''); setQtyPerA3(''); setDefaultPaperType(PAPER_TYPES[0]); fetchFgcodes()
         } catch (error) {
             Swal.fire({ icon: 'error', title: 'ผิดพลาด', text: (error as Error).message || `ไม่สามารถ${editingFgcode ? 'แก้ไข' : 'สร้าง'}รหัสสินค้าได้` })
         } finally { setSaving(false) }
     }
 
-    const handleEdit = (fgcode: FgcodeInterface) => { setEditingFgcode(fgcode); setId(fgcode.id || ''); setName(fgcode.name || ''); setExp(fgcode.exp || ''); setShowModal(true) }
+    const handleEdit = (fgcode: FgcodeInterface) => { setEditingFgcode(fgcode); setId(fgcode.id || ''); setName(fgcode.name || ''); setExp(fgcode.exp || ''); setQtyPerA3(fgcode.qty_per_a3 ? String(fgcode.qty_per_a3) : ''); setDefaultPaperType(fgcode.default_paper_type || PAPER_TYPES[0]); setShowModal(true) }
 
     const handleDelete = async (rowId: string) => {
         const result = await Swal.fire({ title: 'ยืนยันการลบ', text: `คุณต้องการลบรหัสสินค้า ${rowId} ใช่หรือไม่?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก' })
@@ -252,7 +271,7 @@ export default function FgcodeManagement() {
                     </div>
                 </div>
                 <button
-                    onClick={() => { setEditingFgcode(null); setId(''); setName(''); setExp(''); setShowModal(true) }}
+                    onClick={() => { setEditingFgcode(null); setId(''); setName(''); setExp(''); setQtyPerA3(''); setDefaultPaperType(PAPER_TYPES[0]); setShowModal(true) }}
                     className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all shadow-md shadow-blue-500/20 active:scale-95 shrink-0"
                 >
                     <Plus className="w-3.5 h-3.5" />
@@ -317,6 +336,12 @@ export default function FgcodeManagement() {
                                         </div>
                                         <div className="flex flex-wrap gap-1.5 mb-2">
                                             <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f0f5ff] text-slate-500">อายุ {fgcode.exp} เดือน</span>
+                                            {isAdminRole && fgcode.qty_per_a3 && (
+                                                <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">{fgcode.qty_per_a3} ชิ้น/A3</span>
+                                            )}
+                                            {isAdminRole && fgcode.default_paper_type && (
+                                                <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">{fgcode.default_paper_type}</span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5 pt-2 border-t border-[#eef3fb]">
                                             <button onClick={() => handleEdit(fgcode)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 text-[11.5px] font-semibold transition-all active:scale-95">
@@ -359,7 +384,7 @@ export default function FgcodeManagement() {
 
             {/* ── Modal ── */}
             {showModal && (
-                <Modal id="fgcode-modal" title={editingFgcode ? 'แก้ไขรหัสสินค้า' : 'เพิ่มรหัสสินค้าใหม่'} onClose={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp('') }} size="md">
+                <Modal id="fgcode-modal" title={editingFgcode ? 'แก้ไขรหัสสินค้า' : 'เพิ่มรหัสสินค้าใหม่'} onClose={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp(''); setQtyPerA3(''); setDefaultPaperType(PAPER_TYPES[0]) }} size="md">
                     <div className="bg-[#f5f8ff] -mx-6 -mb-6 px-6 pb-6 rounded-b-2xl">
                         <form onSubmit={handleSubmit} className="pt-4 space-y-4">
                             <div>
@@ -392,8 +417,33 @@ export default function FgcodeManagement() {
                                     required
                                 />
                             </div>
+                            {isAdminRole && (
+                                <div className="border-t border-[#e8eef8] pt-4 space-y-4">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">📄 ข้อมูลสต็อคกระดาษ (Admin only)</span>
+                                    <div>
+                                        <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">จำนวนชิ้นต่อแผ่น A3 (Qty / A3)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            className={inputCls}
+                                            value={qtyPerA3}
+                                            onChange={e => setQtyPerA3(e.target.value)}
+                                            onWheel={e => e.currentTarget.blur()}
+                                            placeholder="เช่น 8"
+                                        />
+                                        <small className="text-slate-400 mt-1 block">ใช้คำนวณตัดสต็อคกระดาษอัตโนมัติตอนบันทึกผลผลิตใน Dashboard</small>
+                                    </div>
+                                    <div>
+                                        <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">ประเภทกระดาษของสินค้านี้</label>
+                                        <select className={`${inputCls} cursor-pointer`} value={defaultPaperType} onChange={e => setDefaultPaperType(e.target.value)}>
+                                            {PAPER_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                                        </select>
+                                        <small className="text-slate-400 mt-1 block">ล็อคประเภทกระดาษของสินค้านี้ ใช้ตอนตัดสต็อคใน Dashboard โดยอัตโนมัติ</small>
+                                    </div>
+                                </div>
+                            )}
                             <div className="border-t border-[#e8eef8] pt-4 flex justify-end gap-3">
-                                <button type="button" onClick={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp('') }} className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#d0daf0] text-slate-600 font-semibold rounded-lg text-[13px] transition-all">
+                                <button type="button" onClick={() => { setShowModal(false); setEditingFgcode(null); setId(''); setName(''); setExp(''); setQtyPerA3(''); setDefaultPaperType(PAPER_TYPES[0]) }} className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#d0daf0] text-slate-600 font-semibold rounded-lg text-[13px] transition-all">
                                     <X className="w-4 h-4" /> ยกเลิก
                                 </button>
                                 <button type="submit" disabled={saving} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:opacity-60 text-white font-semibold rounded-lg text-[13px] shadow-lg shadow-blue-500/20 transition-all active:scale-95">
