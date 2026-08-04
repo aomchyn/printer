@@ -135,6 +135,7 @@ export default function UserManagement() {
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('user')
     const [isAdmin, setIsAdmin] = useState(false)
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [signatureFile, setSignatureFile] = useState<File | null>(null)
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null)
@@ -152,7 +153,11 @@ export default function UserManagement() {
         if (session) {
             setCurrentUserId(session.user.id)
             const { data } = await supabase.from('users').select('role').eq('id', session.user.id).single()
-            if (data?.role === 'moderator' || data?.role === 'assistant_moderator') { setIsAdmin(true); fetchUsers() }
+            if (data?.role === 'moderator' || data?.role === 'assistant_moderator') { 
+                setIsAdmin(true); 
+                setCurrentUserRole(data.role);
+                fetchUsers() 
+            }
             else Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' })
         }
     }
@@ -491,10 +496,12 @@ export default function UserManagement() {
                                         {signaturePreview ? (
                                             <div className="flex flex-col items-center gap-3 border border-[#dde8f5] bg-white p-3 rounded-xl shadow-sm">
                                                 <img src={signaturePreview} alt="Signature Preview" className="max-h-24 object-contain rounded border border-slate-100" />
-                                                <button type="button" onClick={handleDeleteSignature} className="flex items-center justify-center w-full gap-1.5 py-1.5 px-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-sm font-semibold transition-colors">
-                                                    <X className="w-4 h-4" />
-                                                    ลบลายเซ็น
-                                                </button>
+                                                {currentUserRole === 'moderator' && (
+                                                    <button type="button" onClick={handleDeleteSignature} className="flex items-center justify-center w-full gap-1.5 py-1.5 px-3 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg text-sm font-semibold transition-colors">
+                                                        <X className="w-4 h-4" />
+                                                        ลบลายเซ็น
+                                                    </button>
+                                                )}
                                             </div>
                                         ) : (
                                             <div className="flex items-center justify-center w-full">

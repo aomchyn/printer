@@ -47,9 +47,9 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized: Cannot verify user role' }, { status: 403 });
         }
 
-        // Allow admin, assist, moderator
-        if (callerData.role !== 'admin' && callerData.role !== 'assist' && callerData.role !== 'moderator') {
-            return NextResponse.json({ error: 'Forbidden: Insufficient privileges' }, { status: 403 });
+        // Allow ONLY moderator to delete signatures
+        if (callerData.role !== 'moderator') {
+            return NextResponse.json({ error: 'เฉพาะ Moderator เท่านั้นที่สามารถลบลายเซ็นได้' }, { status: 403 });
         }
 
         // Get the current user's signature URL
