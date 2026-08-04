@@ -198,7 +198,7 @@ export default function UserManagement() {
                 
                 setSignaturePreview(null);
                 setSignatureFile(null);
-                setEditingUser({ ...editingUser, signature_url: null });
+                setEditingUser({ ...editingUser, signature_url: undefined });
                 fetchUsers();
                 
                 Swal.fire({ icon: 'success', title: 'ลบลายเซ็นเรียบร้อย', timer: 1500 });
