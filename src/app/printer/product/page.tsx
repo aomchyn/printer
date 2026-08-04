@@ -6,7 +6,16 @@ import Modal from "../components/Modal"
 import { supabase } from "@/lib/supabase"
 import { Search, Plus, X, Check, Edit2, Trash2, Package } from "lucide-react"
 import { logAction } from "@/lib/logger"
-import { PAPER_TYPES } from "../stock/page"
+
+const PAPER_TYPES = [
+    "สติกเกอร์ RONDA PG-88G (ไม่เหนียว)",
+    "สติกเกอร์ MCL-AG-LP K-TAK (เหนียว)",
+    "130 แกรม",
+    "200 แกรม",
+    "300 แกรม",
+    "350 แกรม",
+    "สติกเกอร์ PP"
+]
 
 export interface FgcodeInterface {
     id: string;
