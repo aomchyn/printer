@@ -4,10 +4,11 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy, Layers } from 'lucide-react';
 import EditHistory from '../components/EditHistory';
 import { JetBrains_Mono } from 'next/font/google';
 import { DashboardSkeleton } from './loading-skeleton';
+import Modal from '../components/Modal';
 
 const jetbrainsMono = JetBrains_Mono({
     subsets: ['latin'],
@@ -48,6 +49,12 @@ export interface OrderInterface {
     printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
     printed_at?: string | null;         // ✅ เวลาที่พิมพ์
     previous_product_name?: string | null;
+    paper_type?: string | null;
+    good_a3?: number | null;
+    waste_qty?: number | null;
+    waste_qty_remark?: string | null;
+    waste_a3?: number | null;
+    waste_a3_remark?: string | null;
 }
 
 export default function DashboardPage() {
@@ -64,6 +71,22 @@ export default function DashboardPage() {
     const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
     const [countdown, setCountdown] = useState(240);
     const [visibleCount, setVisibleCount] = useState(10)
+
+    // ✅ สต็อคกระดาษ A3 — เฉพาะ moderator/assistant_moderator
+    const [productMetaMap, setProductMetaMap] = useState<Record<string, { qtyPerA3: number; paperType: string }>>({});
+    const [reconcilingOrder, setReconcilingOrder] = useState<OrderInterface | null>(null);
+    const [reconcileForm, setReconcileForm] = useState({
+        wasteQty: '',
+        wasteA3: '',
+        wasteQtyRemark: '',
+        wasteA3Remark: '',
+        goodA3Extra: '',
+    });
+    const [initialReconcileForm, setInitialReconcileForm] = useState({
+        wasteQty: '', wasteA3: '', wasteQtyRemark: '', wasteA3Remark: '',
+    });
+    const [isSubmittingReconcile, setIsSubmittingReconcile] = useState(false);
+    const [reconcileErrors, setReconcileErrors] = useState<{ wasteQtyRemark?: string; wasteA3Remark?: string }>({});
 
     const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -124,10 +147,28 @@ export default function DashboardPage() {
                 }
             }
 
-            const { data: fgcodeData } = await supabase.from('fgcode').select('id, name');
-            if (fgcodeData && fgcodeData.length > 0) {
+            let allFgcodeData: { id: string; name: string }[] = [];
+            let fgcodeFrom = 0;
+            const fgcodePageSize = 1000;
+            let fgcodeHasMore = true;
+
+            while (fgcodeHasMore) {
+                const { data } = await supabase.from('fgcode')
+                    .select('id, name')
+                    .range(fgcodeFrom, fgcodeFrom + fgcodePageSize - 1);
+                
+                if (data && data.length > 0) {
+                    allFgcodeData = [...allFgcodeData, ...data];
+                    fgcodeFrom += fgcodePageSize;
+                    fgcodeHasMore = data.length === fgcodePageSize;
+                } else {
+                    fgcodeHasMore = false;
+                }
+            }
+
+            if (allFgcodeData.length > 0) {
                 const productMap = Object.fromEntries(
-                    fgcodeData.map((p: { id: string; name: string }) => [p.id, p.name])
+                    allFgcodeData.map(p => [p.id, p.name])
                 );
 
                 const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
@@ -290,6 +331,37 @@ export default function DashboardPage() {
             ).subscribe();
 
         return () => { supabase.removeChannel(channel); };
+    }, []);
+
+    // ✅ ดึง qty_per_a3 + default_paper_type แยกต่างหาก ไม่ยุ่งกับ fetch เดิมที่ใช้ sync ชื่อสินค้า
+    useEffect(() => {
+        const fetchProductMeta = async () => {
+            let allData: { id: string; qty_per_a3: number | null; default_paper_type: string | null }[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data } = await supabase.from('fgcode')
+                    .select('id, qty_per_a3, default_paper_type')
+                    .range(from, from + pageSize - 1);
+                
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    from += pageSize;
+                    hasMore = data.length === pageSize;
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            setProductMetaMap(Object.fromEntries(
+                allData.map(p =>
+                    [p.id, { qtyPerA3: p.qty_per_a3 || 1, paperType: p.default_paper_type || '' }]
+                )
+            ));
+        };
+        fetchProductMeta();
     }, []);
 
 
@@ -548,6 +620,338 @@ export default function DashboardPage() {
         }
         setEditingOrder({ ...order });
     };
+
+    // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
+    const startReconcile = (order: OrderInterface) => {
+        if (!isAdmin) {
+            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะ Moderator และ Assistant Moderator เท่านั้น' });
+            return;
+        }
+        if (!productMetaMap[order.product_id]?.paperType) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ยังไม่ได้ตั้งค่าประเภทกระดาษ',
+                text: `สินค้ารหัส ${order.product_id} ยังไม่ได้ตั้งค่าประเภทกระดาษเริ่มต้น กรุณาไปตั้งค่าที่หน้า Product ก่อน`,
+                confirmButtonText: 'รับทราบ',
+            });
+            return;
+        }
+        setReconcilingOrder(order);
+        const initial = {
+            wasteQty: order.waste_qty ? String(order.waste_qty) : '',
+            wasteA3: order.waste_a3 ? String(order.waste_a3) : '',
+            wasteQtyRemark: order.waste_qty_remark || '',
+            wasteA3Remark: order.waste_a3_remark || '',
+        };
+        setReconcileForm({ ...initial, goodA3Extra: '' });
+        setInitialReconcileForm(initial);
+    };
+
+    const reconcileCalculation = useMemo(() => {
+        if (!reconcilingOrder) return null;
+        const meta = productMetaMap[reconcilingOrder.product_id];
+        if (!meta) return null;
+
+        const qtyPerA3 = meta.qtyPerA3;
+        const target = reconcilingOrder.quantity || 0;
+        const wasteQty = parseInt(reconcileForm.wasteQty) || 0;
+        const wasteA3 = parseInt(reconcileForm.wasteA3) || 0;
+        const goodA3Extra = parseInt(reconcileForm.goodA3Extra) || 0;
+
+        const baseSheetsForTarget = target > 0 ? Math.ceil(target / qtyPerA3) : 0;
+        const naturalTotal = baseSheetsForTarget * qtyPerA3;
+        const naturalExcess = target > 0 ? (naturalTotal - target) : 0;
+        const extraSheetsForWaste = wasteQty > naturalExcess ? Math.ceil((wasteQty - naturalExcess) / qtyPerA3) : 0;
+        const autoGoodA3 = baseSheetsForTarget + extraSheetsForWaste;
+        const goodA3 = autoGoodA3 + goodA3Extra;
+        const sheetsNeeded = goodA3 + wasteA3;
+        const totalPrinted = goodA3 * qtyPerA3;
+        const excessQty = Math.max(0, totalPrinted - target - wasteQty);
+
+        return { paperType: meta.paperType, qtyPerA3, target, wasteQty, wasteA3, goodA3, autoGoodA3, sheetsNeeded, totalPrinted, excessQty };
+    }, [reconcilingOrder, reconcileForm, productMetaMap]);
+
+    const submitReconcile = async (e?: any) => {
+        // 🟢 ดัก Event ป้องกันไม่ให้การคลิกทะลุไปถึง Modal ข้างหลัง
+        if (e && e.preventDefault) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (!reconcilingOrder || !reconcileCalculation || !isAdmin) return;
+
+        // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงไหม (เฉพาะกรณีเคยบันทึกผลผลิตไปแล้ว)
+        const wasAlreadyReconciled = reconcilingOrder.good_a3 != null;
+        const goodA3ExtraEmpty = !reconcileForm.goodA3Extra || parseInt(reconcileForm.goodA3Extra) === 0;
+        const noChange = wasAlreadyReconciled && goodA3ExtraEmpty &&
+            reconcileForm.wasteQty === initialReconcileForm.wasteQty &&
+            reconcileForm.wasteA3 === initialReconcileForm.wasteA3 &&
+            reconcileForm.wasteQtyRemark === initialReconcileForm.wasteQtyRemark &&
+            reconcileForm.wasteA3Remark === initialReconcileForm.wasteA3Remark;
+
+        if (noChange) {
+            await Swal.fire({
+                icon: 'info',
+                title: 'ไม่มีการเปลี่ยนแปลง',
+                text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ',
+                confirmButtonText: 'รับทราบ',
+                returnFocus: false // 🟢 เพิ่มสิ่งนี้เพื่อป้องกัน Modal ปิดตัวเอง
+            });
+            return;
+        }
+
+        // ✅ บังคับระบุเหตุผลเมื่อมีของเสีย (inline validation)
+        const errors: { wasteQtyRemark?: string; wasteA3Remark?: string } = {};
+        if (reconcileCalculation.wasteQty > 0 && !reconcileForm.wasteQtyRemark.trim()) {
+            errors.wasteQtyRemark = 'มีชิ้นเสีย — กรุณาระบุหมายเหตุ';
+        }
+        if (reconcileCalculation.wasteA3 > 0 && !reconcileForm.wasteA3Remark.trim()) {
+            errors.wasteA3Remark = 'มีกระดาษเสีย — กรุณาระบุหมายเหตุ';
+        }
+        if (Object.keys(errors).length > 0) {
+            setReconcileErrors(errors);
+            return;
+        }
+        setReconcileErrors({});
+
+        // ✅ เช็คสต็อคกระดาษคงเหลือก่อนตัด — กันตัดสต็อคติดลบ
+        const { data: txData, error: txErr } = await supabase
+            .from('paper_transactions')
+            .select('transaction_type, qty')
+            .eq('paper_type', reconcileCalculation.paperType);
+
+        if (txErr) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'เช็คสต็อคไม่สำเร็จ',
+                text: 'กรุณาลองใหม่อีกครั้ง',
+                returnFocus: false
+            });
+            return;
+        }
+
+        const currentBalance = (txData || []).reduce(
+            (acc, t) => acc + (t.transaction_type === 'IN' ? t.qty : -t.qty), 0
+        );
+        const oldSheetsUsed = (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
+        const netChange = reconcileCalculation.sheetsNeeded - oldSheetsUsed;
+
+        if (netChange > currentBalance) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'สต็อคกระดาษไม่พอ',
+                html: `
+                    <div style="text-align:left; font-size:13px;">
+                        <p>ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
+                        <p>สต็อคคงเหลือ: <b>${currentBalance}</b> ใบ</p>
+                        <p>ต้องการตัดเพิ่ม: <b>${netChange}</b> ใบ</p>
+                        <p style="margin-top:6px; color:#dc2626;">กรุณารับกระดาษเข้าสต็อคที่หน้า Paper Stock ก่อน</p>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ',
+                returnFocus: false
+            });
+            return;
+        }
+
+        const confirmResult = await Swal.fire({
+            icon: 'question',
+            title: 'ยืนยันบันทึกผลผลิต?',
+            html: `
+                <div style="text-align:left; font-size:13px;">
+                    <p>สินค้า: <b>${reconcilingOrder.product_name}</b></p>
+                    <p>ล็อต: <b>${reconcilingOrder.lot_number}</b></p>
+                    <p style="margin-top:6px; border-top:1px solid #e5e7eb; padding-top:6px;">ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
+                    <p>กระดาษดี: <b>${reconcileCalculation.goodA3}</b> ใบ</p>
+                    ${reconcileCalculation.wasteA3 > 0 ? `<p>กระดาษเสีย: <b>${reconcileCalculation.wasteA3}</b> ใบ</p>` : ''}
+                    ${reconcileCalculation.wasteQty > 0 ? `<p>ชิ้นเสีย: <b>${reconcileCalculation.wasteQty}</b> ชิ้น</p>` : ''}
+                    <p style="margin-top:6px; border-top:1px solid #e5e7eb; padding-top:6px;">รวมตัดสต็อค: <b>${reconcileCalculation.sheetsNeeded}</b> ใบ</p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '✓ ยืนยันบันทึก',
+            cancelButtonText: 'กลับไปแก้ไข',
+            confirmButtonColor: '#0f1e3d',
+            cancelButtonColor: '#6b7280',
+            returnFocus: false
+        });
+
+        if (!confirmResult.isConfirmed) return;
+
+        setIsSubmittingReconcile(true);
+        try {
+            const entryId = reconcilingOrder.id;
+            const editorName = getCurrentUserIdentifier();
+            const summary = `บันทึกผลผลิต: กระดาษดี ${reconcileCalculation.goodA3} ใบ, เสีย ${reconcileCalculation.wasteA3} ใบ`;
+
+            const { error: updateErr } = await supabase.from('orders').update({
+                paper_type: reconcileCalculation.paperType,
+                good_a3: reconcileCalculation.goodA3,
+                waste_qty: reconcileCalculation.wasteQty > 0 ? reconcileCalculation.wasteQty : null,
+                waste_qty_remark: reconcileForm.wasteQtyRemark || null,
+                waste_a3: reconcileCalculation.wasteA3 > 0 ? reconcileCalculation.wasteA3 : null,
+                waste_a3_remark: reconcileForm.wasteA3Remark || null,
+            }).eq('id', entryId);
+            if (updateErr) throw updateErr;
+
+            const { data: existingGoodTx } = await supabase
+                .from('paper_transactions')
+                .select('id')
+                .eq('reference_id', entryId)
+                .eq('transaction_type', 'OUT')
+                .or('transaction_category.eq.GOOD,transaction_category.is.null')
+                .limit(1)
+                .maybeSingle();
+
+            if (existingGoodTx) {
+                const { error: goodTxErr } = await supabase.from('paper_transactions').update({
+                    paper_type: reconcileCalculation.paperType,
+                    qty: reconcileCalculation.goodA3,
+                    transaction_category: 'GOOD',
+                    description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
+                }).eq('id', existingGoodTx.id);
+                if (goodTxErr) throw new Error(`ตัดสต็อคกระดาษดีไม่สำเร็จ: ${goodTxErr.message}`);
+            } else {
+                const { error: goodTxErr } = await supabase.from('paper_transactions').insert({
+                    reference_id: entryId,
+                    transaction_type: 'OUT',
+                    transaction_category: 'GOOD',
+                    paper_type: reconcileCalculation.paperType,
+                    qty: reconcileCalculation.goodA3,
+                    date: reconcilingOrder.production_date || new Date().toISOString().split('T')[0],
+                    created_by: editorName,
+                    description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
+                });
+                if (goodTxErr) throw new Error(`ตัดสต็อคกระดาษดีไม่สำเร็จ: ${goodTxErr.message}`);
+            }
+
+            if (reconcileCalculation.wasteA3 > 0) {
+                const { data: existingWasteTx } = await supabase
+                    .from('paper_transactions')
+                    .select('id')
+                    .eq('reference_id', entryId)
+                    .eq('transaction_type', 'OUT')
+                    .eq('transaction_category', 'WASTE')
+                    .maybeSingle();
+
+                if (existingWasteTx) {
+                    const { error: wasteTxErr } = await supabase.from('paper_transactions').update({
+                        paper_type: reconcileCalculation.paperType,
+                        qty: reconcileCalculation.wasteA3,
+                        description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
+                    }).eq('id', existingWasteTx.id);
+                    if (wasteTxErr) throw new Error(`ตัดสต็อคกระดาษเสียไม่สำเร็จ: ${wasteTxErr.message}`);
+                } else {
+                    const { error: wasteTxErr } = await supabase.from('paper_transactions').insert({
+                        reference_id: entryId,
+                        transaction_type: 'OUT',
+                        transaction_category: 'WASTE',
+                        paper_type: reconcileCalculation.paperType,
+                        qty: reconcileCalculation.wasteA3,
+                        date: reconcilingOrder.production_date || new Date().toISOString().split('T')[0],
+                        created_by: editorName,
+                        description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
+                    });
+                    if (wasteTxErr) throw new Error(`ตัดสต็อคกระดาษเสียไม่สำเร็จ: ${wasteTxErr.message}`);
+                }
+            } else {
+                const { error: clearWasteErr } = await supabase.from('paper_transactions')
+                    .delete()
+                    .eq('reference_id', entryId)
+                    .eq('transaction_type', 'OUT')
+                    .eq('transaction_category', 'WASTE');
+                if (clearWasteErr) throw new Error(`ล้างรายการกระดาษเสียเดิมไม่สำเร็จ: ${clearWasteErr.message}`);
+            }
+
+            
+            // อัปเดตตาราง paper_reports
+            const { data: existingReport } = await supabase.from('paper_reports').select('id').eq('order_id', entryId).maybeSingle();
+            if (existingReport) {
+                await supabase.from('paper_reports').update({
+                    target_qty: reconcilingOrder.quantity || 0,
+                    target_a3: (reconcilingOrder as any).target_a3 || 0,
+                    good_a3: reconcileCalculation.goodA3,
+                    waste_a3: reconcileCalculation.wasteA3,
+                    waste_qty: reconcileCalculation.wasteQty,
+                    waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+                    waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+                    paper_type: reconcileCalculation.paperType,
+                    product_id: reconcilingOrder.product_id,
+                    department: reconcilingOrder.created_by_department,
+                    lot_number: reconcilingOrder.lot_number,
+                }).eq('id', existingReport.id);
+            } else {
+                await supabase.from('paper_reports').insert({
+                    order_id: entryId,
+                    report_type: 'ORDER',
+                    lot_number: reconcilingOrder.lot_number,
+                    product_id: reconcilingOrder.product_id,
+                    department: reconcilingOrder.created_by_department,
+                    paper_type: reconcileCalculation.paperType,
+                    target_qty: reconcilingOrder.quantity || 0,
+                    target_a3: (reconcilingOrder as any).target_a3 || 0,
+                    good_a3: reconcileCalculation.goodA3,
+                    waste_a3: reconcileCalculation.wasteA3,
+                    waste_qty: reconcileCalculation.wasteQty,
+                    waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+                    waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+                    created_by: editorName,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            await logAuditTrail(entryId, 'RECONCILE', summary);
+
+            // อัปเดต Orders ใน State หลังฉาก
+            setOrders(prev => prev.map(o => o.id === entryId ? {
+                ...o,
+                paper_type: reconcileCalculation.paperType,
+                good_a3: reconcileCalculation.goodA3,
+                waste_qty: reconcileCalculation.wasteQty > 0 ? reconcileCalculation.wasteQty : undefined,
+                waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+                waste_a3: reconcileCalculation.wasteA3 > 0 ? reconcileCalculation.wasteA3 : undefined,
+                waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+            } : o));
+
+            // อัปเดตค่าที่ค้างอยู่ใน Modal เพื่อแสดงค่าล่าสุด แทนการปิด Modal
+            setReconcilingOrder(prev => prev ? {
+                ...prev,
+                paper_type: reconcileCalculation.paperType,
+                good_a3: reconcileCalculation.goodA3,
+                waste_qty: reconcileCalculation.wasteQty > 0 ? reconcileCalculation.wasteQty : undefined,
+                waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+                waste_a3: reconcileCalculation.wasteA3 > 0 ? reconcileCalculation.wasteA3 : undefined,
+                waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+            } : null);
+
+            setInitialReconcileForm({
+                wasteQty: reconcileForm.wasteQty,
+                wasteA3: reconcileForm.wasteA3,
+                wasteQtyRemark: reconcileForm.wasteQtyRemark,
+                wasteA3Remark: reconcileForm.wasteA3Remark,
+            });
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'บันทึกสำเร็จ',
+                text: 'ตัดสต็อคกระดาษเรียบร้อยแล้ว',
+                timer: 1800,
+                showConfirmButton: false,
+                returnFocus: false
+            });
+            setReconcilingOrder(null);
+        } catch (error) {
+            await Swal.fire({
+                icon: 'error',
+                title: 'บันทึกไม่สำเร็จ',
+                text: (error as Error).message || 'กรุณาลองใหม่อีกครั้ง',
+                returnFocus: false
+            });
+        } finally {
+            setIsSubmittingReconcile(false);
+        }
+    };
+
 
     const verifyOrder = async (order: OrderInterface) => {
         if (!isAdmin) {
@@ -1109,6 +1513,13 @@ export default function DashboardPage() {
                                 bg-white border border-slate-200/85 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl overflow-hidden flex flex-col group relative ${borderLeftCls}
                                 ${order.is_cancelled ? 'opacity-85' : ''}
                             `}>
+                                    {isAdmin && (order.paper_type || typeof order.good_a3 === 'number' || order.waste_qty || order.waste_a3) && (
+                                        <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-20 pointer-events-none">
+                                            <div className="absolute top-4 -right-7 w-32 bg-gradient-to-r from-emerald-600 to-emerald-400 text-white text-[9px] font-black uppercase tracking-widest py-1 text-center shadow-md transform rotate-45 flex items-center justify-center gap-1 border-b border-emerald-300/50">
+                                                <CheckCircle2 className="w-3 h-3" /> ตัดสต็อคแล้ว
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className={headerBgCls}>
                                         <div className="w-full">
                                             <div className="flex flex-col gap-1.5 mb-2.5">
@@ -1200,6 +1611,11 @@ export default function DashboardPage() {
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
+                                            {isAdmin && !order.is_cancelled && (
+                                                <button type="button" onClick={() => startReconcile(order)} className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/80 flex items-center justify-center transition-all duration-200" title="บันทึกผลผลิต / ตัดสต็อคกระดาษ">
+                                                    <Layers className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                             {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
                                                 <button type="button" onClick={() => handleCancelOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200" title="ยกเลิกการสั่งพิมพ์">
                                                     <X className="w-3.5 h-3.5" />
@@ -1254,6 +1670,8 @@ export default function DashboardPage() {
                                                 <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
                                             </div>
                                         )}
+
+
 
                                         <EditHistory orderId={order.id} updatedAt={order.updated_at} auditKey={auditKey} />
 
@@ -1470,6 +1888,114 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ✅ Reconcile Modal — บันทึกผลผลิต/ตัดสต็อคกระดาษ (เฉพาะ isAdmin) */}
+            {isAdmin && reconcilingOrder && reconcileCalculation && (
+                <Modal id="reconcile-modal" title="บันทึกผลผลิต / ตัดสต็อคกระดาษ" onClose={() => setReconcilingOrder(null)} size="md">
+                    <div className="space-y-4">
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] space-y-1">
+                            <div className="flex justify-between"><span className="text-slate-500">ลอต</span><span className="font-bold text-slate-700">{reconcilingOrder.lot_number}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">สินค้า</span><span className="font-bold text-slate-700">{reconcilingOrder.product_name}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">จำนวนสั่งทำ (เป้าหมาย)</span><span className="font-bold text-slate-700">{reconcileCalculation.target}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">ประเภทกระดาษ (ล็อคจาก Product)</span><span className="font-bold text-blue-600">{reconcileCalculation.paperType}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">อัตราส่วน</span><span className="font-bold text-slate-700">{reconcileCalculation.qtyPerA3} ชิ้น/แผ่น</span></div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">ชิ้นเสีย (Waste Qty)</label>
+                                <input type="number" min="0" value={reconcileForm.wasteQty}
+                                    onChange={e => setReconcileForm(prev => ({ ...prev, wasteQty: e.target.value }))}
+                                    onWheel={e => e.currentTarget.blur()}
+                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="0" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">กระดาษเสีย (Waste A3, ใบ)</label>
+                                <input type="number" min="0" value={reconcileForm.wasteA3}
+                                    onChange={e => setReconcileForm(prev => ({ ...prev, wasteA3: e.target.value }))}
+                                    onWheel={e => e.currentTarget.blur()}
+                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="0" />
+                            </div>
+                        </div>
+
+                        {(parseInt(reconcileForm.wasteQty) || 0) > 0 && (
+                        <div>
+                            <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteQtyRemark.trim() ? 'text-red-600' : 'text-slate-500'}`}>หมายเหตุชิ้นเสีย {!reconcileForm.wasteQtyRemark.trim() && <span className="normal-case">*</span>}</label>
+                            <input type="text" value={reconcileForm.wasteQtyRemark}
+                                onChange={e => { setReconcileForm(prev => ({ ...prev, wasteQtyRemark: e.target.value })); setReconcileErrors(prev => ({ ...prev, wasteQtyRemark: undefined })); }}
+                                className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
+                                    !reconcileForm.wasteQtyRemark.trim()
+                                        ? 'bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                        : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10'
+                                }`} placeholder="เช่น สีเพี้ยน" />
+                            {!reconcileForm.wasteQtyRemark.trim() && <p className="mt-1 text-[11px] text-red-500 font-medium">มีชิ้นเสีย — กรุณาระบุหมายเหตุ</p>}
+                        </div>
+                        )}
+                        {(parseInt(reconcileForm.wasteA3) || 0) > 0 && (
+                        <div>
+                            <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteA3Remark.trim() ? 'text-red-600' : 'text-slate-500'}`}>หมายเหตุกระดาษเสีย {!reconcileForm.wasteA3Remark.trim() && <span className="normal-case">*</span>}</label>
+                            <input type="text" value={reconcileForm.wasteA3Remark}
+                                onChange={e => { setReconcileForm(prev => ({ ...prev, wasteA3Remark: e.target.value })); setReconcileErrors(prev => ({ ...prev, wasteA3Remark: undefined })); }}
+                                className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
+                                    !reconcileForm.wasteA3Remark.trim()
+                                        ? 'bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                                        : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10'
+                                }`} placeholder="เช่น กระดาษยับตอนป้อนเครื่อง" />
+                            {!reconcileForm.wasteA3Remark.trim() && <p className="mt-1 text-[11px] text-red-500 font-medium">มีกระดาษเสีย — กรุณาระบุหมายเหตุ</p>}
+                        </div>
+                        )}
+                        <div>
+                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">กระดาษดีเพิ่มเติม (ถ้ามี, ใบ)</label>
+                            <input type="number" min="0" value={reconcileForm.goodA3Extra}
+                                onChange={e => setReconcileForm(prev => ({ ...prev, goodA3Extra: e.target.value }))}
+                                onWheel={e => e.currentTarget.blur()}
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="0" />
+                            <p className="mt-1 text-[11px] text-slate-400">ปกติระบบคำนวณกระดาษดีให้อัตโนมัติจากจำนวนสั่งทำ ใส่ช่องนี้เฉพาะกรณีต้องการเพิ่มพิเศษ</p>
+                        </div>
+
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
+                            {/* ซ่อน ชิ้นเกิน ถ้าเป็น 0 */}
+                            {reconcileCalculation.excessQty > 0 && (
+                                <div className="flex justify-between"><span className="text-yellow-600">ชิ้นเกิน (Excess)</span><span className="font-black text-yellow-600">{reconcileCalculation.excessQty} ชิ้น</span></div>
+                            )}
+
+                            {/* ซ่อน ชิ้นเสีย ถ้าเป็น 0 */}
+                            {reconcileCalculation.wasteQty > 0 && (
+                                <div className="flex justify-between"><span className="text-rose-600">ชิ้นเสีย (Waste Qty)</span><span className="font-black text-rose-600">{reconcileCalculation.wasteQty} ชิ้น</span></div>
+                            )}
+
+                            {/* เส้นคั่นบางๆ จะแสดงก็ต่อเมื่อมีข้อมูลข้างบน และมีข้อมูลข้างล่าง */}
+                            {(reconcileCalculation.excessQty > 0 || reconcileCalculation.wasteQty > 0) &&
+                                (reconcileCalculation.goodA3 > 0 || reconcileCalculation.wasteA3 > 0) && (
+                                    <div className="border-t border-emerald-200 my-0.5"></div>
+                                )}
+
+                            {/* ซ่อน กระดาษดี ถ้าเป็น 0 (เผื่อไว้) */}
+                            {reconcileCalculation.goodA3 > 0 && (
+                                <div className="flex justify-between"><span className="text-emerald-700">กระดาษดี (A3)</span><span className="font-black text-emerald-700">{reconcileCalculation.goodA3} ใบ</span></div>
+                            )}
+
+                            {/* ซ่อน กระดาษเสีย ถ้าเป็น 0 */}
+                            {reconcileCalculation.wasteA3 > 0 && (
+                                <div className="flex justify-between"><span className="text-rose-600">กระดาษเสีย (A3)</span><span className="font-black text-rose-600">{reconcileCalculation.wasteA3} ใบ</span></div>
+                            )}
+
+                            <div className="border-t border-emerald-200 my-0.5"></div>
+
+                            {/* สรุปยอดรวม (ให้แสดงเสมอเพื่อให้เห็นจำนวนตัดสต็อคที่ชัดเจน) */}
+                            <div className="flex justify-between"><span className="text-emerald-700 font-bold">รวมตัดสต็อคทั้งหมด</span><span className="font-black text-emerald-700">{reconcileCalculation.sheetsNeeded} ใบ</span></div>
+                        </div>
+
+
+                        <div className="flex gap-3 pt-2 border-t border-slate-100">
+                            <button type="button" onClick={() => setReconcilingOrder(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300">ยกเลิก</button>
+                            <button type="button" onClick={submitReconcile} disabled={isSubmittingReconcile} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300">
+                                {isSubmittingReconcile ? 'กำลังบันทึก...' : '📄 บันทึกและตัดสต็อค'}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

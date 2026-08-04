@@ -33,6 +33,7 @@ export default function EditHistory({ orderId, updatedAt, auditKey }: Props) {
                 .select('*')
                 .eq('order_id', orderId)
                 .neq('action', 'VERIFY')
+                .neq('action', 'RECONCILE')
                 .order('created_at', { ascending: false });
 
             if (!cancelled) {

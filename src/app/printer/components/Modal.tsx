@@ -22,7 +22,12 @@ const Modal = ({ id, size = 'md', title, children, onClose }: ModalProps) => {
         }
 
         const handleClickOutside = (e: MouseEvent) => {
-            if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+            const target = e.target as Node
+            // ไม่ปิด Modal ถ้าคลิกอยู่บน SweetAlert2 popup
+            const swalContainer = document.querySelector('.swal2-container')
+            if (swalContainer && swalContainer.contains(target)) return
+
+            if (modalRef.current && !modalRef.current.contains(target)) {
                 onClose()
             }
         }

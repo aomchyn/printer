@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
-import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert, Trash2, Activity } from "lucide-react"
+import { X, Printer, UserCircle, LogOut, LineChart, Package, ShoppingCart, Users, History, ShieldAlert, Trash2, Activity, Layers } from "lucide-react"
 
 interface SidebarProps {
     isOpen: boolean;
@@ -228,6 +228,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         <div className="pt-4 mt-2 border-t border-white/8">
                             <div className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-2 px-2">Admin Tools</div>
                             <div className="space-y-1">
+                                {navItem('/printer/stock', <Package className="w-4 h-4" />, 'Paper Stock', 'bg-amber-500/20 text-amber-200 border-amber-500/25')}
+                                {navItem('/printer/paper-report', <Layers className="w-4 h-4" />, 'Paper Report', 'bg-amber-500/20 text-amber-200 border-amber-500/25')}
                                 {navItem('/printer/user', <Users className="w-4 h-4" />, 'Manage Users', 'bg-purple-500/20 text-purple-200 border-purple-500/25')}
                                 {role === 'moderator' &&
                                     navItem('/printer/logs', <ShieldAlert className="w-4 h-4" />, 'Audit Logs', 'bg-indigo-500/20 text-indigo-200 border-indigo-500/25')}
