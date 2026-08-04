@@ -31,6 +31,7 @@ export default function PaperReportPage() {
   const router = useRouter();
   const [accessStatus, setAccessStatus] = useState<'checking' | 'allowed' | 'denied'>('checking');
   const [printOrders, setPrintOrders] = useState<DashboardOrderGroup[]>([]);
+  const [rawOrders, setRawOrders] = useState<any[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   
@@ -166,7 +167,8 @@ export default function PaperReportPage() {
         const department = o.department ? o.department.split(' ')[0] : "หน่วยงานอื่นๆ";
         const lotName = o.lot_number || "N/A";
         const productId = o.product_id;
-        const groupKey = `${department}-${lotName}-${productId}`;
+        const pt = o.paper_type || productMetaMap[productId]?.paperType || 'ไม่ระบุ';
+        const groupKey = `${department}-${lotName}-${productId}-${pt}`;
 
         const goodA3 = o.good_a3 || 0;
         const wasteA3 = o.waste_a3 || 0;
@@ -184,7 +186,6 @@ export default function PaperReportPage() {
 
         const qtyPerA3 = productMetaMap[productId]?.qtyPerA3 || 1;
         const productName = productMetaMap[productId]?.name || "ไม่ทราบชื่อสินค้า";
-        const pt = o.paper_type || productMetaMap[productId]?.paperType || 'ไม่ระบุ';
 
         const totalPrinted = goodA3 * qtyPerA3;
         const targetQty = o.target_qty || 0;
@@ -227,6 +228,7 @@ export default function PaperReportPage() {
       });
 
       const formattedOrders = Array.from(groupedOrders.values());
+      setRawOrders(allData);
       setPrintOrders(formattedOrders);
     } catch (error: any) {
       console.error("Error fetching print orders:", error);
@@ -271,17 +273,62 @@ export default function PaperReportPage() {
     const grouped: Record<string, DashboardOrderGroup[]> = {};
     let totalTarget = 0;
     
-    printOrders.forEach(group => {
-      const isToday = group.entries.some((e: any) => e.date === todayStr);
+    // Build meta map from state
+    const metaMap: Record<string, any> = {};
+    productsList.forEach(p => {
+        metaMap[p.id] = { qtyPerA3: p.qty_per_a3 || 1, paperType: p.default_paper_type || 'ไม่ระบุ', name: p.name || 'ไม่ทราบชื่อสินค้า' };
+    });
+    
+    rawOrders.forEach((o: any) => {
+      const entryDate = o.created_at ? o.created_at.split('T')[0] : '';
+      const isToday = entryDate === todayStr;
       if (isToday) {
-        const pt = group.entries[0]?.paper_type || 'ไม่ระบุ';
+        const department = o.department ? o.department.split(' ')[0] : "หน่วยงานอื่นๆ";
+        const lotName = o.lot_number || "N/A";
+        const productId = o.product_id;
+        const pt = o.paper_type || metaMap[productId]?.paperType || 'ไม่ระบุ';
+        const productName = metaMap[productId]?.name || "ไม่ทราบชื่อสินค้า";
+        const goodA3 = o.good_a3 || 0;
+        const qtyPerA3 = metaMap[productId]?.qtyPerA3 || 1;
+        const totalPrinted = goodA3 * qtyPerA3;
+        const targetQty = o.target_qty || 0;
+        const wasteA3 = o.waste_a3 || 0;
+        const wasteQty = o.waste_qty || 0;
+        const trueExcess = Math.max(0, totalPrinted - targetQty);
+
+        const remarkW = o.waste_qty_remark ? String(o.waste_qty_remark).trim() : "";
+        const remarkA3 = o.waste_a3_remark ? String(o.waste_a3_remark).trim() : "";
+        const remarkGen = o.remark ? String(o.remark).trim() : "";
+        const initialRemarks: string[] = [];
+        if (remarkGen && remarkGen !== 'ไม่มี' && remarkGen !== '-') initialRemarks.push(remarkGen);
+        if (wasteQty > 0 && remarkW && remarkW !== 'ไม่มี' && remarkW !== '-') initialRemarks.push(`ชิ้นเสีย: ${remarkW}`);
+        if (wasteA3 > 0 && remarkA3 && remarkA3 !== 'ไม่มี' && remarkA3 !== '-') initialRemarks.push(`A3เสีย: ${remarkA3}`);
+        if (o.report_type === 'MANUAL') initialRemarks.push(`(Manual Deduct)`);
+
+        const orderGroup: DashboardOrderGroup = {
+            id: o.id.toString(),
+            department,
+            lotName,
+            productName,
+            targetQty,
+            sheetsNeeded: goodA3 + wasteA3,
+            totalPrinted,
+            excessQty: trueExcess,
+            wasteQty,
+            wasteA3,
+            remarks: initialRemarks,
+            productId,
+            entries: [{...o, date: entryDate, paper_type: pt}]
+        };
+
         if (!grouped[pt]) grouped[pt] = [];
-        grouped[pt].push(group);
-        totalTarget += group.targetQty;
+        grouped[pt].push(orderGroup);
+        totalTarget += targetQty;
       }
     });
+
     return { byPaperType: grouped, totalTarget };
-  }, [printOrders]);
+  }, [rawOrders, productsList]);
 
   // --- Weekly Summary (Per Department) ---
   const weeklySummary = useMemo(() => {
@@ -338,6 +385,36 @@ export default function PaperReportPage() {
       setMdWasteA3Remark("");
       setMdLot("");
       setMdDept("");
+  };
+
+  const handleDeleteOrderGroup = async (group: DashboardOrderGroup) => {
+      const result = await Swal.fire({
+          icon: 'warning',
+          title: 'ยืนยันการลบ',
+          text: `คุณต้องการลบรายการของ Lot: ${group.lotName} หรือไม่? (รายการที่เกี่ยวข้องจะถูกลบทั้งหมด)`,
+          showCancelButton: true,
+          confirmButtonText: 'ลบ',
+          cancelButtonText: 'ยกเลิก',
+          confirmButtonColor: '#ef4444'
+      });
+      if (!result.isConfirmed) return;
+      
+      const idsToDelete = group.entries.map((e: any) => e.id);
+      if (idsToDelete.length === 0) return;
+      
+      try {
+          const { error: txErr } = await supabase.from('paper_transactions').delete().in('reference_id', idsToDelete);
+          if (txErr) console.error('Failed to delete tx:', txErr);
+          
+          const { error: repErr } = await supabase.from('paper_reports').delete().in('id', idsToDelete);
+          if (repErr) throw repErr;
+          
+          Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'ลบรายการเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+          fetchOrders();
+      } catch (err: any) {
+          console.error(err);
+          Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถลบรายการได้' });
+      }
   };
 
   const openEditManualModal = (group: DashboardOrderGroup) => {
@@ -1177,9 +1254,10 @@ export default function PaperReportPage() {
                                                             ) : (
                                                                 <span className="text-slate-300">-</span>
                                                             )}
-                                                            <button onClick={() => openEditManualModal(order)} className="mt-1 text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded transition-colors font-medium border border-blue-200">
-                                                                แก้ไขข้อมูล
-                                                            </button>
+                                                            <div className="flex gap-1 mt-1">
+                                                                <button onClick={() => handleDeleteOrderGroup(order)} className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 px-2 py-1 rounded transition-colors font-medium border border-rose-200">ลบ</button>
+                                                                <button onClick={() => openEditManualModal(order)} className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded transition-colors font-medium border border-blue-200">แก้ไขข้อมูล</button>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -1246,9 +1324,10 @@ export default function PaperReportPage() {
                                                         {r}
                                                     </span>
                                                 ))}
-                                                <button onClick={() => openEditManualModal(order)} className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md font-medium border border-blue-200 transition-colors ml-auto">
-                                                    แก้ไขข้อมูล
-                                                </button>
+                                                <div className="flex gap-2 ml-auto">
+                                                    <button onClick={() => handleDeleteOrderGroup(order)} className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 px-2 py-1 rounded-md font-medium border border-rose-200 transition-colors">ลบ</button>
+                                                    <button onClick={() => openEditManualModal(order)} className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md font-medium border border-blue-200 transition-colors">แก้ไขข้อมูล</button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
