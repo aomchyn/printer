@@ -189,12 +189,16 @@ export default function UserManagement() {
         if (result.isConfirmed) {
             Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
             try {
-                const oldFileName = editingUser.signature_url.split('/').pop();
-                if (oldFileName) {
-                    await supabase.storage.from('signatures').remove([oldFileName]);
-                }
-                const { error } = await supabase.from('users').update({ signature_url: null }).eq('id', editingUser.id);
-                if (error) throw error;
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) throw new Error('Session not found');
+
+                const res = await fetch(`/api/users/${editingUser.id}/signature`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${session.access_token}` }
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to delete signature');
                 
                 setSignaturePreview(null);
                 setSignatureFile(null);
