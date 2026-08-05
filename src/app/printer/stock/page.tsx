@@ -122,7 +122,7 @@ export default function StockPage() {
         try {
             const { data: { session } } = await supabase.auth.getSession()
             const { error } = await supabase.from('paper_transactions').insert({
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
                 transaction_type: 'IN',
                 paper_type: paperType,
                 qty: cleanQty,
@@ -259,7 +259,7 @@ export default function StockPage() {
                                         <span className={`font-bold text-[13px] ${tx.transaction_type === 'IN' ? 'text-emerald-500' : 'text-rose-500'}`}>
                                             {tx.transaction_type === 'IN' ? '+' : '-'}{tx.qty}
                                         </span>
-                                        <span className="text-[10px] text-slate-400">{new Date(tx.date).toLocaleDateString('th-TH')}</span>
+                                        <span className="text-[10px] text-slate-400">{new Date(tx.created_at).toLocaleDateString('th-TH')}</span>
                                     </div>
                                     <button onClick={() => handleDelete(tx)}
                                         className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50">

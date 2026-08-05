@@ -38,12 +38,13 @@ export default function PaperReportPage() {
   // States for Manual Deduct
   const [showManualModal, setShowManualModal] = useState(false);
   const [editReportId, setEditReportId] = useState<string | null>(null);
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
 
   // States for Report Generation
   const [showReportModal, setShowReportModal] = useState(false);
   const [isReportLoading, setIsReportLoading] = useState(false);
-  const [reportStartDate, setReportStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [reportEndDate, setReportEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [reportStartDate, setReportStartDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }));
+  const [reportEndDate, setReportEndDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }));
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -240,7 +241,7 @@ export default function PaperReportPage() {
 
   // --- Daily Summary (Today) ---
   const dailySummary = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
     const byPaperType: Record<string, { sheetsUsed: number; sheetsGood: number; sheetsWaste: number }> = {};
     let totalSheets = 0;
     let totalGood = 0;
@@ -269,7 +270,7 @@ export default function PaperReportPage() {
 
   // --- Today's Orders Grouped by Paper Type ---
   const todayOrders = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
     const grouped: Record<string, DashboardOrderGroup[]> = {};
     let totalTarget = 0;
     
@@ -369,9 +370,49 @@ export default function PaperReportPage() {
     return { byDept: summary, byPaperType };
   }, [printOrders]);
 
+  // --- Daily Summary (By Date) ---
+  const dailySummaryByDate = useMemo(() => {
+    const summary: Record<string, {
+      sheetsUsed: number;
+      sheetsGood: number;
+      sheetsWaste: number;
+      targetQty: number;
+      wasteQty: number;
+      byPaperType: Record<string, number>;
+    }> = {};
+
+    printOrders.forEach(group => {
+      group.entries.forEach((entry: any) => {
+        const date = entry.date;
+        if (!date) return;
+        if (!summary[date]) {
+          summary[date] = { sheetsUsed: 0, sheetsGood: 0, sheetsWaste: 0, targetQty: 0, wasteQty: 0, byPaperType: {} };
+        }
+        const sheets = entry.sheets_needed || 0;
+        const waste = entry.waste_a3 || 0;
+        const pt = entry.paper_type || 'ไม่ระบุ';
+        const target = entry.target_qty || 0;
+        const wasteQ = entry.waste_qty || 0;
+
+        summary[date].sheetsUsed += sheets;
+        summary[date].sheetsGood += (sheets - waste);
+        summary[date].sheetsWaste += waste;
+        summary[date].targetQty += target;
+        summary[date].wasteQty += wasteQ;
+        
+        if (!summary[date].byPaperType[pt]) summary[date].byPaperType[pt] = 0;
+        summary[date].byPaperType[pt] += sheets;
+      });
+    });
+    
+    // Sort by date descending
+    return Object.entries(summary).sort(([dateA], [dateB]) => dateB.localeCompare(dateA));
+  }, [printOrders]);
+
   const closeManualModal = () => {
       setShowManualModal(false);
       setEditReportId(null);
+      setEditOrderId(null);
       setMdProduct("");
       setMdProductSearch("");
       setMdPaperType(PAPER_TYPES[0]);
@@ -400,10 +441,12 @@ export default function PaperReportPage() {
       if (!result.isConfirmed) return;
       
       const idsToDelete = group.entries.map((e: any) => e.id);
+      const orderIdsToDelete = group.entries.map((e: any) => e.order_id).filter(Boolean);
+      const allTxRefIds = [...idsToDelete, ...orderIdsToDelete];
       if (idsToDelete.length === 0) return;
       
       try {
-          const { error: txErr } = await supabase.from('paper_transactions').delete().in('reference_id', idsToDelete);
+          const { error: txErr } = await supabase.from('paper_transactions').delete().in('reference_id', allTxRefIds);
           if (txErr) console.error('Failed to delete tx:', txErr);
           
           const { error: repErr } = await supabase.from('paper_reports').delete().in('id', idsToDelete);
@@ -423,6 +466,7 @@ export default function PaperReportPage() {
       if (!manualEntry) return;
 
       setEditReportId(manualEntry.id);
+      setEditOrderId(manualEntry.order_id || null);
       setMdProduct(manualEntry.product_id || "");
       setMdPaperType(manualEntry.paper_type || PAPER_TYPES[0]);
       const prod = productsList.find(p => p.id === manualEntry.product_id);
@@ -550,16 +594,19 @@ export default function PaperReportPage() {
         }
     
     let previousUsed = 0;
-    if (editReportId) {
+    const targetTxRefId = editOrderId || editReportId;
+    if (targetTxRefId) {
         const { data: prevTx } = await supabase
             .from('paper_transactions')
-            .select('qty, transaction_type')
-            .eq('reference_id', editReportId)
-            .eq('paper_type', mdPaperType);
+            .select('qty, transaction_type, paper_type')
+            .eq('reference_id', targetTxRefId);
+            
         if (prevTx) {
             prevTx.forEach(tx => {
-                if (tx.transaction_type === 'OUT') previousUsed += tx.qty;
-                if (tx.transaction_type === 'IN') previousUsed -= tx.qty;
+                if (tx.paper_type === mdPaperType) {
+                    if (tx.transaction_type === 'OUT') previousUsed += tx.qty;
+                    if (tx.transaction_type === 'IN') previousUsed -= tx.qty;
+                }
             });
         }
     }
@@ -626,10 +673,11 @@ export default function PaperReportPage() {
         const { data: userData } = await supabase.from('users').select('name, department').eq('id', session.user.id).single();
         const userName = userData?.name || "ไม่ทราบชื่อ";
         
-        let targetReportId = editReportId;
+        let targetReportId = editOrderId || editReportId;
 
         if (editReportId) {
-            await supabase.from('paper_transactions').delete().eq('reference_id', editReportId);
+            const refIdsToDelete = editOrderId ? [editReportId, editOrderId] : [editReportId];
+            await supabase.from('paper_transactions').delete().in('reference_id', refIdsToDelete);
             
             const { error: reportErr } = await supabase.from('paper_reports').update({
                 lot_number: mdLot,
@@ -675,8 +723,8 @@ export default function PaperReportPage() {
                 paper_type: mdPaperType,
                 qty: Number(mdQty),
                 created_by: userName,
-                date: new Date().toISOString().split('T')[0],
-                description: `ตัดสต็อค Manual (ตั้งต้น)`
+                date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
+                description: `ตัดสต็อค Manual (ตั้งต้น) - ${prodName} ล็อต ${mdLot || '-'}`
             });
             if (txErr) throw txErr;
         }
@@ -689,8 +737,8 @@ export default function PaperReportPage() {
                 paper_type: mdPaperType,
                 qty: Number(mdGoodA3),
                 created_by: userName,
-                date: new Date().toISOString().split('T')[0],
-                description: `ตัดสต็อค Manual (กระดาษดีเพิ่มเติม)`
+                date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
+                description: `ตัดสต็อค Manual (กระดาษดีเพิ่มเติม) - ${prodName} ล็อต ${mdLot || '-'}`
             });
             if (txErr) throw txErr;
         }
@@ -703,8 +751,8 @@ export default function PaperReportPage() {
                 paper_type: mdPaperType,
                 qty: Number(mdWasteA3),
                 created_by: userName,
-                date: new Date().toISOString().split('T')[0],
-                description: `ตัดสต็อค Manual (กระดาษเสีย): ${mdWasteA3Remark || '-'}`
+                date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
+                description: `ตัดสต็อค Manual (กระดาษเสีย) - ${prodName} ล็อต ${mdLot || '-'}: ${mdWasteA3Remark || '-'}`
             });
             if (txErr) throw txErr;
         }
@@ -798,7 +846,7 @@ export default function PaperReportPage() {
             transaction_type: 'IN',
             qty: balance,
             description: 'ยกยอดสต็อคคงเหลือจากการรีเซ็ตประจำสัปดาห์',
-            date: new Date().toISOString().split('T')[0]
+            date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })
         }));
       
       if (carryForwardInserts.length > 0) {
@@ -868,7 +916,7 @@ export default function PaperReportPage() {
       if (dates.length === 1) {
         // ออกเอกสารแค่วันเดียว เป็นไฟล์ .docx
         const dateObj = dates[0];
-        const dateStr = dateObj.toISOString().split('T')[0];
+        const dateStr = dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
         const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getFullYear()).slice(-2)}`;
         
         const data = {
@@ -885,7 +933,7 @@ export default function PaperReportPage() {
       } else {
         // ออกเอกสารหลายวันรวมเป็นไฟล์เดียว .zip
         const records = dates.map(dateObj => {
-          const dateStr = dateObj.toISOString().split('T')[0];
+          const dateStr = dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
           const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${String(dateObj.getFullYear()).slice(-2)}`;
           
           return {
@@ -1404,6 +1452,54 @@ export default function PaperReportPage() {
                             <div className="text-[14px] text-amber-500">ส่วนเกิน <span className="font-black">{Object.values(weeklySummary.byDept).reduce((s,d)=>s+d.excessQty,0).toLocaleString()}</span></div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* ── Daily Summary (By Date) ── */}
+            <div className="mb-8">
+                <h2 className="text-[15px] font-black text-[#0f1e3d] mb-4 flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-sky-600" /> สรุปยอดรวมรายวัน <span className="text-slate-400 font-normal text-[13px]">(เรียงตามวันที่)</span>
+                </h2>
+                <div className="space-y-4">
+                    {dailySummaryByDate.map(([date, d]) => (
+                        <div key={date} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                            <div className="bg-sky-50 border-b border-sky-100 px-5 py-3 flex justify-between items-center text-sky-900">
+                                <h3 className="font-bold text-[15px]">{new Date(date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>
+                                <span className="bg-white text-sky-700 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm border border-sky-200">
+                                    ใช้รวม {d.sheetsUsed.toLocaleString()} ใบ
+                                </span>
+                            </div>
+                            <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
+                                <div>
+                                    <div className="text-[12px] font-bold text-slate-500 mb-1">ยอดสั่งรวม</div>
+                                    <div className="text-[16px] font-black text-[#0f1e3d]">{d.targetQty.toLocaleString()} <span className="text-[12px] font-bold">ชิ้น</span></div>
+                                </div>
+                                <div>
+                                    <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
+                                    <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
+                                </div>
+                                <div>
+                                    <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
+                                    <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '-'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[12px] font-bold text-slate-500 mb-1">ชิ้นเสีย</div>
+                                    <div className="text-[16px] font-black text-rose-600">{d.wasteQty > 0 ? `${d.wasteQty.toLocaleString()}` : '-'}</div>
+                                </div>
+                                <div className="col-span-2 md:col-span-1">
+                                    <div className="text-[12px] font-bold text-slate-500 mb-2">แยกตามกระดาษ</div>
+                                    <div className="flex flex-col gap-1.5">
+                                        {Object.entries(d.byPaperType).map(([pt, qty]) => (
+                                            <div key={pt} className="text-[13px] flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
+                                                <span className="text-slate-600">{pt}</span>
+                                                <span className="font-bold text-slate-800">{qty.toLocaleString()} ใบ</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 

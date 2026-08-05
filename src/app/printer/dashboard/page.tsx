@@ -818,7 +818,7 @@ export default function DashboardPage() {
                     transaction_category: 'GOOD',
                     paper_type: reconcileCalculation.paperType,
                     qty: reconcileCalculation.goodA3,
-                    date: reconcilingOrder.production_date || new Date().toISOString().split('T')[0],
+                    date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
                     created_by: editorName,
                     description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
                 });
@@ -848,7 +848,7 @@ export default function DashboardPage() {
                         transaction_category: 'WASTE',
                         paper_type: reconcileCalculation.paperType,
                         qty: reconcileCalculation.wasteA3,
-                        date: reconcilingOrder.production_date || new Date().toISOString().split('T')[0],
+                        date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
                         created_by: editorName,
                         description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
                     });
