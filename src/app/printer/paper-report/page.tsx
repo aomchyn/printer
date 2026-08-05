@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
-import { Layers, Download, CalendarDays, BarChart3, Play, MinusCircle, X, RotateCcw, FileText } from "lucide-react";
+import { Layers, Download, CalendarDays, BarChart3, Play, MinusCircle, X, RotateCcw, FileText, ChevronDown, ChevronRight } from "lucide-react";
 import { PAPER_TYPES } from "../stock/page";
 import { generateDocument, generateMergedDocumentsToSingleDocx } from "@/lib/docxExport";
 
@@ -46,6 +46,12 @@ export default function PaperReportPage() {
   const [reportStartDate, setReportStartDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }));
   const [reportEndDate, setReportEndDate] = useState<string>(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }));
   const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  // Accordion state
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (pt: string) => {
+    setExpandedSections(prev => ({ ...prev, [pt]: !prev[pt] }));
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -196,7 +202,7 @@ export default function PaperReportPage() {
             ...o, 
             paper_type: pt, 
             sheets_needed: goodA3 + wasteA3,
-            date: o.created_at ? o.created_at.split('T')[0] : ''
+            date: o.created_at ? new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }) : ''
         };
 
         if (groupedOrders.has(groupKey)) {
@@ -281,7 +287,7 @@ export default function PaperReportPage() {
     });
     
     rawOrders.forEach((o: any) => {
-      const entryDate = o.created_at ? o.created_at.split('T')[0] : '';
+      const entryDate = o.created_at ? new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }) : '';
       const isToday = entryDate === todayStr;
       if (isToday) {
         const department = o.department ? o.department.split(' ')[0] : "หน่วยงานอื่นๆ";
@@ -1170,7 +1176,7 @@ export default function PaperReportPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* ── Page header ── */}
-      <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-3 sticky top-0 z-30">
+      <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sticky top-0 z-30">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
             <Layers className="w-5 h-5 text-blue-600" />
@@ -1180,7 +1186,7 @@ export default function PaperReportPage() {
             <p className="text-slate-400 text-[12px] md:text-[13px] hidden sm:block truncate">วิเคราะห์ยอดการใช้กระดาษและของเสียรายแผนก / รายสัปดาห์</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setShowManualModal(true)}
             className="bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap">
             <MinusCircle className="w-3.5 h-3.5" /> ตัดสต็อค Manual
@@ -1255,8 +1261,12 @@ export default function PaperReportPage() {
                             
                             return (
                             <div key={pt} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                                <div className="bg-[#0ea5e9] px-5 py-3 flex justify-between items-center text-white">
+                                <div 
+                                    className="bg-[#0ea5e9] px-5 py-3 flex justify-between items-center text-white cursor-pointer hover:bg-sky-600 transition-colors"
+                                    onClick={() => toggleSection(pt)}
+                                >
                                     <div className="flex items-center gap-2">
+                                        {expandedSections[pt] ? <ChevronDown className="w-5 h-5 text-white/80" /> : <ChevronRight className="w-5 h-5 text-white/80" />}
                                         <Layers className="w-5 h-5 text-white/80" />
                                         <h3 className="font-bold text-[15px]">{pt} <span className="font-normal text-[13px] opacity-80">({orders.length} รายการ)</span></h3>
                                     </div>
@@ -1264,7 +1274,9 @@ export default function PaperReportPage() {
                                         {totalSheets.toLocaleString()} ใบ
                                     </span>
                                 </div>
-                                <div className="hidden md:block overflow-x-auto">
+                                {expandedSections[pt] && (
+                                    <>
+                                        <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[700px]">
                                         <thead>
                                             <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -1390,8 +1402,10 @@ export default function PaperReportPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            );
+                                </>
+                            )}
+                        </div>
+                        );
                         })
                     ) : (
                         <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-xl border border-gray-100">ไม่มีรายการสั่งพิมพ์ที่บันทึกแล้วในวันนี้</div>
@@ -1407,36 +1421,45 @@ export default function PaperReportPage() {
                 <div className="space-y-4">
                     {Object.entries(weeklySummary.byDept).map(([dept, d]) => {
                         const style = getDepartmentStyle(dept);
+                        const isExpanded = expandedSections[`week-dept-${dept}`];
                         return (
                             <div key={dept} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-slate-50/50">
-                                <div className={`${style.solid} px-5 py-3 flex justify-between items-center text-white`}>
-                                    <h3 className="font-bold text-[15px]">{dept}</h3>
+                                <div 
+                                    className={`${style.solid} px-5 py-3 flex justify-between items-center text-white cursor-pointer`}
+                                    onClick={() => toggleSection(`week-dept-${dept}`)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {isExpanded ? <ChevronDown className="w-5 h-5 text-white/80" /> : <ChevronRight className="w-5 h-5 text-white/80" />}
+                                        <h3 className="font-bold text-[15px]">{dept}</h3>
+                                    </div>
                                     <span className="bg-white/20 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm">
                                         {d.sheetsUsed.toLocaleString()} ใบ
                                     </span>
                                 </div>
-                                <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
-                                    <div>
-                                        <div className="text-[12px] font-bold text-slate-500 mb-1">ยอดสั่ง</div>
-                                        <div className="text-[16px] font-black text-[#0f1e3d]">{d.targetQty.toLocaleString()} <span className="text-[12px] font-bold">ชิ้น</span></div>
+                                {isExpanded && (
+                                    <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">ยอดสั่ง</div>
+                                            <div className="text-[16px] font-black text-[#0f1e3d]">{d.targetQty.toLocaleString()} <span className="text-[12px] font-bold">ชิ้น</span></div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
+                                            <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
+                                            <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">ชิ้นเสีย</div>
+                                            <div className="text-[16px] font-black text-rose-600">{d.wasteQty > 0 ? `${d.wasteQty.toLocaleString()}` : '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">ส่วนเกิน</div>
+                                            <div className="text-[16px] font-black text-amber-500">{d.excessQty > 0 ? d.excessQty.toLocaleString() : '0'}</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
-                                        <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
-                                    </div>
-                                    <div>
-                                        <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
-                                        <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '-'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-[12px] font-bold text-slate-500 mb-1">ชิ้นเสีย</div>
-                                        <div className="text-[16px] font-black text-rose-600">{d.wasteQty > 0 ? `${d.wasteQty.toLocaleString()}` : '-'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-[12px] font-bold text-slate-500 mb-1">ส่วนเกิน</div>
-                                        <div className="text-[16px] font-black text-amber-500">{d.excessQty > 0 ? d.excessQty.toLocaleString() : '0'}</div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         );
                     })}
@@ -1461,45 +1484,56 @@ export default function PaperReportPage() {
                     <CalendarDays className="w-5 h-5 text-sky-600" /> สรุปยอดรวมรายวัน <span className="text-slate-400 font-normal text-[13px]">(เรียงตามวันที่)</span>
                 </h2>
                 <div className="space-y-4">
-                    {dailySummaryByDate.map(([date, d]) => (
-                        <div key={date} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-                            <div className="bg-sky-50 border-b border-sky-100 px-5 py-3 flex justify-between items-center text-sky-900">
-                                <h3 className="font-bold text-[15px]">{new Date(date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>
-                                <span className="bg-white text-sky-700 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm border border-sky-200">
-                                    ใช้รวม {d.sheetsUsed.toLocaleString()} ใบ
-                                </span>
-                            </div>
-                            <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
-                                <div>
-                                    <div className="text-[12px] font-bold text-slate-500 mb-1">ยอดสั่งรวม</div>
-                                    <div className="text-[16px] font-black text-[#0f1e3d]">{d.targetQty.toLocaleString()} <span className="text-[12px] font-bold">ชิ้น</span></div>
-                                </div>
-                                <div>
-                                    <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
-                                    <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
-                                </div>
-                                <div>
-                                    <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
-                                    <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '-'}</div>
-                                </div>
-                                <div>
-                                    <div className="text-[12px] font-bold text-slate-500 mb-1">ชิ้นเสีย</div>
-                                    <div className="text-[16px] font-black text-rose-600">{d.wasteQty > 0 ? `${d.wasteQty.toLocaleString()}` : '-'}</div>
-                                </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <div className="text-[12px] font-bold text-slate-500 mb-2">แยกตามกระดาษ</div>
-                                    <div className="flex flex-col gap-1.5">
-                                        {Object.entries(d.byPaperType).map(([pt, qty]) => (
-                                            <div key={pt} className="text-[13px] flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
-                                                <span className="text-slate-600">{pt}</span>
-                                                <span className="font-bold text-slate-800">{qty.toLocaleString()} ใบ</span>
-                                            </div>
-                                        ))}
+                    {dailySummaryByDate.map(([date, d]) => {
+                        const isExpanded = expandedSections[`daily-${date}`];
+                        return (
+                            <div key={date} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                                <div 
+                                    className="bg-sky-50 border-b border-sky-100 px-5 py-3 flex justify-between items-center text-sky-900 cursor-pointer"
+                                    onClick={() => toggleSection(`daily-${date}`)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {isExpanded ? <ChevronDown className="w-5 h-5 text-sky-700/70" /> : <ChevronRight className="w-5 h-5 text-sky-700/70" />}
+                                        <h3 className="font-bold text-[15px]">{new Date(date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>
                                     </div>
+                                    <span className="bg-white text-sky-700 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm border border-sky-200">
+                                        ใช้รวม {d.sheetsUsed.toLocaleString()} ใบ
+                                    </span>
                                 </div>
+                                {isExpanded && (
+                                    <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">ยอดสั่งรวม</div>
+                                            <div className="text-[16px] font-black text-[#0f1e3d]">{d.targetQty.toLocaleString()} <span className="text-[12px] font-bold">ชิ้น</span></div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
+                                            <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
+                                            <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '-'}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">ชิ้นเสีย</div>
+                                            <div className="text-[16px] font-black text-rose-600">{d.wasteQty > 0 ? `${d.wasteQty.toLocaleString()}` : '-'}</div>
+                                        </div>
+                                        <div className="col-span-2 md:col-span-1">
+                                            <div className="text-[12px] font-bold text-slate-500 mb-2">แยกตามกระดาษ</div>
+                                            <div className="flex flex-col gap-1.5">
+                                                {Object.entries(d.byPaperType).map(([pt, qty]) => (
+                                                    <div key={pt} className="text-[13px] flex justify-between items-center bg-slate-50 px-2 py-1 rounded">
+                                                        <span className="text-slate-600">{pt}</span>
+                                                        <span className="font-bold text-slate-800">{qty.toLocaleString()} ใบ</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -1509,26 +1543,37 @@ export default function PaperReportPage() {
                     <Layers className="w-5 h-5 text-slate-400" /> แยกตามประเภทกระดาษ <span className="text-slate-400 font-normal text-[13px]">(สัปดาห์ปัจจุบัน)</span>
                 </h2>
                 <div className="space-y-4">
-                    {Object.entries(weeklySummary.byPaperType).map(([pt, d]) => (
-                        <div key={pt} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-slate-50/50">
-                            <div className="bg-[#0ea5e9] px-5 py-3 flex justify-between items-center text-white">
-                                <h3 className="font-bold text-[15px]">{pt}</h3>
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm">
-                                    {d.sheetsUsed.toLocaleString()} ใบ
-                                </span>
-                            </div>
-                            <div className="p-5 grid grid-cols-2 gap-6">
-                                <div>
-                                    <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
-                                    <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
+                    {Object.entries(weeklySummary.byPaperType).map(([pt, d]) => {
+                        const isExpanded = expandedSections[`week-paper-${pt}`];
+                        return (
+                            <div key={pt} className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-slate-50/50">
+                                <div 
+                                    className="bg-[#0ea5e9] px-5 py-3 flex justify-between items-center text-white cursor-pointer"
+                                    onClick={() => toggleSection(`week-paper-${pt}`)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {isExpanded ? <ChevronDown className="w-5 h-5 text-white/80" /> : <ChevronRight className="w-5 h-5 text-white/80" />}
+                                        <h3 className="font-bold text-[15px]">{pt}</h3>
+                                    </div>
+                                    <span className="bg-white/20 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm">
+                                        {d.sheetsUsed.toLocaleString()} ใบ
+                                    </span>
                                 </div>
-                                <div>
-                                    <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
-                                    <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '0 ใบ'}</div>
-                                </div>
+                                {isExpanded && (
+                                    <div className="p-5 grid grid-cols-2 gap-6">
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">A3 ดี</div>
+                                            <div className="text-[16px] font-black text-emerald-600">{d.sheetsGood.toLocaleString()} <span className="text-[12px] font-bold">ใบ</span></div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[12px] font-bold text-slate-500 mb-1">A3 เสีย</div>
+                                            <div className="text-[16px] font-black text-rose-600">{d.sheetsWaste > 0 ? `${d.sheetsWaste.toLocaleString()} ใบ` : '0 ใบ'}</div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -1537,137 +1582,148 @@ export default function PaperReportPage() {
                 const deptOrders = printOrders.filter(o => o.department === dept);
                 const style = getDepartmentStyle(dept);
                 const totalSheets = deptOrders.reduce((sum, o) => sum + o.sheetsNeeded, 0);
+                const isExpanded = expandedSections[`detail-dept-${dept}`];
 
                 return (
                     <div key={dept} className="mb-6 rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white">
                         {/* Header */}
-                        <div className={`${style.solid} px-4 py-3 flex justify-between items-center text-white`}>
-                            <h3 className="font-bold text-[15px]">{dept}</h3>
+                        <div 
+                            className={`${style.solid} px-4 py-3 flex justify-between items-center text-white cursor-pointer`}
+                            onClick={() => toggleSection(`detail-dept-${dept}`)}
+                        >
+                            <div className="flex items-center gap-2">
+                                {isExpanded ? <ChevronDown className="w-5 h-5 text-white/80" /> : <ChevronRight className="w-5 h-5 text-white/80" />}
+                                <h3 className="font-bold text-[15px]">{dept}</h3>
+                            </div>
                             <span className="bg-white/20 px-3 py-1 rounded-full text-[12px] font-bold shadow-sm">
                                 {totalSheets.toLocaleString()} ใบ
                             </span>
                         </div>
 
                         {/* Table */}
-                        <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-left border-collapse min-w-[700px]">
-                                <thead>
-                                    <tr className="border-b border-gray-100 bg-gray-50/50">
-                                        <th className="p-4 text-[11px] font-bold text-slate-500 uppercase">LOT: สินค้า</th>
-                                        <th className="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">เป้ารวม</th>
-                                        <th className="p-4 text-[11px] font-bold text-blue-600 uppercase text-center">A3 ใช้รวม</th>
-                                        <th className="p-4 text-[11px] font-bold text-emerald-600 uppercase text-center">A3 ดีสะสม</th>
-                                        <th className="p-4 text-[11px] font-bold text-amber-600 uppercase text-center">ส่วนเกิน</th>
-                                        <th className="p-4 text-[11px] font-bold text-rose-600 uppercase text-center">ของเสียสะสม</th>
-                                        <th className="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">หมายเหตุ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        {isExpanded && (
+                            <>
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full text-left border-collapse min-w-[700px]">
+                                        <thead>
+                                            <tr className="border-b border-gray-100 bg-gray-50/50">
+                                                <th className="p-4 text-[11px] font-bold text-slate-500 uppercase">LOT: สินค้า</th>
+                                                <th className="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">เป้ารวม</th>
+                                                <th className="p-4 text-[11px] font-bold text-blue-600 uppercase text-center">A3 ใช้รวม</th>
+                                                <th className="p-4 text-[11px] font-bold text-emerald-600 uppercase text-center">A3 ดีสะสม</th>
+                                                <th className="p-4 text-[11px] font-bold text-amber-600 uppercase text-center">ส่วนเกิน</th>
+                                                <th className="p-4 text-[11px] font-bold text-rose-600 uppercase text-center">ของเสียสะสม</th>
+                                                <th className="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">หมายเหตุ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {deptOrders.map(order => (
+                                                <tr key={order.id} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors">
+                                                    <td className="p-4">
+                                                        <div className="flex items-start gap-2">
+                                                            <Play className="w-3 h-3 text-slate-300 fill-slate-300 mt-1 shrink-0" />
+                                                            <div>
+                                                                <div className="font-bold text-[13px] text-slate-800">{order.lotName}</div>
+                                                                <div className="text-[11px] text-slate-500 mt-0.5">{order.productName}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-center text-[13px] font-medium text-slate-700">
+                                                        {order.targetQty.toLocaleString()}
+                                                    </td>
+                                                    <td className="p-4 text-center text-[13px] font-bold text-blue-500">
+                                                        {order.sheetsNeeded.toLocaleString()} ใบ
+                                                    </td>
+                                                    <td className="p-4 text-center text-[13px] font-bold text-emerald-500">
+                                                        {(order.sheetsNeeded - order.wasteA3).toLocaleString()} ใบ
+                                                    </td>
+                                                    <td className="p-4 text-center text-[13px] font-bold text-amber-500">
+                                                        {order.excessQty.toLocaleString()} ชิ้น
+                                                    </td>
+                                                    <td className="p-4 text-center text-[13px] font-bold text-rose-500">
+                                                        {order.wasteQty > 0 || order.wasteA3 > 0 ? (
+                                                            <div className="flex flex-col items-center gap-0.5">
+                                                                {order.wasteQty > 0 && <span>{order.wasteQty} ชิ้น</span>}
+                                                                {order.wasteA3 > 0 && <span>{order.wasteA3} ใบ</span>}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-300 font-normal">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-center text-[12px] text-slate-500">
+                                                        {order.remarks.length > 0 ? (
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                {order.remarks.map((r, i) => (
+                                                                    <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                                                        {r}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-300">-</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                {/* Mobile View (Cards) */}
+                                <div className="block md:hidden divide-y divide-gray-100">
                                     {deptOrders.map(order => (
-                                        <tr key={order.id} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors">
-                                            <td className="p-4">
+                                        <div key={order.id} className="p-4 bg-white hover:bg-slate-50 transition-colors">
+                                            <div className="flex justify-between items-start mb-3">
                                                 <div className="flex items-start gap-2">
                                                     <Play className="w-3 h-3 text-slate-300 fill-slate-300 mt-1 shrink-0" />
                                                     <div>
-                                                        <div className="font-bold text-[13px] text-slate-800">{order.lotName}</div>
-                                                        <div className="text-[11px] text-slate-500 mt-0.5">{order.productName}</div>
+                                                        <div className="font-bold text-[14px] text-slate-800">{order.lotName}</div>
+                                                        <div className="text-[12px] text-slate-500 uppercase mt-0.5 leading-tight">{order.productName}</div>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="p-4 text-center text-[13px] font-medium text-slate-700">
-                                                {order.targetQty.toLocaleString()}
-                                            </td>
-                                            <td className="p-4 text-center text-[13px] font-bold text-blue-500">
-                                                {order.sheetsNeeded.toLocaleString()} ใบ
-                                            </td>
-                                            <td className="p-4 text-center text-[13px] font-bold text-emerald-500">
-                                                {(order.sheetsNeeded - order.wasteA3).toLocaleString()} ใบ
-                                            </td>
-                                            <td className="p-4 text-center text-[13px] font-bold text-amber-500">
-                                                {order.excessQty.toLocaleString()} ชิ้น
-                                            </td>
-                                            <td className="p-4 text-center text-[13px] font-bold text-rose-500">
-                                                {order.wasteQty > 0 || order.wasteA3 > 0 ? (
-                                                    <div className="flex flex-col items-center gap-0.5">
-                                                        {order.wasteQty > 0 && <span>{order.wasteQty} ชิ้น</span>}
-                                                        {order.wasteA3 > 0 && <span>{order.wasteA3} ใบ</span>}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-300 font-normal">-</span>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-center text-[12px] text-slate-500">
-                                                {order.remarks.length > 0 ? (
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        {order.remarks.map((r, i) => (
-                                                            <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                                                                {r}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-300">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        {/* Mobile View (Cards) */}
-                        <div className="block md:hidden divide-y divide-gray-100">
-                            {deptOrders.map(order => (
-                                <div key={order.id} className="p-4 bg-white hover:bg-slate-50 transition-colors">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div className="flex items-start gap-2">
-                                            <Play className="w-3 h-3 text-slate-300 fill-slate-300 mt-1 shrink-0" />
-                                            <div>
-                                                <div className="font-bold text-[14px] text-slate-800">{order.lotName}</div>
-                                                <div className="text-[12px] text-slate-500 uppercase mt-0.5 leading-tight">{order.productName}</div>
                                             </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-2 mt-3">
+                                                <div className="bg-slate-50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-slate-100">
+                                                    <span className="text-[11px] text-slate-500 font-bold mb-0.5">เป้ารวม</span>
+                                                    <span className="text-[14px] font-black text-slate-700">{order.targetQty.toLocaleString()}</span>
+                                                </div>
+                                                <div className="bg-blue-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-blue-100/50">
+                                                    <span className="text-[11px] text-blue-600 font-bold mb-0.5">A3 ใช้รวม</span>
+                                                    <span className="text-[14px] font-black text-blue-700">{order.sheetsNeeded.toLocaleString()} ใบ</span>
+                                                </div>
+                                                <div className="bg-emerald-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-emerald-100/50">
+                                                    <span className="text-[11px] text-emerald-600 font-bold mb-0.5">A3 ดีสะสม</span>
+                                                    <span className="text-[14px] font-black text-emerald-700">{(order.sheetsNeeded - order.wasteA3).toLocaleString()} ใบ</span>
+                                                </div>
+                                                <div className="bg-amber-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-amber-100/50">
+                                                    <span className="text-[11px] text-amber-600 font-bold mb-0.5">ส่วนเกิน</span>
+                                                    <span className="text-[14px] font-black text-amber-600">{order.excessQty > 0 ? order.excessQty.toLocaleString() : '-'}</span>
+                                                </div>
+                                                <div className="col-span-2 bg-rose-50/50 p-2.5 rounded-lg flex justify-between items-center border border-rose-100/50">
+                                                    <span className="text-[11px] text-rose-600 font-bold">ของเสียสะสม</span>
+                                                    <span className="text-[13px] font-black text-rose-700">
+                                                        {order.wasteQty > 0 || order.wasteA3 > 0 ? (
+                                                            <>{order.wasteQty > 0 ? `${order.wasteQty} ชิ้น` : ''} {order.wasteQty > 0 && order.wasteA3 > 0 ? '|' : ''} {order.wasteA3 > 0 ? `${order.wasteA3} ใบ` : ''}</>
+                                                        ) : '-'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            {order.remarks.length > 0 && (
+                                                <div className="mt-3 pt-3 border-t border-gray-50 flex flex-wrap gap-1.5">
+                                                    {order.remarks.map((r, i) => (
+                                                        <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200/60">
+                                                            {r}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-2 mt-3">
-                                        <div className="bg-slate-50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-slate-100">
-                                            <span className="text-[11px] text-slate-500 font-bold mb-0.5">เป้ารวม</span>
-                                            <span className="text-[14px] font-black text-slate-700">{order.targetQty.toLocaleString()}</span>
-                                        </div>
-                                        <div className="bg-blue-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-blue-100/50">
-                                            <span className="text-[11px] text-blue-600 font-bold mb-0.5">A3 ใช้รวม</span>
-                                            <span className="text-[14px] font-black text-blue-700">{order.sheetsNeeded.toLocaleString()} ใบ</span>
-                                        </div>
-                                        <div className="bg-emerald-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-emerald-100/50">
-                                            <span className="text-[11px] text-emerald-600 font-bold mb-0.5">A3 ดีสะสม</span>
-                                            <span className="text-[14px] font-black text-emerald-700">{(order.sheetsNeeded - order.wasteA3).toLocaleString()} ใบ</span>
-                                        </div>
-                                        <div className="bg-amber-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-amber-100/50">
-                                            <span className="text-[11px] text-amber-600 font-bold mb-0.5">ส่วนเกิน</span>
-                                            <span className="text-[14px] font-black text-amber-600">{order.excessQty > 0 ? order.excessQty.toLocaleString() : '-'}</span>
-                                        </div>
-                                        <div className="col-span-2 bg-rose-50/50 p-2.5 rounded-lg flex justify-between items-center border border-rose-100/50">
-                                            <span className="text-[11px] text-rose-600 font-bold">ของเสียสะสม</span>
-                                            <span className="text-[13px] font-black text-rose-700">
-                                                {order.wasteQty > 0 || order.wasteA3 > 0 ? (
-                                                    <>{order.wasteQty > 0 ? `${order.wasteQty} ชิ้น` : ''} {order.wasteQty > 0 && order.wasteA3 > 0 ? '|' : ''} {order.wasteA3 > 0 ? `${order.wasteA3} ใบ` : ''}</>
-                                                ) : '-'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    {order.remarks.length > 0 && (
-                                        <div className="mt-3 pt-3 border-t border-gray-50 flex flex-wrap gap-1.5">
-                                            {order.remarks.map((r, i) => (
-                                                <span key={i} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200/60">
-                                                    {r}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </>
+                        )}
                     </div>
                 );
             }) : (

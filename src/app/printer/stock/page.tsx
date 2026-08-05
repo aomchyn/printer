@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
@@ -36,6 +36,7 @@ export default function StockPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [username, setUsername] = useState('Unknown User')
+    const [activeTab, setActiveTab] = useState<'HISTORY' | 'DAILY_SUMMARY'>('HISTORY')
 
     const [paperType, setPaperType] = useState(PAPER_TYPES[0])
     const [qty, setQty] = useState('')
@@ -88,6 +89,73 @@ export default function StockPage() {
     }
 
     // Handled by checkAccess now
+
+    const balances = PAPER_TYPES.map(type => {
+        const typeTxs = transactions.filter(t => t.paper_type === type)
+        const tIn = typeTxs.filter(t => t.transaction_type === 'IN').reduce((acc, t) => acc + t.qty, 0)
+        const tOut = typeTxs.filter(t => t.transaction_type === 'OUT').reduce((acc, t) => acc + t.qty, 0)
+        return { type, balance: tIn - tOut }
+    })
+
+        const dailySummaries = useMemo(() => {
+        // Sort explicitly: oldest date first, then oldest created_at first
+        const sortedTxs = [...transactions].sort((a, b) => {
+            if (a.date !== b.date) {
+                return (a.date || '').localeCompare(b.date || '');
+            }
+            const timeA = new Date(a.created_at).getTime();
+            const timeB = new Date(b.created_at).getTime();
+            return (timeA || 0) - (timeB || 0);
+        });
+
+        const runningBalance: Record<string, number> = {};
+        const summariesMap: Record<string, Record<string, { start: number, in: number, out: number, end: number }>> = {};
+        
+        sortedTxs.forEach(tx => {
+            const dateKey = tx.date || new Date(tx.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+            const pt = tx.paper_type;
+            
+            if (!summariesMap[dateKey]) summariesMap[dateKey] = {};
+            if (!summariesMap[dateKey][pt]) {
+                summariesMap[dateKey][pt] = {
+                    start: runningBalance[pt] || 0,
+                    in: 0,
+                    out: 0,
+                    end: runningBalance[pt] || 0
+                };
+            }
+            
+            if (tx.transaction_type === 'IN') {
+                summariesMap[dateKey][pt].in += tx.qty;
+                summariesMap[dateKey][pt].end += tx.qty;
+                runningBalance[pt] = (runningBalance[pt] || 0) + tx.qty;
+            } else {
+                summariesMap[dateKey][pt].out += tx.qty;
+                summariesMap[dateKey][pt].end -= tx.qty;
+                runningBalance[pt] = (runningBalance[pt] || 0) - tx.qty;
+            }
+        });
+        
+        return Object.entries(summariesMap)
+            .sort(([dateA], [dateB]) => dateB.localeCompare(dateA)) // Descending
+            .map(([date, pts]) => {
+                let displayDate = date;
+                try {
+                    const dateObj = new Date(date);
+                    if (!isNaN(dateObj.getTime())) {
+                        displayDate = dateObj.toLocaleDateString('th-TH', { 
+                            year: 'numeric', month: 'short', day: 'numeric' 
+                        });
+                    }
+                } catch (e) {}
+
+                return {
+                    dateKey: date,
+                    displayDate,
+                    paperTypes: Object.entries(pts).map(([pt, data]) => ({ pt, ...data }))
+                };
+            });
+    }, [transactions]);
 
     if (accessStatus === 'checking') {
         return <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">กำลังตรวจสอบสิทธิ์...</div>;
@@ -167,12 +235,7 @@ export default function StockPage() {
         }
     }
 
-    const balances = PAPER_TYPES.map(type => {
-        const typeTxs = transactions.filter(t => t.paper_type === type)
-        const tIn = typeTxs.filter(t => t.transaction_type === 'IN').reduce((acc, t) => acc + t.qty, 0)
-        const tOut = typeTxs.filter(t => t.transaction_type === 'OUT').reduce((acc, t) => acc + t.qty, 0)
-        return { type, balance: tIn - tOut }
-    })
+
 
     const inputCls = `w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-lg text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 transition-all`
 
@@ -233,16 +296,29 @@ export default function StockPage() {
                     </div>
                 </div>
 
-                {/* ── Right column: history ── */}
-                <div className="lg:col-span-2 bg-white border border-[#dde8f5] rounded-2xl p-5 shadow-sm">
-                    <h2 className="text-[13px] font-black text-[#0f1e3d] mb-4">ประวัติการทำรายการ</h2>
-                    <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1">
-                        {isLoading ? (
-                            <div className="text-center py-8 text-slate-400 text-[13px]">กำลังโหลด...</div>
-                        ) : transactions.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400 text-[13px]">ยังไม่มีประวัติการทำรายการ</div>
-                        ) : transactions.map(tx => (
-                            <div key={tx.id} className={`group flex items-center justify-between gap-3 bg-white border border-[#dde8f5] border-l-2 ${tx.transaction_type === 'IN' ? 'border-l-emerald-400' : 'border-l-rose-400'} rounded-xl px-3.5 py-3 hover:shadow-md transition-all`}>
+                {/* ── Right column: history & daily summary ── */}
+                <div className="lg:col-span-2 bg-white border border-[#dde8f5] rounded-2xl p-5 shadow-sm flex flex-col">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                        <h2 className="text-[13px] font-black text-[#0f1e3d]">ประวัติการทำรายการ</h2>
+                        <div className="flex bg-slate-100 p-1 rounded-lg self-start sm:self-auto">
+                            <button 
+                                onClick={() => setActiveTab('HISTORY')}
+                                className={`px-3 py-1.5 text-[11.5px] font-bold rounded-md transition-all ${activeTab === 'HISTORY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >ประวัติทั้งหมด</button>
+                            <button 
+                                onClick={() => setActiveTab('DAILY_SUMMARY')}
+                                className={`px-3 py-1.5 text-[11.5px] font-bold rounded-md transition-all ${activeTab === 'DAILY_SUMMARY' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >สรุปรายวัน</button>
+                        </div>
+                    </div>
+                    <div className="flex-1 space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '640px' }}>
+                        {activeTab === 'HISTORY' ? (
+                            isLoading ? (
+                                <div className="text-center py-8 text-slate-400 text-[13px]">กำลังโหลด...</div>
+                            ) : transactions.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400 text-[13px]">ยังไม่มีประวัติการทำรายการ</div>
+                            ) : transactions.map(tx => (
+                                <div key={tx.id} className={`group flex items-center justify-between gap-3 bg-white border border-[#dde8f5] border-l-2 ${tx.transaction_type === 'IN' ? 'border-l-emerald-400' : 'border-l-rose-400'} rounded-xl px-3.5 py-3 hover:shadow-md transition-all`}>
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tx.transaction_type === 'IN' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
                                         {tx.transaction_type === 'IN' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
@@ -267,7 +343,45 @@ export default function StockPage() {
                                     </button>
                                 </div>
                             </div>
-                        ))}
+                        ))
+                        ) : (
+                            dailySummaries.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400 text-[13px]">ไม่มีข้อมูลสรุปรายวัน</div>
+                            ) : dailySummaries.map(day => (
+                                <div key={day.dateKey} className="mb-4 border border-[#dde8f5] rounded-xl overflow-hidden bg-white shadow-sm">
+                                    <div className="bg-slate-50 px-4 py-2 border-b border-[#dde8f5]">
+                                        <span className="font-bold text-[13px] text-[#0f1e3d]">{day.displayDate}</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {day.paperTypes.map(p => (
+                                            <div key={p.pt} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-[12.5px] font-bold text-[#0f1e3d] truncate">{p.pt}</div>
+                                                </div>
+                                                <div className="flex items-center gap-4 sm:gap-6 text-[11.5px] shrink-0 self-end sm:self-auto">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-slate-400 mb-0.5">ยกมา</span>
+                                                        <span className="font-semibold text-slate-700">{p.start.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-slate-400 mb-0.5">รับเข้า</span>
+                                                        <span className="font-semibold text-emerald-500">{p.in > 0 ? '+' : ''}{p.in.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-slate-400 mb-0.5">เบิกใช้</span>
+                                                        <span className="font-semibold text-rose-500">{p.out > 0 ? '-' : ''}{p.out.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex flex-col items-end border-l border-gray-200 pl-4">
+                                                        <span className="text-slate-400 mb-0.5">คงเหลือ</span>
+                                                        <span className="font-bold text-blue-600">{p.end.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
