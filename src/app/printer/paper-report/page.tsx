@@ -83,6 +83,22 @@ export default function PaperReportPage() {
   const [mdProductSearch, setMdProductSearch] = useState("");
   const [showMdDropdown, setShowMdDropdown] = useState(false);
 
+  useEffect(() => {
+    if (mdProduct) {
+      const prod = productsList.find(p => p.id === mdProduct);
+      if (prod && prod.qty_per_a3 > 0) {
+        if (mdTargetQty || mdWasteQty) {
+          const target = Number(mdTargetQty) || 0;
+          const waste = Number(mdWasteQty) || 0;
+          const sheets = Math.ceil((target + waste) / prod.qty_per_a3);
+          setMdQty(sheets.toString());
+        } else {
+          setMdQty("");
+        }
+      }
+    }
+  }, [mdTargetQty, mdWasteQty, mdProduct, productsList]);
+
   const manualDeductCalc = useMemo(() => {
       const selectedProd = productsList.find(p => p.id === mdProduct);
       const qtyPerA3 = selectedProd?.qty_per_a3 || 1;
@@ -95,7 +111,12 @@ export default function PaperReportPage() {
       const totalA3 = goodA3 + wasteA3;
       const totalPrinted = qtyPerA3 > 0 ? goodA3 * qtyPerA3 : 0;
       const excessQty = Math.max(0, totalPrinted - target - wasteQty);
-      return { qtyPerA3, target, wasteQty, wasteA3, goodA3, totalA3, totalPrinted, excessQty };
+
+      // Breakdown: how many A3 for target only vs extra from waste pieces
+      const baseA3 = qtyPerA3 > 0 ? Math.ceil(target / qtyPerA3) : targetA3;
+      const extraA3FromWasteQty = Math.max(0, targetA3 - baseA3);
+
+      return { qtyPerA3, target, wasteQty, wasteA3, goodA3, totalA3, totalPrinted, excessQty, baseA3, extraA3FromWasteQty };
   }, [mdProduct, mdTargetQty, mdWasteQty, mdWasteA3, mdQty, mdGoodA3, productsList]);
 
   // ─── Guard: เฉพาะ moderator/assistant_moderator ──────────────────────────
@@ -1817,10 +1838,6 @@ export default function PaperReportPage() {
                                                     setMdProductSearch(`${product.id} - ${product.name || ''}`);
                                                     setShowMdDropdown(false);
                                                     if (product.default_paper_type) setMdPaperType(product.default_paper_type);
-                                                    if (mdTargetQty && product.qty_per_a3 > 0) {
-                                                        const sheets = Math.ceil(Number(mdTargetQty) / product.qty_per_a3);
-                                                        setMdQty(sheets.toString());
-                                                    }
                                                 }}
                                                 className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors">
                                                 <div className="font-bold text-blue-600 text-[12px]">{product.id}</div>
@@ -1846,15 +1863,6 @@ export default function PaperReportPage() {
                                 let val = e.target.value;
                                 if (Number(val) < 0) val = "0";
                                 setMdTargetQty(val);
-                                if (val && mdProduct) {
-                                    const prod = productsList.find(p => p.id === mdProduct);
-                                    if (prod && prod.qty_per_a3 > 0) {
-                                        const sheets = Math.ceil(Number(val) / prod.qty_per_a3);
-                                        setMdQty(sheets.toString());
-                                    }
-                                } else {
-                                    setMdQty("");
-                                }
                             }}
                                 className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdTargetQty ? 'bg-emerald-50 border-emerald-200 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500' : 'border-gray-200 text-slate-900 bg-white focus:ring-rose-500/20 focus:border-rose-500'}`}
                                 placeholder="ระบุจำนวนชิ้น..." />
@@ -1950,9 +1958,23 @@ export default function PaperReportPage() {
                             <div className="flex justify-between"><span className="text-rose-600">ชิ้นเสีย (Waste Qty)</span><span className="font-black text-rose-600">{manualDeductCalc.wasteQty.toLocaleString()} ชิ้น</span></div>
                         )}
                         
-                        {(manualDeductCalc.excessQty > 0 || manualDeductCalc.wasteQty > 0) && (
-                            <div className="border-t border-emerald-200/60 my-0.5"></div>
-                        )}
+                        <div className="border-t border-emerald-200/60 my-1"></div>
+
+                        {/* A3 Breakdown */}
+                        <div className="flex flex-col gap-1">
+                            <div className="flex justify-between"><span className="text-blue-600 font-medium">A3 ตั้งต้น (เป้าหมาย)</span><span className="font-bold text-blue-700">{manualDeductCalc.baseA3.toLocaleString()} ใบ</span></div>
+                            {manualDeductCalc.extraA3FromWasteQty > 0 && (
+                                <div className="flex justify-between"><span className="text-rose-500 font-medium">+ A3 เพิ่มจากชิ้นเสีย ({manualDeductCalc.wasteQty} ชิ้น)</span><span className="font-bold text-rose-500">+{manualDeductCalc.extraA3FromWasteQty.toLocaleString()} ใบ</span></div>
+                            )}
+                            {Number(mdGoodA3) > 0 && (
+                                <div className="flex justify-between"><span className="text-sky-500 font-medium">+ A3 ดีเพิ่มเติม</span><span className="font-bold text-sky-500">+{Number(mdGoodA3).toLocaleString()} ใบ</span></div>
+                            )}
+                            {manualDeductCalc.wasteA3 > 0 && (
+                                <div className="flex justify-between"><span className="text-rose-600 font-medium">+ A3 เสีย (กระดาษเสีย)</span><span className="font-bold text-rose-600">+{manualDeductCalc.wasteA3.toLocaleString()} ใบ</span></div>
+                            )}
+                        </div>
+                        
+                        <div className="border-t border-emerald-300/60 my-0.5"></div>
                         
                         <div className="flex justify-between items-center pt-1">
                             <span className="text-emerald-700 font-bold">รวมตัดสต็อคกระดาษ (ใบ A3)</span>
