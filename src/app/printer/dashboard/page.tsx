@@ -1611,7 +1611,7 @@ export default function DashboardPage() {
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
-                                            {isAdmin && !order.is_cancelled && (
+                                            {isAdmin && !order.is_cancelled && !(order.paper_type || typeof order.good_a3 === 'number' || order.waste_qty || order.waste_a3) && (
                                                 <button type="button" onClick={() => startReconcile(order)} className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/80 flex items-center justify-center transition-all duration-200" title="บันทึกผลผลิต / ตัดสต็อคกระดาษ">
                                                     <Layers className="w-3.5 h-3.5" />
                                                 </button>
