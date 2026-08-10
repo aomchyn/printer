@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { logAction } from '@/lib/logger';
 import { ImagePlus, X, ClipboardCheck } from 'lucide-react';
+import { StabilitySkeleton } from './skeleton-loading-stability';
 
 export interface OrderInterface {
     id?: number;
@@ -93,6 +94,8 @@ export default function StabilityPage() {
     const [editOrderId, setEditOrderId] = useState<number | null>(null);
     const [globalSearch, setGlobalSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
 
     // ✅ ย้ายฟังก์ชันขึ้นก่อน useEffect
     const fetchUserInfo = async () => {
@@ -179,10 +182,9 @@ export default function StabilityPage() {
 
     // ✅ useEffect เดียว ไม่มี setState โดยตรง
     useEffect(() => {
-        fetchUserInfo();
-        fetchProducts();
-        fetchStabilityLogs();
+        Promise.all([fetchUserInfo(), fetchProducts(), fetchStabilityLogs()]).finally(() => setIsLoading(false));
     }, []);
+
 
     const calculateExpiryDate = (manufactureDate: string, shelfLife: string): string => {
         if (!manufactureDate || !shelfLife) return '';
@@ -504,7 +506,7 @@ export default function StabilityPage() {
         setEditOrderId(log.id || null);
         setIsFormOpen(true);
         setProductSearch(log.productId || '');
-        
+
         if (log.notes && (log.notes.startsWith('[') || log.notes.startsWith('{'))) {
             try {
                 const parsed = JSON.parse(log.notes);
@@ -550,7 +552,7 @@ export default function StabilityPage() {
 
             const { error } = await supabase
                 .from('orders')
-                .update({ 
+                .update({
                     is_deleted: true,
                     deleted_by: username,
                     deleted_at: new Date().toISOString()
@@ -642,6 +644,9 @@ export default function StabilityPage() {
 
         return upcoming;
     }).sort((a, b) => a.testDate.getTime() - b.testDate.getTime());
+
+    if (isLoading) return <StabilitySkeleton />;
+
 
     return (
         <div className="min-h-screen bg-[#f4f7fc] py-6 md:py-8 px-3 md:px-6 flex flex-col items-center gap-8 text-gray-800" style={{

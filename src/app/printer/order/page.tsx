@@ -62,6 +62,8 @@ export default function OrderPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [productSearch, setProductSearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
+    const [loading, setLoading] = useState(true);
+
 
     // ✅ ย้ายฟังก์ชันขึ้นก่อน useEffect
     const fetchUserInfo = async () => {
@@ -113,9 +115,9 @@ export default function OrderPage() {
 
     // ✅ useEffect เดียว ไม่มี setState โดยตรง
     useEffect(() => {
-        fetchUserInfo();
-        fetchProducts();
+        Promise.all([fetchUserInfo(), fetchProducts()]).finally(() => setLoading(false));
     }, []);
+
 
     const calculateExpiryDate = (manufactureDate: string, shelfLife: string): string => {
         if (!manufactureDate || !shelfLife) return '';
@@ -376,6 +378,63 @@ export default function OrderPage() {
             </div>
         );
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#f4f7fc] py-4 md:py-8 px-0 md:px-4 flex justify-center items-start text-gray-800" style={{
+                backgroundImage: 'radial-gradient(ellipse at 0% 0%, rgba(59,102,199,0.07) 0%, transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(107,56,202,0.05) 0%, transparent 60%)',
+            }}>
+                <div className="w-full max-w-2xl md:max-w-3xl bg-white border border-slate-200/80 rounded-2xl md:rounded-3xl shadow-xl shadow-blue-900/5 p-4 md:p-8 relative overflow-hidden animate-pulse">
+                    <div className="flex flex-col items-center mb-8">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-200 mb-3" />
+                        <div className="h-5 w-56 bg-slate-200 rounded-md mb-2" />
+                        <div className="h-3 w-40 bg-slate-100 rounded-md" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="md:col-span-2">
+                            <div className="h-3 w-48 bg-slate-200 rounded mb-2" />
+                            <div className="h-12 w-full bg-slate-100 rounded-xl" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <div className="h-3 w-40 bg-slate-200 rounded mb-3" />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="h-12 bg-slate-100 rounded-xl" />
+                                <div className="h-12 bg-slate-100 rounded-xl" />
+                            </div>
+                        </div>
+                        <div>
+                            <div className="h-3 w-32 bg-slate-200 rounded mb-2" />
+                            <div className="h-12 bg-slate-100 rounded-xl" />
+                        </div>
+                        <div>
+                            <div className="h-3 w-32 bg-slate-200 rounded mb-2" />
+                            <div className="h-12 bg-slate-100 rounded-xl" />
+                        </div>
+                        <div>
+                            <div className="h-3 w-32 bg-slate-200 rounded mb-2" />
+                            <div className="h-12 bg-slate-100 rounded-xl" />
+                        </div>
+                        <div>
+                            <div className="h-3 w-24 bg-slate-200 rounded mb-2" />
+                            <div className="h-12 bg-slate-100 rounded-xl" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <div className="h-3 w-24 bg-slate-200 rounded mb-2" />
+                            <div className="h-20 bg-slate-100 rounded-xl" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <div className="h-3 w-48 bg-slate-200 rounded mb-2" />
+                            <div className="h-44 bg-slate-100 rounded-2xl" />
+                        </div>
+                        <div className="md:col-span-2 pt-4">
+                            <div className="h-[52px] w-full bg-slate-200 rounded-xl" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
 
     return (
         <div className="min-h-screen bg-[#f4f7fc] py-4 md:py-8 px-0 md:px-4 flex justify-center items-start text-gray-800" style={{
