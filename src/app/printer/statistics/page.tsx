@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import StatisticsSkeleton from './skeleton-loading-statistics';
 export interface OrderInterface {
     id: number;
     order_date: string;
@@ -609,10 +610,7 @@ export default function StatisticsPage() {
 
                 {/* ── Loading spinner ──────────────────────────────────────── */}
                 {isLoading ? (
-                    <div className="flex flex-col justify-center items-center py-24 gap-4">
-                        <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin" />
-                        <p className="text-blue-300/60 text-sm font-medium">กำลังโหลดข้อมูล...</p>
-                    </div>
+                    <StatisticsSkeleton />
                 ) : (
                     <div id="statistics-content" className="w-full">
 

@@ -10,6 +10,7 @@ import Swal from 'sweetalert2';
 import { Layers, Download, CalendarDays, BarChart3, Play, MinusCircle, X, RotateCcw, FileText, ChevronDown, ChevronRight } from "lucide-react";
 import { PAPER_TYPES } from "../stock/page";
 import { generateDocument, generateMergedDocumentsToSingleDocx } from "@/lib/docxExport";
+import PaperReportSkeleton from './skeleton-loading-paper-report';
 
 interface DashboardOrderGroup {
   id: string;
@@ -1229,10 +1230,7 @@ export default function PaperReportPage() {
 
       <div className="p-3 sm:p-5 max-w-6xl mx-auto space-y-5">
         {isLoadingOrders ? (
-          <div className="text-center py-16 text-slate-400 text-sm flex flex-col items-center">
-             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-             กำลังโหลดข้อมูลสรุป...
-          </div>
+          <PaperReportSkeleton />
         ) : ordersError ? (
           <div className="text-center py-16 text-rose-500 text-sm bg-rose-50 rounded-2xl border border-rose-100">{ordersError}</div>
         ) : printOrders.length === 0 ? (

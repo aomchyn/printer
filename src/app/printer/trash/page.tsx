@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
 import { Trash2, Undo, RefreshCcw, Clock, AlertTriangle, ShieldOff } from 'lucide-react';
+import TrashSkeleton from './skeleton-loading-trash';
 
 interface DeletedOrder {
     id: number;
@@ -361,10 +362,7 @@ export default function TrashPage() {
 
             {/* ── Content area ─────────────────────────────────────────────── */}
             {loading ? (
-                <div className="bg-gray-900/40 border border-white/8 rounded-2xl p-16 text-center">
-                    <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin mx-auto mb-3" />
-                    <p className="text-gray-300 text-sm">กำลังโหลด...</p>
-                </div>
+                <TrashSkeleton />
             ) : deletedOrders.length === 0 ? (
                 <div className="bg-gradient-to-b from-[#0f1e3d]/60 to-[#0a1628]/60 border border-white/8 border-dashed rounded-2xl p-16 text-center">
                     <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">

@@ -6,6 +6,7 @@ import Swal from "sweetalert2"
 import { supabase } from "@/lib/supabase"
 import { Package, Plus, TrendingUp, TrendingDown, Trash2 } from "lucide-react"
 import { logAction } from "@/lib/logger"
+import { StockSkeleton } from "./skeleton-loading-stock"
 
 export const PAPER_TYPES = [
     "สติกเกอร์ RONDA PG-88G (ไม่เหนียว)",
@@ -157,8 +158,8 @@ export default function StockPage() {
             });
     }, [transactions]);
 
-    if (accessStatus === 'checking') {
-        return <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">กำลังตรวจสอบสิทธิ์...</div>;
+    if (accessStatus === 'checking' || (accessStatus === 'allowed' && isLoading && transactions.length === 0)) {
+        return <StockSkeleton />;
     }
     if (accessStatus === 'denied') {
         return (

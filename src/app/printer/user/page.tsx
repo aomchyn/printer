@@ -10,6 +10,7 @@ import {
     Mail, BadgeCheck, Briefcase, Building2, Shield, Users
 } from "lucide-react"
 import { logAction } from "@/lib/logger"
+import { UserSkeleton } from "./skeleton-loading-user"
 
 interface User {
     id: string
@@ -139,6 +140,7 @@ export default function UserManagement() {
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [signatureFile, setSignatureFile] = useState<File | null>(null)
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
 
     const fetchUsers = async () => {
         try {
@@ -149,6 +151,7 @@ export default function UserManagement() {
     }
 
     const checkAdminStatus = async () => {
+        setIsLoading(true);
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
             setCurrentUserId(session.user.id)
@@ -156,10 +159,11 @@ export default function UserManagement() {
             if (data?.role === 'moderator' || data?.role === 'assistant_moderator') { 
                 setIsAdmin(true); 
                 setCurrentUserRole(data.role);
-                fetchUsers() 
+                await fetchUsers() 
             }
             else Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์เข้าถึง', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' })
         }
+        setIsLoading(false);
     }
 
     useEffect(() => { checkAdminStatus() }, [])
@@ -331,7 +335,19 @@ export default function UserManagement() {
         setShowModal(true)
     }
 
-    if (!isAdmin) return <div className="p-8 text-center text-xl text-yellow-200">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (Restricted)</div>
+    if (isLoading) return <UserSkeleton />
+
+    if (!isAdmin) return (
+        <div className="min-h-screen flex items-center justify-center bg-[#f4f7fc] p-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
+                <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+                    <Shield className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl font-black text-[#0f1e3d] mb-2 tracking-wide">Access Denied</h2>
+                <p className="text-slate-500 text-sm font-medium">เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเข้าถึงหน้านี้ได้</p>
+            </div>
+        </div>
+    )
 
     const filtered = users.filter(u => {
         if (!search.trim()) return true

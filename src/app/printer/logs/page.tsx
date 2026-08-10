@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase"
 import Swal from "sweetalert2"
 import { useRouter } from "next/navigation"
 import { Search, History, RefreshCcw, ShieldAlert, X, ShieldOff } from "lucide-react"
+import LogsSkeleton from './skeleton-loading-logs'
 
 interface AuditLog {
     id: string
@@ -323,12 +324,7 @@ export default function LogsManagement() {
 
             {/* ── Loading / Empty shared states ────────────────────────────── */}
             {loading ? (
-                <div className="bg-[#0f1e3d] rounded-2xl border border-white/8 p-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-blue-400 animate-spin" />
-                        <span className="text-blue-300/60 text-sm font-medium">กำลังโหลดประวัติ...</span>
-                    </div>
-                </div>
+                <LogsSkeleton />
             ) : filteredLogs.length === 0 ? (
                 <div className="bg-[#0f1e3d] border border-white/8 border-dashed rounded-2xl p-16 text-center">
                     <div className="w-14 h-14 bg-white/8 border border-white/12 rounded-2xl flex items-center justify-center mx-auto mb-3">
