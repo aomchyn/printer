@@ -133,7 +133,6 @@ export default function DashboardPage() {
                 const { data, error } = await supabase
                     .from('orders').select('*')
                     .eq('is_deleted', false)
-                    .neq('order_type', 'Stability Feed')
                     .order('created_at', { ascending: false })
                     .range(from, from + pageSize - 1);
 
@@ -293,7 +292,7 @@ export default function DashboardPage() {
                     const nowTS = Date.now();
                     if (payload.eventType === 'INSERT') {
                         const newData = payload.new as Record<string, unknown>;
-                        if (newData?.order_type !== 'Stability Feed') {
+                        if (newData) {
                             playNotificationSound();
                             Swal.fire({
                                 toast: true, position: 'top-end', icon: 'info',
@@ -1664,12 +1663,10 @@ export default function DashboardPage() {
                                             <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">อายุผลิตภัณฑ์ (Shelf Life):</span>
                                             <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">{order.product_exp} เดือน</span>
                                         </div>
-                                        {order.order_type !== 'Stability Feed' && (
-                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                                                <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
-                                                <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
-                                            </div>
-                                        )}
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
+                                            <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
+                                        </div>
 
 
 

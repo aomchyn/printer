@@ -153,7 +153,7 @@ export default function LogsManagement() {
                     <div><span className="text-blue-300/60">สินค้า:</span> <span className="font-semibold text-white">{d.product_name}</span></div>
                     <div><span className="text-blue-300/60">รหัส:</span> <span className="text-white/70">{d.product_id}</span></div>
                     <div><span className="text-blue-300/60">ลอต:</span> <span className="font-semibold text-indigo-300">{d.lot_number}</span></div>
-                    {d.order_type !== 'Stability Feed' && (
+                    {d.order_type && (
                         <div><span className="text-blue-300/60">จำนวน:</span> <span className="text-white/70">{d.quantity}</span></div>
                     )}
                     <div><span className="text-blue-300/60">ผู้สั่ง:</span> <span className="text-white/70">{d.created_by}</span></div>

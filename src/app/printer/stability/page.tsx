@@ -35,6 +35,23 @@ export interface FgcodeInterface {
     exp: string;
 }
 
+export interface StabilityFeedLog {
+    id?: number;
+    lotNumber: string;
+    productId: string;
+    productName: string;
+    productExp: string;
+    productionDate: string;
+    expiryDate: string;
+    feedType: string;
+    remark: string;
+    selectedIntervals: number[];
+    completedIntervals: number[];
+    createdBy?: string;
+    createdByDepartment?: string;
+    createdAt?: string;
+}
+
 const FormWrapper = ({ isModal, onClose, children }: { isModal: boolean, onClose: () => void, children: React.ReactNode }) => {
     if (isModal) {
         return (
@@ -86,7 +103,7 @@ export default function StabilityPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [productSearch, setProductSearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
-    const [stabilityLogs, setStabilityLogs] = useState<OrderInterface[]>([]);
+    const [stabilityLogs, setStabilityLogs] = useState<StabilityFeedLog[]>([]);
     const [selectedIntervals, setSelectedIntervals] = useState<number[]>([0, 3, 6, 9, 12]);
     const [completedIntervals, setCompletedIntervals] = useState<number[]>([]);
     const [feedType, setFeedType] = useState('');
@@ -148,9 +165,8 @@ export default function StabilityPage() {
     const fetchStabilityLogs = async () => {
         try {
             const { data, error } = await supabase
-                .from('orders')
+                .from('stability_feeds')
                 .select('*')
-                .eq('order_type', 'Stability Feed')
                 .eq('is_deleted', false)
                 .order('created_at', { ascending: false });
 
@@ -158,19 +174,18 @@ export default function StabilityPage() {
             if (data) {
                 const mappedData = data.map(item => ({
                     id: item.id,
-                    orderDate: item.order_date,
-                    orderTime: item.order_time,
-                    orderDateTime: item.order_datetime,
-                    orderType: item.order_type,
                     lotNumber: item.lot_number,
                     productId: item.product_id,
                     productName: item.product_name,
                     productExp: item.product_exp,
                     productionDate: item.production_date,
                     expiryDate: item.expiry_date,
-                    quantity: item.quantity,
-                    notes: item.notes,
+                    feedType: item.feed_type || '',
+                    remark: item.remark || '',
+                    selectedIntervals: item.selected_intervals || [0, 3, 6, 9, 12],
+                    completedIntervals: item.completed_intervals || [],
                     createdBy: item.created_by,
+                    createdByDepartment: item.created_by_department,
                     createdAt: item.created_at,
                 }));
                 setStabilityLogs(mappedData);
@@ -313,40 +328,27 @@ export default function StabilityPage() {
 
             setUploading(true);
 
-            const notesPayload = JSON.stringify({
-                selected: selectedIntervals.sort((a, b) => a - b),
-                completed: completedIntervals,
-                feedType,
-                remark
-            });
-
             const payload = {
-                order_date: orderData.orderDate,
-                order_time: orderData.orderTime,
-                order_datetime: orderData.orderDateTime,
-                order_type: 'Stability Feed',
                 lot_number: orderData.lotNumber,
                 product_id: orderData.productId,
                 product_name: orderData.productName,
                 product_exp: orderData.productExp,
                 production_date: orderData.productionDate,
                 expiry_date: orderData.expiryDate,
-                quantity: 1,
-                notes: notesPayload,
+                feed_type: feedType || null,
+                remark: remark || null,
+                selected_intervals: selectedIntervals.sort((a, b) => a - b),
+                completed_intervals: completedIntervals,
                 created_by: username,
                 created_by_department: department || 'ไม่ระบุหน่วยงาน',
-                is_verified: false,
-                verified_by: null,
-                verified_at: null,
-                image_url: null
             };
 
             let submitError;
             if (editOrderId) {
-                const { error } = await supabase.from('orders').update(payload).eq('id', editOrderId);
+                const { error } = await supabase.from('stability_feeds').update(payload).eq('id', editOrderId);
                 submitError = error;
             } else {
-                const { error } = await supabase.from('orders').insert(payload);
+                const { error } = await supabase.from('stability_feeds').insert(payload);
                 submitError = error;
             }
 
@@ -433,7 +435,7 @@ export default function StabilityPage() {
         );
     };
 
-    const handleMarkCompleted = async (logId: number, months: number, currentNotes: string | undefined) => {
+    const handleMarkCompleted = async (logId: number, months: number, currentCompleted: number[]) => {
         try {
             const confirm = await Swal.fire({
                 title: 'ยืนยันการตรวจสอบ',
@@ -447,30 +449,14 @@ export default function StabilityPage() {
 
             if (!confirm.isConfirmed) return;
 
-            let selected = [0, 3, 6, 9, 12];
-            let completed: number[] = [];
-
-            if (currentNotes) {
-                try {
-                    const parsed = JSON.parse(currentNotes);
-                    if (Array.isArray(parsed)) {
-                        selected = parsed;
-                    } else if (parsed && typeof parsed === 'object') {
-                        selected = parsed.selected || [];
-                        completed = parsed.completed || [];
-                    }
-                } catch { }
-            }
-
+            const completed = [...currentCompleted];
             if (!completed.includes(months)) {
                 completed.push(months);
             }
 
-            const newNotes = JSON.stringify({ selected, completed });
-
             const { error } = await supabase
-                .from('orders')
-                .update({ notes: newNotes })
+                .from('stability_feeds')
+                .update({ completed_intervals: completed })
                 .eq('id', logId);
 
             if (error) throw error;
@@ -490,49 +476,29 @@ export default function StabilityPage() {
         }
     };
 
-    const handleEditLog = (log: OrderInterface) => {
+    const handleEditLog = (log: StabilityFeedLog) => {
+        const now = new Date();
         setOrderData({
-            ...log,
-            orderDate: log.orderDate || new Date().toISOString().split('T')[0],
-            orderTime: log.orderTime || new Date().toTimeString().split(' ')[0].substring(0, 5),
-            orderDateTime: log.orderDateTime || new Date().toISOString(),
-            productName: log.productName || '',
-            productId: log.productId || '',
+            orderDate: now.toISOString().split('T')[0],
+            orderTime: now.toTimeString().split(' ')[0].substring(0, 5),
+            orderDateTime: now.toISOString(),
+            orderType: 'Stability Feed',
             lotNumber: log.lotNumber || '',
+            productId: log.productId || '',
+            productName: log.productName || '',
             productExp: log.productExp || '',
             productionDate: log.productionDate || '',
             expiryDate: log.expiryDate || '',
+            quantity: 0,
+            notes: '',
         });
         setEditOrderId(log.id || null);
         setIsFormOpen(true);
         setProductSearch(log.productId || '');
-
-        if (log.notes && (log.notes.startsWith('[') || log.notes.startsWith('{'))) {
-            try {
-                const parsed = JSON.parse(log.notes);
-                if (Array.isArray(parsed)) {
-                    setSelectedIntervals(parsed);
-                    setCompletedIntervals([]);
-                    setFeedType('');
-                    setRemark('');
-                } else if (parsed && typeof parsed === 'object') {
-                    setSelectedIntervals(parsed.selected || []);
-                    setCompletedIntervals(parsed.completed || []);
-                    setFeedType(parsed.feedType || '');
-                    setRemark(parsed.remark || '');
-                }
-            } catch {
-                setSelectedIntervals([0, 3, 6, 9, 12]);
-                setCompletedIntervals([]);
-                setFeedType('');
-                setRemark('');
-            }
-        } else {
-            setSelectedIntervals([0, 3, 6, 9, 12]);
-            setCompletedIntervals([]);
-            setFeedType('');
-            setRemark('');
-        }
+        setSelectedIntervals(log.selectedIntervals || [0, 3, 6, 9, 12]);
+        setCompletedIntervals(log.completedIntervals || []);
+        setFeedType(log.feedType || '');
+        setRemark(log.remark || '');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -551,7 +517,7 @@ export default function StabilityPage() {
             if (!confirm.isConfirmed) return;
 
             const { error } = await supabase
-                .from('orders')
+                .from('stability_feeds')
                 .update({
                     is_deleted: true,
                     deleted_by: username,
@@ -586,26 +552,12 @@ export default function StabilityPage() {
         }
     };
 
-    const parseNotes = (notesStr: string | undefined | null) => {
-        let intervals = [0, 3, 6, 9, 12];
-        let completed: number[] = [];
-        let feedType = '';
-        let remark = '';
-        if (notesStr && (notesStr.startsWith('[') || notesStr.startsWith('{'))) {
-            try {
-                const parsed = JSON.parse(notesStr);
-                if (Array.isArray(parsed)) {
-                    intervals = parsed;
-                } else if (parsed && typeof parsed === 'object') {
-                    intervals = parsed.selected || [];
-                    completed = parsed.completed || [];
-                    feedType = parsed.feedType || '';
-                    remark = parsed.remark || '';
-                }
-            } catch { }
-        }
-        return { intervals, completed, feedType, remark };
-    };
+    const parseLogData = (log: StabilityFeedLog) => ({
+        intervals: log.selectedIntervals || [0, 3, 6, 9, 12],
+        completed: log.completedIntervals || [],
+        feedType: log.feedType || '',
+        remark: log.remark || '',
+    });
 
     const filteredLogs = stabilityLogs.filter(log => {
         const search = globalSearch.toLowerCase();
@@ -617,7 +569,7 @@ export default function StabilityPage() {
     const upcomingTests = filteredLogs.flatMap(log => {
         if (!log.productionDate) return [];
 
-        const { intervals: selected, completed } = parseNotes(log.notes);
+        const { intervals: selected, completed } = parseLogData(log);
 
         const upcoming: any[] = [];
         const today = new Date();
@@ -1010,7 +962,7 @@ export default function StabilityPage() {
                                         </div>
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => handleMarkCompleted(item.id, item.intervalMonths, item.notes)}
+                                                onClick={() => handleMarkCompleted(item.id, item.intervalMonths, item.completedIntervals || [])}
                                                 className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
                                                 title="ยืนยันการตรวจแล้ว"
                                             >
@@ -1076,7 +1028,7 @@ export default function StabilityPage() {
                                             <td className="px-3 py-3 text-center">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <button
-                                                        onClick={() => handleMarkCompleted(item.id, item.intervalMonths, item.notes)}
+                                                        onClick={() => handleMarkCompleted(item.id, item.intervalMonths, item.completedIntervals || [])}
                                                         className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
                                                         title="ยืนยันการตรวจแล้ว"
                                                     >
@@ -1123,7 +1075,7 @@ export default function StabilityPage() {
                         </div>
                     ) : (
                         filteredLogs.map((log) => {
-                            const { intervals, completed, feedType, remark } = parseNotes(log.notes);
+                            const { intervals, completed, feedType, remark } = parseLogData(log);
                             const calculateDate = (months: number) => {
                                 if (!log.productionDate) return '-';
 
@@ -1254,7 +1206,7 @@ export default function StabilityPage() {
                                 </tr>
                             ) : (
                                 filteredLogs.map((log) => {
-                                    const { intervals, completed, feedType, remark } = parseNotes(log.notes);
+                                    const { intervals, completed, feedType, remark } = parseLogData(log);
                                     const calculateDate = (months: number) => {
                                         if (!log.productionDate) return '-';
 
