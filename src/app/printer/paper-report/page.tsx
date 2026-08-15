@@ -323,7 +323,8 @@ export default function PaperReportPage() {
         const targetQty = o.target_qty || 0;
         const wasteA3 = o.waste_a3 || 0;
         const wasteQty = o.waste_qty || 0;
-        const trueExcess = Math.max(0, totalPrinted - targetQty);
+        const trueExcess = Math.max(0, totalPrinted - targetQty - wasteQty);
+
 
         const remarkW = o.waste_qty_remark ? String(o.waste_qty_remark).trim() : "";
         const remarkA3 = o.waste_a3_remark ? String(o.waste_a3_remark).trim() : "";
