@@ -8,6 +8,24 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import StatisticsSkeleton from './skeleton-loading-statistics';
+
+const bangkokDateFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+});
+
+const getBangkokDateParts = (value: string) => {
+    const parts = bangkokDateFormatter.formatToParts(new Date(value));
+    return parts.reduce<Record<string, string>>((result, part) => {
+        if (part.type !== 'literal') result[part.type] = part.value;
+        return result;
+    }, {});
+};
+
 export interface OrderInterface {
     id: number;
     order_date: string;
@@ -180,6 +198,51 @@ export default function StatisticsPage() {
     const quantityChartData = getQuantityChartData();
     const totalQuantity = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
 
+    const activeOrders = orders.filter(order => !order.is_cancelled);
+    const hourlyOrderData = Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        label: `${String(hour).padStart(2, '0')}:00`,
+        orders: 0,
+        quantity: 0,
+    }));
+    const dailyOrderMap: Record<string, { date: string; orders: number; quantity: number; hours: Record<number, number> }> = {};
+
+    activeOrders.forEach(order => {
+        const parts = getBangkokDateParts(order.created_at);
+        const hour = Number(parts.hour);
+        const dateKey = `${parts.year}-${parts.month}-${parts.day}`;
+        const dateLabel = `${parts.day}/${parts.month}/${Number(parts.year) + 543}`;
+
+        hourlyOrderData[hour].orders += 1;
+        hourlyOrderData[hour].quantity += order.quantity || 0;
+
+        if (!dailyOrderMap[dateKey]) {
+            dailyOrderMap[dateKey] = { date: dateLabel, orders: 0, quantity: 0, hours: {} };
+        }
+        dailyOrderMap[dateKey].orders += 1;
+        dailyOrderMap[dateKey].quantity += order.quantity || 0;
+        dailyOrderMap[dateKey].hours[hour] = (dailyOrderMap[dateKey].hours[hour] || 0) + 1;
+    });
+
+    const dailyOrderData = Object.entries(dailyOrderMap)
+        .sort(([first], [second]) => first.localeCompare(second))
+        .map(([key, value]) => {
+            const peak = Object.entries(value.hours).sort(([, first], [, second]) => second - first)[0];
+            return {
+                key,
+                date: value.date,
+                orders: value.orders,
+                quantity: value.quantity,
+                peakHour: peak ? `${String(peak[0]).padStart(2, '0')}:00` : '-',
+                peakOrders: peak?.[1] || 0,
+            };
+        });
+    const activeHourCount = hourlyOrderData.filter(item => item.orders > 0).length;
+    const averageOrdersPerDay = dailyOrderData.length > 0 ? activeOrders.length / dailyOrderData.length : 0;
+    const averageOrdersPerActiveHour = activeHourCount > 0 ? activeOrders.length / activeHourCount : 0;
+    const busiestDay = [...dailyOrderData].sort((first, second) => second.orders - first.orders)[0];
+    const busiestHour = [...hourlyOrderData].sort((first, second) => second.orders - first.orders)[0];
+
     const getCancelChartData = () => {
         const cancelledOrders = orders.filter(o => o.is_cancelled);
 
@@ -213,6 +276,7 @@ export default function StatisticsPage() {
 
     const availableMonths = availableDates.filter(d => d.year === selectedYear).map(d => d.month);
     const months = availableMonths.length > 0 ? availableMonths : [new Date().getMonth()];
+    const selectedMonthName = ALL_MONTHS[selectedMonth] || ALL_MONTHS[new Date().getMonth()];
 
     const exportExcel = async () => {
         if (orders.length === 0) return;
@@ -301,6 +365,36 @@ export default function StatisticsPage() {
                 percent: ((item.count / orders.length) * 100).toFixed(2) + '%',
             });
         });
+
+        // ✅ Sheet 3 — สรุปคำสั่งตามวันและช่วงเวลา
+        const wsTimingDaily = wb.addWorksheet('สรุปตามวันและช่วงเวลา');
+        wsTimingDaily.columns = [
+            { header: 'วันที่', key: 'date', width: 16 },
+            { header: 'คำสั่งที่ใช้งาน', key: 'orders', width: 18 },
+            { header: 'ชิ้นงานรวม', key: 'quantity', width: 16 },
+            { header: 'ช่วงเวลาที่พีค', key: 'peakHour', width: 18 },
+            { header: 'คำสั่งช่วงพีค', key: 'peakOrders', width: 18 },
+        ];
+        wsTimingDaily.getRow(1).eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891B2' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        dailyOrderData.forEach(row => wsTimingDaily.addRow(row));
+
+        // ✅ Sheet 4 — สรุปคำสั่งรายชั่วโมง
+        const wsTimingHourly = wb.addWorksheet('สรุปรายชั่วโมง');
+        wsTimingHourly.columns = [
+            { header: 'ช่วงเวลา', key: 'label', width: 16 },
+            { header: 'คำสั่งที่ใช้งาน', key: 'orders', width: 18 },
+            { header: 'ชิ้นงานรวม', key: 'quantity', width: 16 },
+        ];
+        wsTimingHourly.getRow(1).eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        hourlyOrderData.forEach(row => wsTimingHourly.addRow({ label: row.label, orders: row.orders, quantity: row.quantity }));
 
         // ✅ helper วาดกราฟแท่ง — ใช้ร่วมกันทั้ง 2 sheet
         const drawBarChart = (
@@ -417,7 +511,7 @@ export default function StatisticsPage() {
         // ✅ Sheet 3 — กราฟจำนวนคำสั่งต่อหน่วยงาน
         const ws3 = wb.addWorksheet('กราฟจำนวนคำสั่ง');
         const img3 = drawBarChart(
-            `สัดส่วนจำนวนคำสั่งแต่ละหน่วยงาน — ${months[selectedMonth]} ${selectedYear}`,
+            `สัดส่วนจำนวนคำสั่งแต่ละหน่วยงาน — ${selectedMonthName} ${selectedYear}`,
             `คำสั่งรวม: ${orders.length} รายการ | ${chartData.length} หน่วยงาน`,
             chartData.map(d => ({ name: d.name, value: d.count })), // ✅ map .count → .value
             orders.length,
@@ -429,7 +523,7 @@ export default function StatisticsPage() {
         // ✅ Sheet 4 — กราฟจำนวนชิ้นงานต่อหน่วยงาน
         const ws4 = wb.addWorksheet('กราฟจำนวนชิ้นงาน');
         const img4 = drawBarChart(
-            `สัดส่วนจำนวนชิ้นงานแต่ละหน่วยงาน — ${months[selectedMonth]} ${selectedYear}`,
+            `สัดส่วนจำนวนชิ้นงานแต่ละหน่วยงาน — ${selectedMonthName} ${selectedYear}`,
             `ชิ้นงานรวม: ${totalQuantity.toLocaleString()} ชิ้น | ${quantityChartData.length} หน่วยงาน`,
             quantityChartData, // ✅ มี .value อยู่แล้ว ไม่ต้อง map
             totalQuantity,
@@ -661,6 +755,100 @@ export default function StatisticsPage() {
                             </div>
                         </div>
 
+                        {/* ── Order timing summary ───────────────────────────── */}
+                        <section className="mb-8 space-y-6">
+                            <div className="flex items-center gap-3">
+                                <span className="h-6 w-2 rounded-full bg-cyan-400" />
+                                <div>
+                                    <h2 className="text-base font-black text-white/90">ช่วงเวลาการสั่งพิมพ์</h2>
+                                    <p className="text-xs text-blue-200/60">ไม่นับคำสั่งที่ยกเลิก · เวลาไทย (Asia/Bangkok)</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                                <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-200/70">เฉลี่ยต่อวัน</p>
+                                    <p className="mt-2 text-3xl font-black tabular-nums text-cyan-300">{averageOrdersPerDay.toFixed(1)}</p>
+                                    <p className="text-xs text-cyan-200/60">คำสั่ง/วันที่มีข้อมูล</p>
+                                </div>
+                                <div className="rounded-2xl border border-sky-400/15 bg-sky-400/5 p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-sky-200/70">เฉลี่ยต่อชั่วโมง</p>
+                                    <p className="mt-2 text-3xl font-black tabular-nums text-sky-300">{averageOrdersPerActiveHour.toFixed(1)}</p>
+                                    <p className="text-xs text-sky-200/60">เฉพาะชั่วโมงที่มีคำสั่ง</p>
+                                </div>
+                                <div className="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-200/70">วันที่สั่งมากที่สุด</p>
+                                    <p className="mt-2 truncate text-xl font-black text-amber-300">{busiestDay?.date || '—'}</p>
+                                    <p className="text-xs text-amber-200/60">{busiestDay ? `${busiestDay.orders} คำสั่ง` : 'ไม่มีข้อมูล'}</p>
+                                </div>
+                                <div className="rounded-2xl border border-violet-400/15 bg-violet-400/5 p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-violet-200/70">ช่วงเวลาที่พีค</p>
+                                    <p className="mt-2 text-xl font-black text-violet-300">{busiestHour?.label || '—'}</p>
+                                    <p className="text-xs text-violet-200/60">{busiestHour?.orders || 0} คำสั่ง</p>
+                                </div>
+                            </div>
+
+                            {activeOrders.length > 0 && (
+                                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                                    <div className="rounded-2xl border border-white/8 bg-white/5 p-4 sm:p-6">
+                                        <h3 className="mb-5 text-sm font-black text-white/90">จำนวนคำสั่งแยกตามวัน</h3>
+                                        <ResponsiveContainer width="100%" height={280}>
+                                            <BarChart data={dailyOrderData} margin={{ bottom: 8 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={axisTickStyle} interval="preserveStartEnd" />
+                                                <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
+                                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} formatter={(value, name) => [Number(value).toLocaleString(), name === 'orders' ? 'คำสั่ง' : 'ชิ้นงาน']} />
+                                                <Bar dataKey="orders" name="คำสั่ง" fill="#22d3ee" radius={[6, 6, 0, 0]} barSize={28} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-white/8 bg-white/5 p-4 sm:p-6">
+                                        <h3 className="mb-5 text-sm font-black text-white/90">จำนวนคำสั่งแยกตามช่วงเวลา</h3>
+                                        <ResponsiveContainer width="100%" height={280}>
+                                            <BarChart data={hourlyOrderData}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTickStyle} interval={2} />
+                                                <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
+                                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} formatter={(value) => [Number(value).toLocaleString(), 'คำสั่ง']} />
+                                                <Bar dataKey="orders" name="คำสั่ง" fill="#a78bfa" radius={[5, 5, 0, 0]} barSize={18} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/5">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[620px] text-left text-sm">
+                                        <thead className="border-b border-white/10 bg-white/5 text-xs text-blue-200/70">
+                                            <tr>
+                                                <th className="px-4 py-3 font-bold">วันที่</th>
+                                                <th className="px-4 py-3 text-right font-bold">คำสั่ง</th>
+                                                <th className="px-4 py-3 text-right font-bold">ชิ้นงาน</th>
+                                                <th className="px-4 py-3 text-right font-bold">ช่วงที่พีค</th>
+                                                <th className="px-4 py-3 text-right font-bold">คำสั่งช่วงพีค</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5">
+                                            {dailyOrderData.map(row => (
+                                                <tr key={row.key} className="text-white/80 transition-colors hover:bg-white/5">
+                                                    <td className="px-4 py-3 font-semibold">{row.date}</td>
+                                                    <td className="px-4 py-3 text-right font-black text-cyan-300">{row.orders.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-right">{row.quantity.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-right text-violet-300">{row.peakHour}</td>
+                                                    <td className="px-4 py-3 text-right font-bold">{row.peakOrders.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                            {dailyOrderData.length === 0 && (
+                                                <tr><td colSpan={5} className="px-4 py-8 text-center text-white/40">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </section>
+
                         {/* ── Section label helper ─────────────────────────────── */}
                         {/* Reusable inline component for section headings */}
 
@@ -673,7 +861,7 @@ export default function StatisticsPage() {
                                     <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
                                         <span className="w-2 h-5 bg-blue-400 rounded-full inline-block shrink-0" />
                                         จำนวนคำสั่งพิมพ์แบ่งตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={chartData}>
@@ -691,7 +879,7 @@ export default function StatisticsPage() {
                                     <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
                                         <span className="w-2 h-5 bg-violet-400 rounded-full inline-block shrink-0" />
                                         สัดส่วนการสั่งพิมพ์ตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
@@ -719,7 +907,7 @@ export default function StatisticsPage() {
                             <div className="bg-white/3 border border-white/8 border-dashed rounded-2xl p-16 text-center mb-6">
                                 <div className="text-5xl mb-4 opacity-20">📁</div>
                                 <h2 className="text-lg font-semibold text-white/40">
-                                    ไม่มีข้อมูลคำสั่งพิมพ์ฉลากในเดือน {months[selectedMonth]} {selectedYear}
+                                    ไม่มีข้อมูลคำสั่งพิมพ์ฉลากในเดือน {selectedMonthName} {selectedYear}
                                 </h2>
                             </div>
                         )}
@@ -732,7 +920,7 @@ export default function StatisticsPage() {
                                     <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
                                         <span className="w-2 h-5 bg-violet-400 rounded-full inline-block shrink-0" />
                                         จำนวนชิ้นงานที่สั่งตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={quantityChartData}>
@@ -753,7 +941,7 @@ export default function StatisticsPage() {
                                     <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
                                         <span className="w-2 h-5 bg-cyan-400 rounded-full inline-block shrink-0" />
                                         สัดส่วนชิ้นงานที่สั่งตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
+                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
@@ -796,7 +984,7 @@ export default function StatisticsPage() {
                                         <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
                                             <span className="w-2 h-5 bg-rose-400 rounded-full inline-block shrink-0" />
                                             จำนวนที่ยกเลิกต่อหน่วยงาน
-                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
+                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                         </h3>
                                         <ResponsiveContainer width="100%" height={300}>
                                             <BarChart data={cancelChartData}>
@@ -817,7 +1005,7 @@ export default function StatisticsPage() {
                                         <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
                                             <span className="w-2 h-5 bg-orange-400 rounded-full inline-block shrink-0" />
                                             สัดส่วนการยกเลิกต่อหน่วยงาน
-                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({months[selectedMonth]} {selectedYear})</span>
+                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                         </h3>
                                         <ResponsiveContainer width="100%" height={300}>
                                             <PieChart>
