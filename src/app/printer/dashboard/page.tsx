@@ -57,6 +57,8 @@ export interface OrderInterface {
     waste_a3_remark?: string | null;
     reconciled_by?: string | null;
     reconciled_at?: string | null;
+    qty_per_a3_used?: number | null;
+
 }
 
 
@@ -797,6 +799,8 @@ export default function DashboardPage() {
                 waste_a3_remark: reconcileForm.wasteA3Remark || null,
                 reconciled_by: editorName,
                 reconciled_at: new Date().toISOString(),
+                qty_per_a3_used: reconcileCalculation.qtyPerA3,
+
             }).eq('id', entryId);
 
             if (updateErr) throw updateErr;
@@ -886,6 +890,7 @@ export default function DashboardPage() {
                     product_id: reconcilingOrder.product_id,
                     department: reconcilingOrder.created_by_department,
                     lot_number: reconcilingOrder.lot_number,
+                    qty_per_a3_used: reconcileCalculation.qtyPerA3,
                 }).eq('id', existingReport.id);
             } else {
                 await supabase.from('paper_reports').insert({
@@ -903,7 +908,8 @@ export default function DashboardPage() {
                     waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
                     waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
                     created_by: editorName,
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    qty_per_a3_used: reconcileCalculation.qtyPerA3,
                 });
             }
 
@@ -920,6 +926,8 @@ export default function DashboardPage() {
                 waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
                 reconciled_by: editorName,
                 reconciled_at: new Date().toISOString(),
+                qty_per_a3_used: reconcileCalculation.qtyPerA3,
+
             } : o));
 
             // อัปเดตค่าที่ค้างอยู่ใน Modal เพื่อแสดงค่าล่าสุด แทนการปิด Modal
@@ -933,6 +941,8 @@ export default function DashboardPage() {
                 waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
                 reconciled_by: editorName,
                 reconciled_at: new Date().toISOString(),
+                qty_per_a3_used: reconcileCalculation.qtyPerA3,
+
             } : null);
 
             setInitialReconcileForm({
@@ -963,6 +973,7 @@ export default function DashboardPage() {
         }
     };
 
+
         const undoReconcile = async (order: OrderInterface) => {
         if (!isAdmin) {
             Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะ Moderator และ Assistant Moderator เท่านั้น' });
@@ -971,6 +982,16 @@ export default function DashboardPage() {
         const goodA3 = order.good_a3 || 0;
         const wasteA3 = order.waste_a3 || 0;
         const totalSheets = goodA3 + wasteA3;
+
+                // ✅ เช็คว่าอัตราส่วนชิ้น/A3 ตอนตัดสต็อค ยังตรงกับอัตราปัจจุบันของสินค้านี้ไหม
+        const currentQtyPerA3 = productMetaMap[order.product_id]?.qtyPerA3;
+        let ratioWarningHtml = '';
+        if (order.qty_per_a3_used == null) {
+            ratioWarningHtml = `<p style="margin-top:6px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px;">⚠️ ไม่สามารถตรวจสอบอัตราส่วนของรายการนี้ได้ (บันทึกไว้ก่อนระบบอัปเดต) กรุณาตรวจสอบยอดด้วยตนเอง</p>`;
+        } else if (currentQtyPerA3 && order.qty_per_a3_used !== currentQtyPerA3) {
+            ratioWarningHtml = `<p style="margin-top:6px; color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:6px 8px;">⚠️ อัตราส่วนชิ้น/A3 ของสินค้านี้เปลี่ยนไปหลังตัดสต็อคครั้งนี้ (ตอนตัด: <b>${order.qty_per_a3_used}</b> ชิ้น/A3 ตอนนี้: <b>${currentQtyPerA3}</b> ชิ้น/A3) กรุณาตรวจสอบยอดให้แน่ใจก่อนยกเลิก</p>`;
+        }
+
 
         const result = await Swal.fire({
             icon: 'warning',
@@ -982,6 +1003,7 @@ export default function DashboardPage() {
                     <p style="margin-top:6px; border-top:1px solid #e5e7eb; padding-top:6px;">
                         กระดาษ <b>${totalSheets}</b> ใบ (ประเภท <b>${order.paper_type || '-'}</b>) จะถูกคืนเข้าสต็อค
                     </p>
+                                        ${ratioWarningHtml}
                     <p style="margin-top:4px; color:#dc2626;">รายการตัดสต็อคเดิมของคำสั่งนี้จะถูกลบทั้งหมด</p>
                 </div>
             `,
@@ -1017,6 +1039,8 @@ export default function DashboardPage() {
                 waste_a3_remark: null,
                 reconciled_by: null,
                 reconciled_at: null,
+                qty_per_a3_used: null,
+
             }).eq('id', order.id);
             if (updateErr) throw updateErr;
 
@@ -1032,6 +1056,8 @@ export default function DashboardPage() {
                 waste_a3_remark: undefined,
                 reconciled_by: undefined,
                 reconciled_at: undefined,
+                qty_per_a3_used: undefined,
+
             } : o));
 
             Swal.fire({ icon: 'success', title: 'ยกเลิกตัดสต็อคสำเร็จ', timer: 1500, showConfirmButton: false });

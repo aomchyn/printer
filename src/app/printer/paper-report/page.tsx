@@ -213,7 +213,7 @@ export default function PaperReportPage() {
         if (wasteA3 > 0 && remarkA3 && remarkA3 !== 'ไม่มี' && remarkA3 !== '-') initialRemarks.push(`A3เสีย: ${remarkA3}`);
         if (o.report_type === 'MANUAL') initialRemarks.push(`(Manual Deduct)`);
 
-        const qtyPerA3 = productMetaMap[productId]?.qtyPerA3 || 1;
+        const qtyPerA3 = o.qty_per_a3_used || productMetaMap[productId]?.qtyPerA3 || 1;
         const productName = productMetaMap[productId]?.name || "ไม่ทราบชื่อสินค้า";
 
         const totalPrinted = goodA3 * qtyPerA3;
@@ -318,7 +318,7 @@ export default function PaperReportPage() {
         const pt = o.paper_type || metaMap[productId]?.paperType || 'ไม่ระบุ';
         const productName = metaMap[productId]?.name || "ไม่ทราบชื่อสินค้า";
         const goodA3 = o.good_a3 || 0;
-        const qtyPerA3 = metaMap[productId]?.qtyPerA3 || 1;
+        const qtyPerA3 = o.qty_per_a3_used || metaMap[productId]?.qtyPerA3 || 1;
         const totalPrinted = goodA3 * qtyPerA3;
         const targetQty = o.target_qty || 0;
         const wasteA3 = o.waste_a3 || 0;
