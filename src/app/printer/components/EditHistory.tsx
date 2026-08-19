@@ -28,13 +28,15 @@ export default function EditHistory({ orderId, updatedAt, auditKey }: Props) {
 
         const loadHistory = async () => {
             setLoading(true);
-            const { data, error } = await supabase
+                        const { data, error } = await supabase
                 .from('audit_logs')
                 .select('*')
                 .eq('order_id', orderId)
                 .neq('action', 'VERIFY')
                 .neq('action', 'RECONCILE')
+                .neq('action', 'CANCEL_RECONCILE')
                 .order('created_at', { ascending: false });
+
 
             if (!cancelled) {
                 if (error) {
