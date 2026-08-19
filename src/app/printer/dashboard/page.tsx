@@ -79,6 +79,7 @@ export default function DashboardPage() {
     // ✅ สต็อคกระดาษ A3 — เฉพาะ moderator/assistant_moderator
     const [productMetaMap, setProductMetaMap] = useState<Record<string, { qtyPerA3: number; paperType: string }>>({});
     const [reconcilingOrder, setReconcilingOrder] = useState<OrderInterface | null>(null);
+    const [stockDetailOrder, setStockDetailOrder] = useState<OrderInterface | null>(null);
     const [reconcileForm, setReconcileForm] = useState({
         wasteQty: '',
         wasteA3: '',
@@ -1602,11 +1603,17 @@ export default function DashboardPage() {
                                 ${order.is_cancelled ? 'opacity-85' : ''}
                             `}>
                                     {isAdmin && (order.paper_type || typeof order.good_a3 === 'number' || order.waste_qty || order.waste_a3) && (
-                                        <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden z-20 pointer-events-none">
-                                            <div className="absolute top-4 -right-7 w-32 bg-gradient-to-r from-emerald-600 to-emerald-400 text-white text-[9px] font-black uppercase tracking-widest py-1 text-center shadow-md transform rotate-45 flex items-center justify-center gap-1 border-b border-emerald-300/50">
-                                                <CheckCircle2 className="w-3 h-3" /> ตัดสต็อคแล้ว
+                                        <button
+                                            type="button"
+                                            onClick={() => setStockDetailOrder(order)}
+                                            className="relative z-20 w-full cursor-pointer rounded-none border-b border-emerald-300/60 bg-gradient-to-br from-emerald-600 to-emerald-400 px-3 py-1.5 text-left text-white shadow-md transition-colors hover:from-emerald-700 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
+                                            title={`ตัดสต็อคโดย ${order.reconciled_by || 'ไม่ระบุชื่อ'} เมื่อ ${formatThaiDateTimeFromISO(order.reconciled_at)}`}
+                                        >
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                                <span className="truncate text-[10px] font-black">ตัดสต็อค: {order.reconciled_by || 'ไม่ระบุชื่อ'}</span>
                                             </div>
-                                        </div>
+                                        </button>
                                     )}
                                     <div className={headerBgCls}>
                                         <div className="w-full">
@@ -1657,13 +1664,6 @@ export default function DashboardPage() {
                                                     </button>
                                                 )}
                                             </h4>
-                                            {isAdmin && order.reconciled_by && (
-    <div className="flex items-center gap-2 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-1.5 mt-2 w-fit">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-        ตัดสต็อคโดย {order.reconciled_by} · {formatThaiDateTimeFromISO(order.reconciled_at)}
-    </div>
-)}
-
                                         </div>
                                         <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 shrink-0 justify-center">
                                             {isAdmin && !order.is_cancelled && (
@@ -1988,6 +1988,49 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isAdmin && stockDetailOrder && (
+                <Modal id="stock-detail-modal" title="รายละเอียดการตัดสต็อค" onClose={() => setStockDetailOrder(null)} size="sm">
+                    {(() => {
+                        const goodA3 = stockDetailOrder.good_a3 || 0;
+                        const wasteA3 = stockDetailOrder.waste_a3 || 0;
+                        const totalSheets = goodA3 + wasteA3;
+
+                        return (
+                            <div className="space-y-4">
+                                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                                    <div className="text-[11px] font-bold text-emerald-700">ตัดสต็อคโดย</div>
+                                    <div className="mt-0.5 break-words text-sm font-black text-emerald-900">{stockDetailOrder.reconciled_by || 'ไม่ระบุชื่อ'}</div>
+                                    <div className="mt-1 text-[11px] text-emerald-700">{formatThaiDateTimeFromISO(stockDetailOrder.reconciled_at)}</div>
+                                </div>
+
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+                                        <span className="text-slate-500">ประเภทกระดาษ</span>
+                                        <span className="text-right font-bold text-blue-700">{stockDetailOrder.paper_type || 'ไม่ระบุ'}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                                        <span className="text-slate-500">ตัดออกทั้งหมด</span>
+                                        <span className="font-black text-slate-800">{totalSheets.toLocaleString()} ใบ</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                                        <span className="text-slate-500">กระดาษดี</span>
+                                        <span className="font-bold text-emerald-600">{goodA3.toLocaleString()} ใบ</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                                        <span className="text-slate-500">กระดาษเสีย</span>
+                                        <span className="font-bold text-rose-600">{wasteA3.toLocaleString()} ใบ</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4">
+                                        <span className="text-slate-500">ชิ้นเสีย</span>
+                                        <span className="font-bold text-rose-600">{(stockDetailOrder.waste_qty || 0).toLocaleString()} ชิ้น</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </Modal>
             )}
 
             {/* ✅ Reconcile Modal — บันทึกผลผลิต/ตัดสต็อคกระดาษ (เฉพาะ isAdmin) */}
