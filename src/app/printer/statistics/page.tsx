@@ -808,7 +808,7 @@ export default function StatisticsPage() {
                                         <ResponsiveContainer width="100%" height={280}>
                                             <BarChart data={hourlyOrderData}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
-                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTickStyle} interval={2} />
+                                               <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTickStyle} interval="preserveStartEnd" />
                                                 <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
                                                 <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} formatter={(value) => [Number(value).toLocaleString(), 'คำสั่ง']} />
                                                 <Bar dataKey="orders" name="คำสั่ง" fill="#a78bfa" radius={[5, 5, 0, 0]} barSize={18} />
@@ -818,8 +818,8 @@ export default function StatisticsPage() {
                                 </div>
                             )}
 
-                            <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/5">
-                                <div className="overflow-x-auto">
+                                               <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/5">
+                                <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full min-w-[620px] text-left text-sm">
                                         <thead className="border-b border-white/10 bg-white/5 text-xs text-blue-200/70">
                                             <tr>
@@ -845,6 +845,23 @@ export default function StatisticsPage() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div className="block md:hidden divide-y divide-white/5">
+                                    {dailyOrderData.map(row => (
+                                        <div key={row.key} className="p-4 flex flex-col gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-semibold text-white/90">{row.date}</span>
+                                                <span className="font-black text-cyan-300 text-lg tabular-nums">{row.orders.toLocaleString()} คำสั่ง</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-white/60">
+                                                <span>ชิ้นงาน <span className="text-white/80 font-semibold">{row.quantity.toLocaleString()}</span></span>
+                                                <span>ช่วงพีค <span className="text-violet-300 font-semibold">{row.peakHour}</span> ({row.peakOrders.toLocaleString()} คำสั่ง)</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {dailyOrderData.length === 0 && (
+                                        <div className="px-4 py-8 text-center text-white/40 text-sm">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</div>
+                                    )}
                                 </div>
                             </div>
                         </section>
