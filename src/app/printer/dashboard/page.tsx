@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy, Layers, ArrowUp } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy, Layers, ArrowUp, ChevronDown } from 'lucide-react';
 import EditHistory from '../components/EditHistory';
 import { JetBrains_Mono } from 'next/font/google';
 import { DashboardSkeleton } from './loading-skeleton';
@@ -79,6 +79,7 @@ export default function DashboardPage() {
     const [visibleCount, setVisibleCount] = useState(10)
     const [focusedOrderId, setFocusedOrderId] = useState<number | null>(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const [isPendingFilePanelOpen, setIsPendingFilePanelOpen] = useState(false);
 
     // ✅ สต็อคกระดาษ A3 — เฉพาะ moderator/assistant_moderator
     const [productMetaMap, setProductMetaMap] = useState<Record<string, { qtyPerA3: number; paperType: string }>>({});
@@ -1641,45 +1642,57 @@ export default function DashboardPage() {
                     </div>
 
                     {isAdmin && (
-                        <div className="w-full rounded-2xl border border-amber-300/40 bg-slate-950/20 p-4 text-left shadow-inner md:p-5">
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                        <div className="w-full rounded-2xl border border-amber-300/40 bg-slate-950/20 text-left shadow-inner">
+                            <button
+                                type="button"
+                                onClick={() => setIsPendingFilePanelOpen(previousOpen => !previousOpen)}
+                                className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-white/5 md:px-4"
+                                aria-expanded={isPendingFilePanelOpen}
+                            >
                                 <div className="flex items-center gap-2 text-amber-100">
                                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/20">
                                         <FileQuestion className="h-4 w-4" />
                                     </span>
                                     <div>
                                         <h2 className="text-sm font-black">คำสั่งรอไฟล์</h2>
-                                        <p className="text-[10px] text-amber-100/65">คลิกรายการเพื่อไปยังคำสั่งโดยตรง</p>
+                                        <p className="text-[10px] text-amber-100/65">กดเพื่อดูรายละเอียดและไปยังคำสั่ง</p>
                                     </div>
                                 </div>
-                                <span className="rounded-full bg-amber-400 px-3 py-1 text-base font-black text-amber-950">
-                                    {pendingFileOrders.length} คำสั่ง
-                                </span>
-                            </div>
-                            {pendingFileOrders.length > 0 ? (
-                                <div className="mt-3 grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
-                                    {pendingFileOrders.map(order => (
-                                        <button
-                                            key={order.id}
-                                            type="button"
-                                            onClick={() => focusOrder(order)}
-                                            className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-amber-50 transition-colors hover:border-amber-300/60 hover:bg-white/10"
-                                            title={`ไปยังคำสั่งล็อต ${order.lot_number}`}
-                                        >
-                                            <div className="flex min-w-0 items-start justify-between gap-3">
-                                                <span className="shrink-0 text-xs font-black">ล็อต {order.lot_number}</span>
-                                                <span className="min-w-0 truncate text-right text-[11px] font-semibold text-amber-100/90">{order.product_name}</span>
-                                            </div>
-                                            <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-amber-100/65">
-                                                <span className="truncate">ผู้สั่ง: {order.created_by || 'ไม่ระบุ'}</span>
-                                                <span>{formatThaiDateTimeFromISO(order.created_at)}</span>
-                                                <span className="font-bold text-amber-200">{formatWaitingDuration(order.created_at)}</span>
-                                            </div>
-                                        </button>
-                                    ))}
+                                <div className="flex items-center gap-3">
+                                    <span className="rounded-full bg-amber-400 px-3 py-1 text-base font-black text-amber-950">
+                                        {pendingFileOrders.length} คำสั่ง
+                                    </span>
+                                    <ChevronDown className={`h-4 w-4 text-amber-200 transition-transform ${isPendingFilePanelOpen ? 'rotate-180' : ''}`} />
                                 </div>
-                            ) : (
-                                <p className="mt-3 text-xs text-emerald-200">ไม่มีคำสั่งที่รอไฟล์</p>
+                            </button>
+                            {isPendingFilePanelOpen && (
+                                <div className="border-t border-white/10 p-3 md:p-4">
+                                    {pendingFileOrders.length > 0 ? (
+                                        <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                                            {pendingFileOrders.map(order => (
+                                                <button
+                                                    key={order.id}
+                                                    type="button"
+                                                    onClick={() => focusOrder(order)}
+                                                    className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-amber-50 transition-colors hover:border-amber-300/60 hover:bg-white/10"
+                                                    title={`ไปยังคำสั่งล็อต ${order.lot_number}`}
+                                                >
+                                                    <div className="flex min-w-0 items-start justify-between gap-3">
+                                                        <span className="shrink-0 text-xs font-black">ล็อต {order.lot_number}</span>
+                                                        <span className="min-w-0 truncate text-right text-[11px] font-semibold text-amber-100/90">{order.product_name}</span>
+                                                    </div>
+                                                    <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-amber-100/65">
+                                                        <span className="truncate">ผู้สั่ง: {order.created_by || 'ไม่ระบุ'}</span>
+                                                        <span>{formatThaiDateTimeFromISO(order.created_at)}</span>
+                                                        <span className="font-bold text-amber-200">{formatWaitingDuration(order.created_at)}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-emerald-200">ไม่มีคำสั่งที่รอไฟล์</p>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
