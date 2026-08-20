@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { logAction } from '@/lib/logger';
-import { ImagePlus, X, ClipboardCheck } from 'lucide-react';
+import { X, ClipboardCheck, Download } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { StabilitySkeleton } from './skeleton-loading-stability';
 
 export interface OrderInterface {
@@ -97,10 +99,7 @@ export default function StabilityPage() {
     const [products, setProducts] = useState<FgcodeInterface[]>([]);
     const [username, setUsername] = useState('Unknown User');
     const [department, setDepartment] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [productSearch, setProductSearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
     const [stabilityLogs, setStabilityLogs] = useState<StabilityFeedLog[]>([]);
@@ -250,29 +249,6 @@ export default function StabilityPage() {
         }));
     };
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            Swal.fire({ icon: 'error', title: 'ไฟล์ไม่ถูกต้อง', text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WEBP)' });
-            return;
-        }
-        if (file.size > 2 * 1024 * 1024) {
-            Swal.fire({ icon: 'error', title: 'ไฟล์ใหญ่เกินไป', text: 'ขนาดไฟล์ต้องไม่เกิน 2 MB' });
-            return;
-        }
-
-        setImageFile(file);
-        setImagePreview(URL.createObjectURL(file));
-    };
-
-    const removeImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -379,7 +355,6 @@ export default function StabilityPage() {
             setRemark('');
             setEditOrderId(null);
             setIsFormOpen(false);
-            removeImage();
             setProductSearch('');
             const resetNow = new Date();
             setOrderData({
@@ -421,18 +396,6 @@ export default function StabilityPage() {
         const hasValue = typeof value === 'string' ? value.trim().length > 0 : value > 0;
         if (hasValue) return `${base} border-slate-200/80 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10`;
         return `${base} border-rose-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-rose-50/20 text-rose-900 placeholder:text-rose-300`;
-    };
-
-    const renderDateLabels = (dateString: string) => {
-        if (!dateString) return null;
-        const [year, month, day] = dateString.split('-');
-        const thaiYear = parseInt(year) + 543;
-        return (
-            <div className="mt-1 text-xs text-gray-500 space-y-0.5 md:hidden">
-                <p>(ค.ศ.) : {day}/{month}/{year}</p>
-                <p>(พ.ศ.) : {day}/{month}/{thaiYear}</p>
-            </div>
-        );
     };
 
     const handleMarkCompleted = async (logId: number, months: number, currentCompleted: number[]) => {
@@ -565,6 +528,57 @@ export default function StabilityPage() {
             (log.lotNumber || '').toLowerCase().includes(search) ||
             (log.productId || '').toLowerCase().includes(search);
     });
+
+        const exportStabilityExcel = async () => {
+        if (filteredLogs.length === 0) return;
+
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Stability Feed');
+        ws.columns = [
+            { header: 'ลอต', key: 'lot', width: 16 },
+            { header: 'รหัสสินค้า', key: 'product_id', width: 14 },
+            { header: 'ชื่อสินค้า', key: 'product_name', width: 30 },
+            { header: 'อายุผลิตภัณฑ์', key: 'exp', width: 14 },
+            { header: 'วันที่ผลิต', key: 'mfg', width: 14 },
+            { header: 'วันหมดอายุ', key: 'expiry', width: 14 },
+            { header: 'ประเภทการป้อน', key: 'feed_type', width: 16 },
+            { header: 'ช่วงที่ต้องทดสอบ (เดือน)', key: 'selected', width: 22 },
+            { header: 'ช่วงที่ทดสอบแล้ว (เดือน)', key: 'completed', width: 22 },
+            { header: 'หมายเหตุ', key: 'remark', width: 26 },
+            { header: 'ผู้บันทึก', key: 'created_by', width: 20 },
+            { header: 'หน่วยงาน', key: 'dept', width: 16 },
+            { header: 'วันที่บันทึก', key: 'created_at', width: 18 },
+        ];
+        ws.getRow(1).eachCell(cell => {
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F1E3D' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+
+        filteredLogs.forEach(log => {
+            const { intervals, completed } = parseLogData(log);
+            ws.addRow({
+                lot: log.lotNumber,
+                product_id: log.productId,
+                product_name: log.productName,
+                exp: log.productExp,
+                mfg: log.productionDate,
+                expiry: log.expiryDate,
+                feed_type: log.feedType || '-',
+                selected: intervals.join(', '),
+                completed: completed.length > 0 ? completed.join(', ') : '-',
+                remark: log.remark || '-',
+                created_by: log.createdBy || '-',
+                dept: log.createdByDepartment || '-',
+                created_at: log.createdAt ? new Date(log.createdAt).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' }) : '-',
+            });
+        });
+
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `stability-feed-${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' })}.xlsx`);
+    };
+
 
     const upcomingTests = filteredLogs.flatMap(log => {
         if (!log.productionDate) return [];
@@ -888,9 +902,10 @@ export default function StabilityPage() {
                 )}
             </div>
 
-            {/* ช่องค้นหา */}
-            <div className="w-full max-w-5xl">
-                <div className="relative">
+                       {/* ช่องค้นหา */}
+            <div className="w-full max-w-5xl flex flex-col sm:flex-row gap-2.5">
+                <div className="relative flex-1">
+
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
@@ -911,11 +926,21 @@ export default function StabilityPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
                         </button>
-                    )}
+                               )}
                 </div>
+                <button
+                    type="button"
+                    onClick={exportStabilityExcel}
+                    disabled={filteredLogs.length === 0}
+                    className="shrink-0 flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl md:rounded-2xl font-bold text-[13px] transition-all duration-200 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
+                >
+                    <Download className="w-4 h-4" />
+                    Export Excel
+                </button>
             </div>
 
             {/* ตารางแจ้งเตือนใกล้ถึงกำหนด */}
+
             {upcomingTests.length > 0 && (
                 <div className="w-full max-w-5xl bg-rose-50/50 rounded-2xl shadow-[0_8px_30px_rgb(225,29,72,0.06)] border border-rose-100 overflow-hidden">
                     <div className="bg-gradient-to-r from-rose-100 to-rose-50 px-6 py-4 border-b border-rose-100 flex items-center gap-3">
