@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { useRouter } from 'next/navigation';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy, Layers } from 'lucide-react';
+import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy, Layers, ArrowUp } from 'lucide-react';
 import EditHistory from '../components/EditHistory';
 import { JetBrains_Mono } from 'next/font/google';
 import { DashboardSkeleton } from './loading-skeleton';
@@ -77,6 +77,8 @@ export default function DashboardPage() {
     const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
     const [countdown, setCountdown] = useState(240);
     const [visibleCount, setVisibleCount] = useState(10)
+    const [focusedOrderId, setFocusedOrderId] = useState<number | null>(null);
+    const [showScrollTop, setShowScrollTop] = useState(false);
 
     // ✅ สต็อคกระดาษ A3 — เฉพาะ moderator/assistant_moderator
     const [productMetaMap, setProductMetaMap] = useState<Record<string, { qtyPerA3: number; paperType: string }>>({});
@@ -379,13 +381,24 @@ export default function DashboardPage() {
         });
     }, [orders]);
 
+    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
+    const pendingFileOrders = useMemo(
+        () => sortedOrders.filter(order => order.is_no_file && !order.is_cancelled),
+        [sortedOrders]
+    );
     const filteredOrders = sortedOrders.filter(order =>
         searchTerm.trim() === '' ||
         order.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.product_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
+    const focusOrder = (order: OrderInterface) => {
+        setSearchTerm('');
+        const orderIndex = sortedOrders.findIndex(sortedOrder => sortedOrder.id === order.id);
+        setVisibleCount(previousCount => Math.max(previousCount, orderIndex + 1));
+        setFocusedOrderId(order.id);
+    };
+
     const getCurrentUserIdentifier = () => employeeId ? `${userName} (${employeeId})` : userName;
 
     const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: Record<string, unknown>) => {
@@ -1436,6 +1449,19 @@ export default function DashboardPage() {
         } catch { return isoString; }
     };
 
+    const formatWaitingDuration = (createdAt?: string | null): string => {
+        if (!createdAt) return 'ไม่ทราบเวลาที่สั่ง';
+
+        const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60_000));
+        const days = Math.floor(elapsedMinutes / 1_440);
+        const hours = Math.floor((elapsedMinutes % 1_440) / 60);
+        const minutes = elapsedMinutes % 60;
+
+        if (days > 0) return `รอมาแล้ว ${days} วัน ${hours} ชม. ${minutes} นาที`;
+        if (hours > 0) return `รอมาแล้ว ${hours} ชม. ${minutes} นาที`;
+        return `รอมาแล้ว ${minutes} นาที`;
+    };
+
     const formatToThaiDate = (dateString: string) => {
         if (!dateString) return '';
         try {
@@ -1494,8 +1520,20 @@ export default function DashboardPage() {
 
     // เพิ่มใน useEffect ที่ฟัง searchTerm หรือ filter
     useEffect(() => {
+        if (focusedOrderId) return;
         setVisibleCount(10)
     }, [searchTerm]) // ใส่ตัวแปร filter ที่มีด้วย
+
+    useEffect(() => {
+        if (!focusedOrderId) return;
+
+        const card = document.getElementById(`order-card-${focusedOrderId}`);
+        if (!card) return;
+
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const highlightTimeout = window.setTimeout(() => setFocusedOrderId(null), 2200);
+        return () => window.clearTimeout(highlightTimeout);
+    }, [focusedOrderId, visibleCount, searchTerm]);
 
     useEffect(() => {
         // รีเฟรชทุก 2 นาที
@@ -1516,6 +1554,16 @@ export default function DashboardPage() {
         };
     }, []);
 
+    useEffect(() => {
+        const scrollContainer = document.querySelector('main');
+        if (!scrollContainer) return;
+
+        const handleScroll = () => setShowScrollTop(scrollContainer.scrollTop > 420);
+        handleScroll();
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }, []);
+
     if (isLoading) return <DashboardSkeleton />;
 
     return (
@@ -1526,9 +1574,10 @@ export default function DashboardPage() {
                 <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
                 <div className="absolute bottom-0 left-0 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -ml-12 -mb-12" />
 
-                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    {/* Title */}
-                    <div>
+                <div className="relative flex flex-col gap-6">
+                    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                        {/* Title */}
+                        <div className="min-w-0">
                         <div className="flex items-center gap-3 mb-1.5">
                             <div className="w-2 h-7 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-full" />
                             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
@@ -1539,10 +1588,10 @@ export default function DashboardPage() {
                         <p className="text-[12.5px] text-slate-300/90 font-bold uppercase tracking-wider ml-5">
                             Label & Bag Stamp Production Control Center
                         </p>
-                    </div>
+                        </div>
 
-                    {/* Search */}
-                    <div className="w-full md:w-80 shrink-0">
+                        <div className="w-full min-w-0 space-y-3 md:max-w-[440px]">
+                            {/* Search */}
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
                             <input
@@ -1559,9 +1608,8 @@ export default function DashboardPage() {
                                 <button type="button" onClick={() => setSearchTerm('')} className="text-rose-300 hover:text-rose-400 font-bold underline transition-colors">ล้างการค้นหา</button>
                             </div>
                         )}
-                    </div>
-                    {/* Auto-refresh status bar */}
-                    <div className="relative mt-4 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            {/* Auto-refresh status bar */}
+                            <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-white/10 pt-3">
                         <span className="text-[11px] text-slate-300/80 font-medium flex items-center gap-1.5">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                             รีเฟรชล่าสุด: <span className="text-white font-bold">{formatLastRefreshed(lastRefreshed)}</span>
@@ -1587,8 +1635,54 @@ export default function DashboardPage() {
                             >
                                 ↻ รีเฟรชเลย
                             </button>
+                            </div>
                         </div>
                     </div>
+                    </div>
+
+                    {isAdmin && (
+                        <div className="w-full rounded-2xl border border-amber-300/40 bg-slate-950/20 p-4 text-left shadow-inner md:p-5">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                                <div className="flex items-center gap-2 text-amber-100">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/20">
+                                        <FileQuestion className="h-4 w-4" />
+                                    </span>
+                                    <div>
+                                        <h2 className="text-sm font-black">คำสั่งรอไฟล์</h2>
+                                        <p className="text-[10px] text-amber-100/65">คลิกรายการเพื่อไปยังคำสั่งโดยตรง</p>
+                                    </div>
+                                </div>
+                                <span className="rounded-full bg-amber-400 px-3 py-1 text-base font-black text-amber-950">
+                                    {pendingFileOrders.length} คำสั่ง
+                                </span>
+                            </div>
+                            {pendingFileOrders.length > 0 ? (
+                                <div className="mt-3 grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                                    {pendingFileOrders.map(order => (
+                                        <button
+                                            key={order.id}
+                                            type="button"
+                                            onClick={() => focusOrder(order)}
+                                            className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-amber-50 transition-colors hover:border-amber-300/60 hover:bg-white/10"
+                                            title={`ไปยังคำสั่งล็อต ${order.lot_number}`}
+                                        >
+                                            <div className="flex min-w-0 items-start justify-between gap-3">
+                                                <span className="shrink-0 text-xs font-black">ล็อต {order.lot_number}</span>
+                                                <span className="min-w-0 truncate text-right text-[11px] font-semibold text-amber-100/90">{order.product_name}</span>
+                                            </div>
+                                            <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-amber-100/65">
+                                                <span className="truncate">ผู้สั่ง: {order.created_by || 'ไม่ระบุ'}</span>
+                                                <span>{formatThaiDateTimeFromISO(order.created_at)}</span>
+                                                <span className="font-bold text-amber-200">{formatWaitingDuration(order.created_at)}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="mt-3 text-xs text-emerald-200">ไม่มีคำสั่งที่รอไฟล์</p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
             </div>
@@ -1624,9 +1718,10 @@ export default function DashboardPage() {
                             }
 
                             return (
-                                <div key={order.id} className={`
+                                <div id={`order-card-${order.id}`} key={order.id} className={`
                                 bg-white border border-slate-200/85 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl overflow-hidden flex flex-col group relative ${borderLeftCls}
                                 ${order.is_cancelled ? 'opacity-85' : ''}
+                                ${focusedOrderId === order.id ? 'ring-4 ring-amber-300 ring-offset-2 shadow-xl' : ''}
                             `}>
                                     {isAdmin && (order.paper_type || typeof order.good_a3 === 'number' || order.waste_qty || order.waste_a3) && (
                                         <button
@@ -2165,6 +2260,18 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {showScrollTop && (
+                <button
+                    type="button"
+                    onClick={() => document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0f1e3d] text-white shadow-xl ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-1 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-400/40"
+                    title="เลื่อนกลับด้านบน"
+                    aria-label="เลื่อนกลับด้านบน"
+                >
+                    <ArrowUp className="h-5 w-5" />
+                </button>
             )}
         </div>
     );
