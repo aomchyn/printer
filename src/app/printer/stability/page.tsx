@@ -54,13 +54,13 @@ export interface StabilityFeedLog {
     createdAt?: string;
 }
 
-const FormWrapper = ({ isModal, onClose, children }: { isModal: boolean, onClose: () => void, children: React.ReactNode }) => {
+const FormWrapper = ({ isModal, onClose, title, children }: { isModal: boolean, onClose: () => void, title: string, children: React.ReactNode }) => {
     if (isModal) {
         return (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
                 <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl w-full max-w-2xl md:max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-8 relative">
                     <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                        <h2 className="text-xl font-bold text-[#0f1e3d]">แก้ไขข้อมูล Stability</h2>
+                        <h2 className="text-xl font-bold text-[#0f1e3d]">{title}</h2>
                         <button type="button" onClick={onClose} className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
@@ -618,44 +618,75 @@ export default function StabilityPage() {
         <div className="min-h-screen bg-[#f4f7fc] py-6 md:py-8 px-3 md:px-6 flex flex-col items-center gap-8 text-gray-800" style={{
             backgroundImage: 'radial-gradient(ellipse at 0% 0%, rgba(59,102,199,0.07) 0%, transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(107,56,202,0.05) 0%, transparent 60%)',
         }}>
-            <div className="w-full max-w-2xl md:max-w-3xl bg-white border border-slate-200/80 rounded-2xl md:rounded-3xl shadow-xl shadow-blue-900/5 p-4 md:p-8 relative overflow-hidden transition-all duration-300">
-                <div
-                    className="flex flex-col items-center cursor-pointer group"
-                    onClick={() => setIsFormOpen(!isFormOpen)}
-                >
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1e3a8a] to-[#0f1e3d] text-white flex items-center justify-center shadow-lg shadow-blue-900/20 mb-3 group-hover:scale-105 transition-transform ${isFormOpen ? 'opacity-100' : 'opacity-80'}`}>
-                        <ClipboardCheck className="w-6 h-6" />
+            <div className="w-full max-w-2xl md:max-w-3xl bg-white border border-slate-200/80 rounded-2xl md:rounded-3xl shadow-xl shadow-blue-900/5 p-5 md:p-7 relative overflow-hidden transition-all duration-300">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 shrink-0 rounded-2xl bg-gradient-to-br from-[#1e3a8a] to-[#0f1e3d] text-white flex items-center justify-center shadow-lg shadow-blue-900/20">
+                            <ClipboardCheck className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-[20px] md:text-[22px] font-black text-[#0f1e3d] tracking-tight">STABILITY FEED KPI</h1>
+                            <p className="mt-1 text-[12px] text-slate-500">บันทึกและติดตามรอบทดสอบความคงตัวของสินค้า</p>
+                        </div>
                     </div>
-                    <h1 className="text-[20px] md:text-[22px] font-black text-[#0f1e3d] text-center tracking-tight flex items-center gap-2 group-hover:text-blue-600 transition-colors">
-                        STABILITY FEED KPI
-                        <svg className={`w-5 h-5 transition-transform duration-300 ${isFormOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </h1>
-                    {!isFormOpen && (
-                        <p className="text-[11.5px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                            คลิกที่นี่เพื่อเพิ่มข้อมูลใหม่
-                        </p>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => { setEditOrderId(null); setIsFormOpen(true); }}
+                        className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-[#0f1e3d] px-4 py-3 text-[13px] font-bold text-white shadow-md shadow-blue-900/10 transition-all hover:bg-[#152a54] hover:shadow-lg"
+                    >
+                        <span className="text-lg leading-none">+</span>
+                        เพิ่มข้อมูล
+                    </button>
                 </div>
 
                 {isFormOpen && (
-                    <FormWrapper isModal={!!editOrderId} onClose={() => { setIsFormOpen(false); setEditOrderId(null); }}>
+                    <FormWrapper isModal={true} title={editOrderId ? 'แก้ไขข้อมูล Stability' : 'เพิ่มข้อมูล Stability Feed'} onClose={() => { setIsFormOpen(false); setEditOrderId(null); }}>
+                        <div className="mb-7 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-4 md:px-5">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">Stability Feed</p>
+                                    <h2 className="mt-1 text-lg font-black text-[#0f1e3d]">
+                                        {editOrderId ? 'แก้ไขข้อมูลรอบทดสอบ' : 'เพิ่มข้อมูล Stability Feed'}
+                                    </h2>
+                                    <p className="mt-1 text-[12px] leading-relaxed text-slate-600">
+                                        ระบุสินค้าและวันที่ผลิต เพื่อสร้างกำหนดการตรวจสอบความคงตัวโดยอัตโนมัติ
+                                    </p>
+                                </div>
+                                <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 shadow-sm ring-1 ring-blue-100">
+                                    {editOrderId ? 'โหมดแก้ไข' : 'รายการใหม่'}
+                                </span>
+                            </div>
+                        </div>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                <div className="md:col-span-2 flex items-center gap-3 border-b border-slate-100 pb-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">1</span>
+                                    <div>
+                                        <h3 className="text-[13px] font-black text-[#0f1e3d]">ข้อมูลการบันทึก</h3>
+                                        <p className="text-[11px] text-slate-400">วันที่และเวลาที่สร้างรายการนี้</p>
+                                    </div>
+                                </div>
                                 {/* วันที่และเวลา */}
                                 <div className="md:col-span-2">
-                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">วันที่และเวลาบันทึก (Order Date & Time)</label>
+                                    <label className="block text-[12px] font-bold text-slate-500 mb-2">วันที่และเวลาบันทึก</label>
                                     <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-semibold shadow-inner flex items-center gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                                         {formatThaiDateTime()}
                                     </div>
                                 </div>
 
-
+                                <div className="md:col-span-2 flex items-center gap-3 border-b border-slate-100 pb-2 pt-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">2</span>
+                                    <div>
+                                        <h3 className="text-[13px] font-black text-[#0f1e3d]">ข้อมูลสินค้า</h3>
+                                        <p className="text-[11px] text-slate-400">เลือกสินค้าและระบุเลขลอตให้ตรงกับฉลากจริง</p>
+                                    </div>
+                                </div>
 
                                 {/* เลขลอต */}
                                 <div>
-                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                        เลขลอตสินค้า (Lot Number) <span className="text-rose-500 font-bold">*</span>
+                                    <label className="block text-[12px] font-bold text-slate-600 mb-2">
+                                        เลขลอตสินค้า <span className="text-rose-500 font-bold">*</span>
                                     </label>
                                     <input
                                         type="text"
@@ -669,8 +700,8 @@ export default function StabilityPage() {
 
                                 {/* รหัสสินค้า — custom dropdown */}
                                 <div>
-                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                        รหัสสินค้า (Product ID) <span className="text-rose-500 font-bold">*</span>
+                                    <label className="block text-[12px] font-bold text-slate-600 mb-2">
+                                        รหัสสินค้า <span className="text-rose-500 font-bold">*</span>
                                     </label>
                                     <div className="relative">
                                         <input
@@ -684,7 +715,7 @@ export default function StabilityPage() {
                                                 }
                                             }}
                                             onFocus={() => setShowDropdown(true)}
-                                            placeholder="ค้นหาด้วยรหัส หรือชื่อสินค้า..."
+                                            placeholder="ค้นหาด้วยรหัสหรือชื่อสินค้า..."
                                             required
                                             className={`${getRequiredFieldStyle(orderData.productId)} pr-10`}
                                         />
@@ -761,18 +792,24 @@ export default function StabilityPage() {
                                 {/* ชื่อสินค้า */}
                                 {orderData.productName && (
                                     <div className="md:col-span-2">
-                                        <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">ชื่อสินค้า (Product Name)</label>
+                                        <label className="block text-[12px] font-bold text-slate-600 mb-2">ชื่อสินค้า</label>
                                         <input type="text" value={orderData.productName} readOnly
                                             className="w-full px-4 py-3 bg-slate-50/70 border border-slate-200 rounded-xl text-slate-500 text-[13.5px] font-semibold cursor-not-allowed" />
                                     </div>
                                 )}
 
-
+                                <div className="md:col-span-2 flex items-center gap-3 border-b border-slate-100 pb-2 pt-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-[11px] font-black text-slate-600">3</span>
+                                    <div>
+                                        <h3 className="text-[13px] font-black text-[#0f1e3d]">รายละเอียดการทดสอบ</h3>
+                                        <p className="text-[11px] text-slate-400">วันที่ผลิตเป็นตัวตั้งต้นของกำหนดการ Stability</p>
+                                    </div>
+                                </div>
 
                                 {/* วันที่ผลิต */}
                                 <div>
-                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                                        วันที่ผลิต (Production Date) <span className="text-rose-500 font-bold">*</span>
+                                    <label className="block text-[12px] font-bold text-slate-600 mb-2">
+                                        วันที่ผลิต <span className="text-rose-500 font-bold">*</span>
                                     </label>
                                     <input
                                         type="date"
@@ -789,11 +826,12 @@ export default function StabilityPage() {
                                                 : getRequiredFieldStyle(orderData.productionDate)
                                         }
                                     />
+                                    <p className="mt-1.5 text-[11px] text-slate-400">ต้องเลือกสินค้า ก่อนระบุวันที่ผลิต</p>
                                 </div>
 
                                 {/* ประเภทอาหารสัตว์ */}
                                 <div>
-                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">ประเภทอาหารสัตว์ (Feed Type)</label>
+                                    <label className="block text-[12px] font-bold text-slate-600 mb-2">ประเภทอาหารสัตว์</label>
                                     <select
                                         value={feedType}
                                         onChange={(e) => setFeedType(e.target.value)}
@@ -811,7 +849,7 @@ export default function StabilityPage() {
 
                                 {/* หมายเหตุ */}
                                 <div>
-                                    <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ (Remark)</label>
+                                    <label className="block text-[12px] font-bold text-slate-600 mb-2">หมายเหตุ <span className="font-normal text-slate-400">(ถ้ามี)</span></label>
                                     <input
                                         type="text"
                                         value={remark}
@@ -824,7 +862,13 @@ export default function StabilityPage() {
                                 {/* ช่วงเวลา Stability */}
                                 {orderData.productionDate && (
                                     <div className="md:col-span-2">
-                                        <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">กำหนดทดสอบความคงตัว (Stability Test Schedule)</label>
+                                        <div className="mb-3 flex items-start justify-between gap-3">
+                                            <div>
+                                                <h3 className="text-[13px] font-black text-[#0f1e3d]">กำหนดรอบทดสอบความคงตัว</h3>
+                                                <p className="mt-0.5 text-[11px] text-slate-400">เลือกเฉพาะรอบที่ต้องการตรวจสอบ</p>
+                                            </div>
+                                            <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-100">เลือกแล้ว {selectedIntervals.length} รอบ</span>
+                                        </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                                             {[
                                                 { label: 'วันที่สั่ง (Initial)', months: 0 },
@@ -867,7 +911,7 @@ export default function StabilityPage() {
                                             })}
                                         </div>
                                         <p className="mt-2 text-[11px] text-slate-500">
-                                            💡 คลิกที่กล่องเพื่อเลือก/ยกเลิก ช่วงเวลาที่ต้องการทดสอบสำหรับสินค้านี้
+                                            คลิกการ์ดเพื่อเลือกหรือยกเลิกรอบทดสอบ วันที่จะแสดงทั้ง พ.ศ. และ ค.ศ.
                                         </p>
                                     </div>
                                 )}
