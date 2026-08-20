@@ -41,8 +41,9 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "overrides": {
-    "postcss": "8.5.10",
-    "uuid": "11.1.1"
+   "overrides": {
+    "postcss": "8.5.26",
+    "uuid": "11.1.1",
+    "xmldom": "npm:@xmldom/xmldom@^0.9.11"
   }
 }
