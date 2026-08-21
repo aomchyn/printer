@@ -1,17 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import {
-  Loader2,
-  Mail,
-  Lock,
-  Shield,
-  Printer,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { Loader2, Mail, Lock, Printer, Eye, EyeOff } from "lucide-react";
 
 // Deterministic bar pattern for the barcode graphic (no Math.random -> no hydration mismatch)
 const BAR_COUNT = 34;
@@ -31,6 +23,16 @@ export default function LoginPage() {
   const router = useRouter();
 
   const bars = useMemo(() => BAR_WIDTHS, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("reason") === "session_expired") {
+      setError("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง");
+
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
