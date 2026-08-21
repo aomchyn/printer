@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -69,6 +70,33 @@ export default function LoginPage() {
       setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "เข้าสู่ระบบด้วย Google ไม่สำเร็จ";
+
+      setError(message);
+      setGoogleLoading(false);
     }
   };
 
@@ -223,6 +251,33 @@ export default function LoginPage() {
                     ) : (
                       "เข้าสู่ระบบ"
                     )}
+                  </button>
+                  <div className="lp-or">
+                    <span />
+                    <em>หรือ</em>
+                    <span />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    className="w-full flex items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    <span className="text-xl font-bold leading-none text-black">
+                      G
+                    </span>
+
+                    <span className="flex items-center gap-1">
+                      <span>เข้าสู่ระบบด้วย</span>
+                      <span className="font-bold tracking-tight">
+                        <span style={{ color: "#4285F4" }}>G</span>
+                        <span style={{ color: "#DB4437" }}>o</span>
+                        <span style={{ color: "#F4B400" }}>o</span>
+                        <span style={{ color: "#4285F4" }}>g</span>
+                        <span style={{ color: "#0F9D58" }}>l</span>
+                        <span style={{ color: "#DB4437" }}>e</span>
+                      </span>
+                    </span>
                   </button>
                 </form>
               </div>
@@ -870,6 +925,52 @@ export default function LoginPage() {
           .lp-spin {
             animation: none !important;
           }
+        }
+
+        .lp-or {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin: 1rem 0;
+        }
+
+        .lp-or span {
+          height: 1px;
+          flex: 1;
+          background: rgba(33, 29, 24, 0.14);
+        }
+
+        .lp-or em {
+          font-style: normal;
+          font-size: 0.72rem;
+          color: rgba(33, 29, 24, 0.45);
+        }
+
+        .lp-google {
+          width: 100%;
+          min-height: 48px;
+          padding: 0.78rem;
+          border: 1px solid rgba(33, 29, 24, 0.16);
+          border-radius: 10px;
+          background: #fff;
+          color: var(--lp-ink);
+          font-family: "Kanit", sans-serif;
+          font-size: 0.94rem;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.65rem;
+        }
+
+        .lp-google:hover:not(:disabled) {
+          background: rgba(33, 29, 24, 0.035);
+        }
+
+        .lp-google:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
       `}</style>
     </div>

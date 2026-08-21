@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import Modal from "../components/Modal";
 import { supabase } from "@/lib/supabase";
+import QaApprovalPanel from "./QaApprovalPanel";
 import { getSignatureStoragePath } from "@/lib/signatureStorage";
 import {
   Edit2,
@@ -851,6 +852,8 @@ export default function UserManagement() {
       </div>
 
       <div className="p-3 sm:p-5 max-w-7xl mx-auto w-full">
+        <QaApprovalPanel currentUserRole={currentUserRole} />
+
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           {STAT_CARDS.map((s) => (

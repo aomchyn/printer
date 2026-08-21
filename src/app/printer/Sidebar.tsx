@@ -41,6 +41,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     confirm_password: "",
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [qaPendingCount, setQaPendingCount] = useState(0);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -70,15 +71,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       } else {
         const fallbackName = session.user.email?.split("@")[0] || "User";
         const fallbackRole = "user";
-        await supabase
-          .from("users")
-          .insert({
-            id: session.user.id,
-            email: session.user.email,
-            name: fallbackName,
-            role: fallbackRole,
-            department: "ไม่ระบุ",
-          });
+        await supabase.from("users").insert({
+          id: session.user.id,
+          email: session.user.email,
+          name: fallbackName,
+          role: fallbackRole,
+          department: "ไม่ระบุ",
+        });
         setName(fallbackName);
         setRole(fallbackRole);
       }
@@ -89,23 +88,93 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
   useEffect(() => {
     fetchData();
+
     const channel = supabase
       .channel("sidebar-roles")
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "users" },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "users",
+        },
         (payload) => {
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user.id === payload.new.id) setRole(payload.new.role);
+            if (session?.user.id === payload.new.id) {
+              setName(payload.new.name || "");
+              setRole(payload.new.role || "user");
+              setEmployeeId(payload.new.employee_id || "");
+              setJobTitle(payload.new.job_title || "");
+              setDepartment(payload.new.department || "");
+            }
           });
         },
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (role !== "moderator") {
+      setQaPendingCount(0);
+      return;
+    }
+
+    let active = true;
+
+    const fetchQaPendingCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from("qa_department_requests")
+          .select("id", {
+            count: "exact",
+            head: true,
+          })
+          .eq("status", "pending");
+
+        if (error) {
+          console.error("Failed to load QA pending count:", error);
+          return;
+        }
+
+        if (active) {
+          setQaPendingCount(count ?? 0);
+        }
+      } catch (error) {
+        console.error("Failed to load QA pending count:", error);
+      }
+    };
+
+    fetchQaPendingCount();
+
+    // เผื่อมีคำขอเข้ามาขณะ Moderator เปิดระบบค้างไว้
+    const interval = window.setInterval(fetchQaPendingCount, 30000);
+
+    // กลับมาที่ browser แล้ว refresh ทันที
+    const handleFocus = () => {
+      fetchQaPendingCount();
+    };
+
+    // ใช้ตอน approve/reject เพื่อให้ badge เปลี่ยนทันที
+    const handleQaRequestChanged = () => {
+      fetchQaPendingCount();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("qa-request-changed", handleQaRequestChanged);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("qa-request-changed", handleQaRequestChanged);
+    };
+  }, [role, pathname]);
 
   const openProfile = () => {
     setProfileForm({
@@ -151,7 +220,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       profileForm.name.trim() !== name ||
       profileForm.employee_id.trim() !== employeeId ||
       profileForm.job_title.trim() !== jobTitle ||
-      profileForm.department.trim() !== department ||
       profileForm.new_password !== "";
     if (!hasChanges) {
       Swal.fire({
@@ -175,7 +243,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           name: profileForm.name.trim(),
           employee_id: profileForm.employee_id.trim() || null,
           job_title: profileForm.job_title.trim() || null,
-          department: profileForm.department.trim() || null,
         })
         .eq("id", session.user.id);
       if (updateError) throw updateError;
@@ -464,12 +531,34 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   "Paper Report",
                   "bg-amber-500/20 text-amber-200 border-amber-500/25",
                 )}
-                {navItem(
-                  "/printer/user",
-                  <Users className="w-4 h-4" />,
-                  "Manage Users",
-                  "bg-purple-500/20 text-purple-200 border-purple-500/25",
-                )}
+                <div className="relative">
+                  {navItem(
+                    "/printer/user",
+                    <Users className="w-4 h-4" />,
+                    "Manage Users",
+                    "bg-purple-500/20 text-purple-200 border-purple-500/25",
+                  )}
+
+                  {role === "moderator" && qaPendingCount > 0 && (
+                    <span
+                      className="
+        absolute right-2.5 top-1/2 -translate-y-1/2
+        min-w-[20px] h-5 px-1.5
+        flex items-center justify-center
+        rounded-full
+        bg-red-500 text-white
+        text-[10px] font-black
+        shadow-lg shadow-red-500/30
+        border border-red-300/40
+        pointer-events-none
+        animate-pulse
+      "
+                      title={`${qaPendingCount} คำขอ QA รออนุมัติ`}
+                    >
+                      {qaPendingCount > 99 ? "99+" : qaPendingCount}
+                    </span>
+                  )}
+                </div>
                 {role === "moderator" &&
                   navItem(
                     "/printer/logs",
@@ -538,22 +627,14 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                   หน่วยงาน
                 </label>
-                <select
-                  value={profileForm.department}
-                  onChange={(e) =>
-                    setProfileForm((f) => ({
-                      ...f,
-                      department: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
-                >
-                  <option value="">— เลือกหน่วยงาน —</option>
-                  <option value="QA ประกันคุณภาพ">QA — ประกันคุณภาพ</option>
-                  <option value="PD ฝ่ายผลิต">PD — ฝ่ายผลิต</option>
-                  <option value="WH คลังสินค้า">WH — คลังสินค้า</option>
-                  <option value="VD ผลิตยาสัตว์">VD — ผลิตยาสัตว์</option>
-                </select>
+
+                <div className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium">
+                  {department || "ยังไม่ได้เลือกหน่วยงาน"}
+                </div>
+
+                <p className="mt-1.5 text-[10.5px] text-slate-400">
+                  หน่วยงานไม่สามารถเปลี่ยนจากหน้าโปรไฟล์ได้
+                </p>
               </div>
 
               <div className="pt-3 border-t border-slate-100">
