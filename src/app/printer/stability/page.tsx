@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
-import { logAction } from '@/lib/logger';
 import { X, ClipboardCheck, Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -330,20 +329,6 @@ export default function StabilityPage() {
 
             if (submitError) throw new Error(submitError.message);
 
-            if (!editOrderId) {
-                await logAction('CREATE_STABILITY_FEED', {
-                    product_id: orderData.productId,
-                    lot_number: orderData.lotNumber,
-                    product_name: orderData.productName
-                });
-            } else {
-                await logAction('UPDATE_STABILITY_FEED', {
-                    order_id: editOrderId,
-                    product_id: orderData.productId,
-                    lot_number: orderData.lotNumber
-                });
-            }
-
             Swal.fire({ icon: 'success', title: 'สำเร็จ', text: editOrderId ? 'อัปเดตข้อมูลสำเร็จแล้ว' : 'บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว' });
 
             fetchStabilityLogs();
@@ -489,16 +474,6 @@ export default function StabilityPage() {
                 .eq('id', logId);
 
             if (error) throw error;
-
-            const deletedOrder = stabilityLogs.find(log => log.id === logId);
-            if (deletedOrder) {
-                await logAction('DELETE_STABILITY_FEED', {
-                    product_id: deletedOrder.productId,
-                    lot_number: deletedOrder.lotNumber,
-                    product_name: deletedOrder.productName,
-                    deleted_by: username
-                });
-            }
 
             Swal.fire({
                 icon: 'success',

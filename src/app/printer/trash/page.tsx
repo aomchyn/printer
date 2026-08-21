@@ -174,23 +174,6 @@ export default function TrashPage() {
 
                 if (error) throw error;
 
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    await supabase.from('audit_logs').insert([{
-                        order_id: order.id,
-                        action: 'RESTORE_FROM_TRASH',
-                        user_name: restoredBy,
-                        summary: `กู้คืนจากถังขยะโดย ${restoredBy}`,
-                        changes: {
-                            restored_by: restoredBy,
-                            restored_at: now,
-                            product_name: order.product_name,
-                            lot_number: order.lot_number,
-                        },
-                        created_at: now
-                    }]);
-                }
-
                 setDeletedOrders(prev => prev.filter(o => o.id !== order.id));
                 Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'คำสั่งพิมพ์กลับมาใน Dashboard แล้ว', timer: 2000, showConfirmButton: false });
             } catch (error) {
@@ -221,24 +204,6 @@ export default function TrashPage() {
                 const { error } = await supabase.from('orders').delete().eq('id', order.id);
                 if (error) throw error;
 
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    await supabase.from('audit_logs').insert([{
-                        user_id: session.user.id,
-                        action: 'PERMANENT_DELETE_ORDER',
-                        details: {
-                            order_id: order.id,
-                            lot_number: order.lot_number,
-                            product_id: order.product_id,
-                            product_name: order.product_name,
-                            quantity: order.quantity,
-                            created_by: order.created_by,
-                            deleted_by: getCurrentUserIdentifier(),
-                            deleted_at: new Date().toISOString(),
-                        },
-                        created_at: new Date().toISOString()
-                    }]);
-                }
 
                 setDeletedOrders(prev => prev.filter(o => o.id !== order.id));
                 Swal.fire({ icon: 'success', title: 'ลบถาวรสำเร็จ', timer: 1500, showConfirmButton: false });

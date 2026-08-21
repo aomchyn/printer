@@ -1,766 +1,757 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
-import Swal from 'sweetalert2';
-import { useRouter } from 'next/navigation';
-import { Check, Undo, Edit2, Trash2, UserCircle, CheckCircle2, Clock, X, Printer, FileQuestion, Search, Copy, Layers, ArrowUp, ChevronDown } from 'lucide-react';
-import EditHistory from '../components/EditHistory';
-import { JetBrains_Mono } from 'next/font/google';
-import { DashboardSkeleton } from './loading-skeleton';
-import Modal from '../components/Modal';
-
-const jetbrainsMono = JetBrains_Mono({
-    subsets: ['latin'],
-    weight: ['800'],
-});
-const processingOrderIds = new Set<number>();
-const auditLockSet = new Set<string>();
-
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { supabase } from "@/lib/supabase";
+import Swal from "sweetalert2";
+import { useRouter } from "next/navigation";
+import {
+  Check,
+  Undo,
+  Edit2,
+  Trash2,
+  UserCircle,
+  CheckCircle2,
+  Clock,
+  X,
+  Printer,
+  FileQuestion,
+  Search,
+  Copy,
+  Layers,
+  ArrowUp,
+  ChevronDown,
+} from "lucide-react";
+import EditHistory from "../components/EditHistory";
+import { DashboardSkeleton } from "./loading-skeleton";
+import Modal from "../components/Modal";
 export interface OrderInterface {
-    id: number;
-    order_date: string;
-    order_time: string;
-    order_datetime: string;
-    order_type?: string;
-    lot_number: string;
-    product_id: string;
-    product_name: string;
-    product_exp: string;
-    production_date: string;
-    expiry_date: string;
-    quantity: number;
-    notes?: string;
-    created_by: string;
-    created_by_department?: string;
-    is_verified: boolean;
-    is_printed?: boolean;
-    verified_by?: string | null;
-    verified_at?: string | null;
-    image_url?: string | null;
-    created_at: string;
-    updated_at?: string | null;
-    updated_by?: string | null;
-    edit_summary?: string | null;
-    is_cancelled?: boolean;
-    is_no_file?: boolean;
-    original_product_name?: string;
-    printed_by?: string | null;         // ✅ ชื่อผู้พิมพ์
-    printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
-    printed_at?: string | null;         // ✅ เวลาที่พิมพ์
-    previous_product_name?: string | null;
-    paper_type?: string | null;
-    good_a3?: number | null;
-    waste_qty?: number | null;
-    waste_qty_remark?: string | null;
-    waste_a3?: number | null;
-    waste_a3_remark?: string | null;
-    reconciled_by?: string | null;
-    reconciled_at?: string | null;
-    qty_per_a3_used?: number | null;
-
+  id: number;
+  order_date: string;
+  order_time: string;
+  order_datetime: string;
+  order_type?: string;
+  lot_number: string;
+  product_id: string;
+  product_name: string;
+  product_exp: string;
+  production_date: string;
+  expiry_date: string;
+  quantity: number;
+  notes?: string;
+  created_by: string;
+  created_by_user_id?: string | null;
+  created_by_department?: string;
+  is_verified: boolean;
+  is_printed?: boolean;
+  verified_by?: string | null;
+  verified_by_user_id?: string | null;
+  verified_at?: string | null;
+  image_url?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  updated_by?: string | null;
+  edit_summary?: string | null;
+  is_cancelled?: boolean;
+  is_no_file?: boolean;
+  original_product_name?: string;
+  printed_by?: string | null; // ✅ ชื่อผู้พิมพ์
+  printed_by_user_id?: string | null; // ✅ UUID ผู้พิมพ์ (ใช้เช็คสิทธิ์)
+  printed_at?: string | null; // ✅ เวลาที่พิมพ์
+  previous_product_name?: string | null;
+  paper_type?: string | null;
+  good_a3?: number | null;
+  waste_qty?: number | null;
+  waste_qty_remark?: string | null;
+  waste_a3?: number | null;
+  waste_a3_remark?: string | null;
+  reconciled_by?: string | null;
+  reconciled_at?: string | null;
+  qty_per_a3_used?: number | null;
 }
 
-
-
 export default function DashboardPage() {
-    const [orders, setOrders] = useState<OrderInterface[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [editingOrder, setEditingOrder] = useState<OrderInterface | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [role, setRole] = useState('');
-    const [userName, setUserName] = useState('');
-    const [employeeId, setEmployeeId] = useState('');
-    const [currentUserId, setCurrentUserId] = useState(''); // ✅ เก็บ UUID ของ user ปัจจุบัน
-    const [copiedId, setCopiedId] = useState<number | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
-    const [countdown, setCountdown] = useState(240);
-    const [visibleCount, setVisibleCount] = useState(10)
-    const [focusedOrderId, setFocusedOrderId] = useState<number | null>(null);
-    const [showScrollTop, setShowScrollTop] = useState(false);
-    const [isPendingFilePanelOpen, setIsPendingFilePanelOpen] = useState(false);
+  const [orders, setOrders] = useState<OrderInterface[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingOrder, setEditingOrder] = useState<OrderInterface | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [role, setRole] = useState("");
+  const [userName, setUserName] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(""); // ✅ เก็บ UUID ของ user ปัจจุบัน
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [countdown, setCountdown] = useState(240);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const [focusedOrderId, setFocusedOrderId] = useState<number | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isPendingFilePanelOpen, setIsPendingFilePanelOpen] = useState(false);
 
-    // ✅ สต็อคกระดาษ A3 — เฉพาะ moderator/assistant_moderator
-    const [productMetaMap, setProductMetaMap] = useState<Record<string, { qtyPerA3: number; paperType: string }>>({});
-    const [reconcilingOrder, setReconcilingOrder] = useState<OrderInterface | null>(null);
-    const [stockDetailOrder, setStockDetailOrder] = useState<OrderInterface | null>(null);
-    const [reconcileForm, setReconcileForm] = useState({
-        wasteQty: '',
-        wasteA3: '',
-        wasteQtyRemark: '',
-        wasteA3Remark: '',
-        goodA3Extra: '',
-    });
-    const [initialReconcileForm, setInitialReconcileForm] = useState({
-        wasteQty: '', wasteA3: '', wasteQtyRemark: '', wasteA3Remark: '',
-    });
-    const [isSubmittingReconcile, setIsSubmittingReconcile] = useState(false);
-    const [reconcileErrors, setReconcileErrors] = useState<{ wasteQtyRemark?: string; wasteA3Remark?: string }>({});
+  // ✅ สต็อคกระดาษ A3 — เฉพาะ moderator/assistant_moderator
+  const [productMetaMap, setProductMetaMap] = useState<
+    Record<string, { qtyPerA3: number; paperType: string }>
+  >({});
+  const [reconcilingOrder, setReconcilingOrder] =
+    useState<OrderInterface | null>(null);
+  const [stockDetailOrder, setStockDetailOrder] =
+    useState<OrderInterface | null>(null);
+  const [reconcileForm, setReconcileForm] = useState({
+    wasteQty: "",
+    wasteA3: "",
+    wasteQtyRemark: "",
+    wasteA3Remark: "",
+    goodA3Extra: "",
+  });
+  const [initialReconcileForm, setInitialReconcileForm] = useState({
+    wasteQty: "",
+    wasteA3: "",
+    wasteQtyRemark: "",
+    wasteA3Remark: "",
+  });
+  const [isSubmittingReconcile, setIsSubmittingReconcile] = useState(false);
+  const [reconcileErrors, setReconcileErrors] = useState<{
+    wasteQtyRemark?: string;
+    wasteA3Remark?: string;
+  }>({});
 
-    const sentinelRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-    const router = useRouter();
+  const router = useRouter();
 
+  const fetchUserInfo = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
 
-    const fetchUserInfo = async () => {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) { router.push('/login'); return; }
+      // ✅ เก็บ UUID ของ user ปัจจุบันไว้ใช้เช็คสิทธิ์
+      setCurrentUserId(session.user.id);
 
-            // ✅ เก็บ UUID ของ user ปัจจุบันไว้ใช้เช็คสิทธิ์
-            setCurrentUserId(session.user.id);
+      const { data } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+      if (data) {
+        setRole(data.role);
+        setUserName(data.name);
+        setEmployeeId(data.employee_id || "");
+        loadOrders();
+      } else {
+        setRole("user");
+        setUserName(session.user.email?.split("@")[0] || "User");
+      }
+    } catch (error) {
+      console.error("Error fetching user info:", error);
+      router.push("/login");
+    }
+  };
 
-            const { data } = await supabase.from('users').select('*').eq('id', session.user.id).single();
-            if (data) {
-                setRole(data.role);
-                setUserName(data.name);
-                setEmployeeId(data.employee_id || '');
-                const identifier = data.employee_id ? `${data.name} (${data.employee_id})` : data.name;
-                loadOrders(identifier);
-            } else {
-                setRole('user');
-                setUserName(session.user.email?.split('@')[0] || 'User');
-            }
-        } catch (error) {
-            console.error('Error fetching user info:', error);
-            router.push('/login');
+  const [auditKey] = useState(0);
+
+  const loadOrders = async () => {
+    try {
+      setIsLoading(true);
+      let allOrders: OrderInterface[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allOrders = [...allOrders, ...(data as OrderInterface[])];
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
         }
-    };
+      }
+      setOrders(allOrders);
+      setIsLoading(false);
+    } catch {
+      setIsLoading(false);
+      Swal.fire({
+        icon: "error",
+        title: "โหลดข้อมูลไม่สำเร็จ",
+        text: "กรุณาลองใหม่อีกครั้ง",
+      });
+    }
+  };
+  useEffect(() => {
+    fetchUserInfo();
 
-    const [auditKey, setAuditKey] = useState(0);
+    const playNotificationSound = () => {
+      try {
+        const AudioContext =
+          window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const audioCtx = new AudioContext();
 
-    const loadOrders = async (userIdentifier?: string) => {
-        try {
-
-            setIsLoading(true);
-            let allOrders: OrderInterface[] = [];
-            let from = 0;
-            const pageSize = 1000;
-            let hasMore = true;
-
-            while (hasMore) {
-                const { data, error } = await supabase
-                    .from('orders').select('*')
-                    .eq('is_deleted', false)
-                    .order('created_at', { ascending: false })
-                    .range(from, from + pageSize - 1);
-
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    allOrders = [...allOrders, ...(data as OrderInterface[])];
-                    from += pageSize;
-                    hasMore = data.length === pageSize;
-                } else {
-                    hasMore = false;
-                }
-            }
-
-            let allFgcodeData: { id: string; name: string }[] = [];
-            let fgcodeFrom = 0;
-            const fgcodePageSize = 1000;
-            let fgcodeHasMore = true;
-
-            while (fgcodeHasMore) {
-                const { data } = await supabase.from('fgcode')
-                    .select('id, name')
-                    .range(fgcodeFrom, fgcodeFrom + fgcodePageSize - 1);
-                
-                if (data && data.length > 0) {
-                    allFgcodeData = [...allFgcodeData, ...data];
-                    fgcodeFrom += fgcodePageSize;
-                    fgcodeHasMore = data.length === fgcodePageSize;
-                } else {
-                    fgcodeHasMore = false;
-                }
-            }
-
-            if (allFgcodeData.length > 0) {
-                const productMap = Object.fromEntries(
-                    allFgcodeData.map(p => [p.id, p.name])
-                );
-
-                const updatesNeeded: { id: number; newName: string; oldName: string }[] = [];
-
-                allOrders = allOrders.map(order => {
-                    const currentName = productMap[order.product_id];
-                    const nameChanged = currentName &&
-                        currentName !== order.product_name &&
-                        !processingOrderIds.has(order.id);
-
-                    if (nameChanged) {
-                        processingOrderIds.add(order.id);
-                        updatesNeeded.push({
-                            id: order.id,
-                            newName: currentName,
-                            oldName: order.product_name,
-                        });
-                    }
-
-                    return {
-                        ...order,
-                        product_name: currentName ?? order.product_name,
-                        original_product_name: order.previous_product_name ?? (nameChanged ? order.product_name : undefined),
-                    };
-                });
-
-                setOrders(allOrders);
-                setIsLoading(false);
-
-                if (updatesNeeded.length > 0) {
-                    const now = new Date().toISOString();
-
-                    Promise.all(
-                        updatesNeeded.map(({ id, newName, oldName }) => {
-                            const lockKey = `${id}:UPDATE:ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`;
-                            const shouldLog = !auditLockSet.has(lockKey);
-                            if (shouldLog) {
-                                auditLockSet.add(lockKey);
-                                setTimeout(() => auditLockSet.delete(lockKey), 15000);
-                            }
-
-                            return Promise.all([
-                                supabase.from('orders').update({
-                                    product_name: newName,
-                                    previous_product_name: oldName,
-                                    updated_at: now,
-                                }).eq('id', id),
-
-                                shouldLog
-                                    ? supabase.from('audit_logs').insert([{
-                                        order_id: id,
-                                        action: 'UPDATE',
-                                        user_name: userIdentifier,
-                                        summary: `ชื่อสินค้าเปลี่ยน: ${oldName} ➡️ ${newName}`,
-                                        created_at: now,
-                                    }])
-                                    : Promise.resolve(),
-                            ]);
-                        })
-                    )
-                        .then(() => {
-                            // อัปเดต updated_at ใน state หลัง sync เสร็จ
-                            setOrders(prev =>
-                                prev.map(o =>
-                                    updatesNeeded.some(u => u.id === o.id)
-                                        ? { ...o, updated_at: now }
-                                        : o
-                                )
-                            );
-                            setAuditKey(prev => prev + 1);
-                        });
-                }
-
-            } else {
-                // กรณีไม่มี fgcode (ไม่เปลี่ยนแปลง logic เดิม)
-                setOrders(allOrders);
-                setIsLoading(false);
-            }
-
-        } catch {
-            setIsLoading(false);
-            Swal.fire({
-                icon: 'error',
-                title: 'โหลดข้อมูลไม่สำเร็จ',
-                text: 'กรุณาลองใหม่อีกครั้ง',
-            });
-        }
-    };
-    useEffect(() => {
-        fetchUserInfo();
-
-
-        const playNotificationSound = () => {
-            try {
-                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-                if (!AudioContext) return;
-                const audioCtx = new AudioContext();
-
-                const playTone = (freq: number, startTime: number, duration: number) => {
-                    const oscillator = audioCtx.createOscillator();
-                    const gainNode = audioCtx.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioCtx.destination);
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
-                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration);
-                    oscillator.start(audioCtx.currentTime + startTime);
-                    oscillator.stop(audioCtx.currentTime + startTime + duration);
-                };
-
-                playTone(880, 0, 0.3);
-                playTone(1108.73, 0.15, 0.5);
-            } catch (e) {
-                console.error('Audio playback failed', e);
-            }
+        const playTone = (
+          freq: number,
+          startTime: number,
+          duration: number,
+        ) => {
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          oscillator.type = "sine";
+          oscillator.frequency.setValueAtTime(
+            freq,
+            audioCtx.currentTime + startTime,
+          );
+          gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime + startTime);
+          gainNode.gain.exponentialRampToValueAtTime(
+            0.01,
+            audioCtx.currentTime + startTime + duration,
+          );
+          oscillator.start(audioCtx.currentTime + startTime);
+          oscillator.stop(audioCtx.currentTime + startTime + duration);
         };
 
-        const channel = supabase.channel('schema-db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
-                (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
-                    const nowTS = Date.now();
-                    if (payload.eventType === 'INSERT') {
-                        const newData = payload.new as Record<string, unknown>;
-                        if (newData) {
-                            playNotificationSound();
-                            Swal.fire({
-                                toast: true, position: 'top-end', icon: 'info',
-                                title: '🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!',
-                                showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                                background: '#eff6ff', color: '#1e3a8a'
-                            });
-                            loadOrders();
-                        }
-                    } else if (payload.eventType === 'UPDATE' && payload.new) {
-                        const newData = payload.new as Record<string, unknown>;
-                        if (newData.updated_at) {
-                            const updateTS = new Date(newData.updated_at as string).getTime();
-                            if (nowTS - updateTS < 10000) {
-                                playNotificationSound();
-                                const isCancelled = newData.is_cancelled;
-                                Swal.fire({
-                                    toast: true, position: 'top-end',
-                                    icon: isCancelled ? 'warning' : 'info',
-                                    title: isCancelled ? '❌ มีคำสั่งพิมพ์ถูกยกเลิก!' : '📝 มีการแก้ไขคำสั่งพิมพ์!',
-                                    text: newData.product_name ? `สินค้า: ${newData.product_name}` : '',
-                                    showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                                    background: isCancelled ? '#fef2f2' : '#eff6ff',
-                                    color: isCancelled ? '#991b1b' : '#1e3a8a'
-                                });
-                            }
-                        }
-                        // Update local state without fetching to prevent refresh flickers on status changes
-                        setOrders(prev => prev.map(o => o.id === newData.id ? { ...o, ...newData } : o));
-                    } else if (payload.eventType === 'DELETE' && payload.old) {
-                        const oldId = payload.old.id;
-                        setOrders(prev => prev.filter(o => o.id !== oldId));
-                    }
-                }
-            ).subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }, []);
-
-    // ✅ ดึง qty_per_a3 + default_paper_type แยกต่างหาก ไม่ยุ่งกับ fetch เดิมที่ใช้ sync ชื่อสินค้า
-    useEffect(() => {
-        const fetchProductMeta = async () => {
-            let allData: { id: string; qty_per_a3: number | null; default_paper_type: string | null }[] = [];
-            let from = 0;
-            const pageSize = 1000;
-            let hasMore = true;
-
-            while (hasMore) {
-                const { data } = await supabase.from('fgcode')
-                    .select('id, qty_per_a3, default_paper_type')
-                    .range(from, from + pageSize - 1);
-                
-                if (data && data.length > 0) {
-                    allData = [...allData, ...data];
-                    from += pageSize;
-                    hasMore = data.length === pageSize;
-                } else {
-                    hasMore = false;
-                }
-            }
-
-            setProductMetaMap(Object.fromEntries(
-                allData.map(p =>
-                    [p.id, { qtyPerA3: p.qty_per_a3 || 1, paperType: p.default_paper_type || '' }]
-                )
-            ));
-        };
-        fetchProductMeta();
-    }, []);
-
-
-    const sortedOrders = useMemo(() => {
-        return [...orders].sort((a, b) => {
-            const timeA = new Date(a.updated_at || a.created_at).getTime();
-            const timeB = new Date(b.updated_at || b.created_at).getTime();
-            return timeB - timeA;
-        });
-    }, [orders]);
-
-    const isAdmin = role === 'moderator' || role === 'assistant_moderator';
-    const pendingFileOrders = useMemo(
-        () => sortedOrders.filter(order => order.is_no_file && !order.is_cancelled),
-        [sortedOrders]
-    );
-    const filteredOrders = sortedOrders.filter(order =>
-        searchTerm.trim() === '' ||
-        order.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.product_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const focusOrder = (order: OrderInterface) => {
-        setSearchTerm('');
-        const orderIndex = sortedOrders.findIndex(sortedOrder => sortedOrder.id === order.id);
-        setVisibleCount(previousCount => Math.max(previousCount, orderIndex + 1));
-        setFocusedOrderId(order.id);
+        playTone(880, 0, 0.3);
+        playTone(1108.73, 0.15, 0.5);
+      } catch (e) {
+        console.error("Audio playback failed", e);
+      }
     };
 
-    const getCurrentUserIdentifier = () => employeeId ? `${userName} (${employeeId})` : userName;
-
-    const logAuditTrail = async (orderId: number, action: string, summary: string, changes?: Record<string, unknown>) => {
-        try {
-            const userIdentifier = getCurrentUserIdentifier();
-            const tenSecondsAgo = new Date(Date.now() - 10_000).toISOString();
-
-            // ✅ เช็คจาก DB โดยตรง — ไม่พึ่ง in-memory ที่ reset ได้
-            const { data: existing } = await supabase
-                .from('audit_logs')
-                .select('id')
-                .eq('order_id', orderId)
-                .eq('action', action)
-                .eq('summary', summary)
-                .gte('created_at', tenSecondsAgo)
-                .limit(1);
-
-            if (existing && existing.length > 0) {
-                return;
+    const channel = supabase
+      .channel("schema-db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        (payload: {
+          eventType: string;
+          new?: Record<string, unknown>;
+          old?: Record<string, unknown>;
+        }) => {
+          const nowTS = Date.now();
+          if (payload.eventType === "INSERT") {
+            const newData = payload.new as Record<string, unknown>;
+            if (newData) {
+              playNotificationSound();
+              Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "info",
+                title: "🔔 มีคำสั่งพิมพ์ฉลากมาใหม่!",
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true,
+                background: "#eff6ff",
+                color: "#1e3a8a",
+              });
+              loadOrders();
             }
-
-            const { error } = await supabase.from('audit_logs').insert([{
-                order_id: orderId, action, user_name: userIdentifier,
-                summary, changes: changes || null,
-                created_at: new Date().toISOString()
-            }]);
-
-            if (error) {
-                console.warn('audit_logs insert failed:', error);
-                await supabase.from('orders')
-                    .update({ edit_summary: summary, updated_by: userIdentifier })
-                    .eq('id', orderId);
-            }
-        } catch (err) {
-            console.error('logAuditTrail error:', err);
-        }
-    };
-
-
-    const deleteOrder = async (id: number) => {
-        if (!isAdmin) {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
-            return;
-        }
-        const result = await Swal.fire({
-            title: 'ยืนยันการลบ?', text: 'คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?', icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
-        });
-        if (result.isConfirmed) {
-            try {
-                // ✅ เก็บข้อมูล order ไว้ก่อนลบ
-                const orderToDelete = orders.find(o => o.id === id);
-
-                const { error } = await supabase.from('orders').update({
-                    is_deleted: true,
-                    deleted_at: new Date().toISOString(),
-                    deleted_by: getCurrentUserIdentifier(),
-                }).eq('id', id);
-                if (error) throw error;
-
-                // ✅ Log การลบพร้อมรายละเอียด order ที่ถูกลบ
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session && orderToDelete) {
-                    await supabase.from('audit_logs').insert([{
-                        user_id: session.user.id,
-                        action: 'DELETE_ORDER',
-                        details: {
-                            order_id: orderToDelete.id,
-                            lot_number: orderToDelete.lot_number,
-                            product_id: orderToDelete.product_id,
-                            product_name: orderToDelete.product_name,
-                            quantity: orderToDelete.quantity,
-                            created_by: orderToDelete.created_by,
-                            deleted_by: getCurrentUserIdentifier(),
-                            deleted_at: new Date().toISOString(),
-                        },
-                        created_at: new Date().toISOString()
-                    }]);
-                }
-                setOrders(prev => prev.filter(order => order.id !== id));
-                Swal.fire({ icon: 'success', title: 'ลบสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const saveEdit = async () => {
-        if (!editingOrder) return;
-        if (isSaving) return;
-        setIsSaving(true);
-
-        try {
-            const now = new Date().toISOString();
-            const original = orders.find(o => o.id === editingOrder.id);
-            const changeDetails: string[] = [];
-
-            if (original) {
-                const displayVal = (val: unknown) =>
-                    (val === null || val === undefined || String(val).trim() === '' || val === '-') ? 'ไม่มี' : String(val).trim();
-
-                // ประเภทคำสั่ง
-                const oldType = displayVal(original.order_type);
-                const newType = displayVal(editingOrder.order_type);
-                if (oldType !== newType) changeDetails.push(`ประเภท: ${oldType} ➡️ ${newType}`);
-
-                // เลขลอต
-                const oldLot = displayVal(original.lot_number);
-                const newLot = displayVal(editingOrder.lot_number);
-                if (oldLot !== newLot) changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
-
-                // จำนวน
-                const oldQty = Number(original.quantity) || 0;
-                const newQty = Number(editingOrder.quantity) || 0;
-                if (oldQty !== newQty) changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
-
-                // วันที่ผลิต
-                const oldDateRaw = original.production_date || '';
-                const newDateRaw = editingOrder.production_date || '';
-                if (oldDateRaw !== newDateRaw) {
-                    const formatDate = (d: string) => d ? d.split('-').reverse().join('/') : 'ไม่มี';
-                    changeDetails.push(`วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`);
-                }
-
-                // หมายเหตุ
-                const oldNotes = displayVal(original.notes);
-                const newNotes = displayVal(editingOrder.notes);
-                if (oldNotes !== newNotes) changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
-            }
-
-            if (!editingOrder.quantity || editingOrder.quantity <= 0) {
+          } else if (payload.eventType === "UPDATE" && payload.new) {
+            const newData = payload.new as Record<string, unknown>;
+            if (newData.updated_at) {
+              const updateTS = new Date(newData.updated_at as string).getTime();
+              if (nowTS - updateTS < 10000) {
+                playNotificationSound();
+                const isCancelled = newData.is_cancelled;
                 Swal.fire({
-                    icon: 'warning',
-                    title: 'จำนวนไม่ถูกต้อง',
-                    text: 'จำนวนสั่งทำต้องมากกว่า 0',
-                    confirmButtonText: 'รับทราบ',
-                    confirmButtonColor: '#6b7280',
+                  toast: true,
+                  position: "top-end",
+                  icon: isCancelled ? "warning" : "info",
+                  title: isCancelled
+                    ? "❌ มีคำสั่งพิมพ์ถูกยกเลิก!"
+                    : "📝 มีการแก้ไขคำสั่งพิมพ์!",
+                  text: newData.product_name
+                    ? `สินค้า: ${newData.product_name}`
+                    : "",
+                  showConfirmButton: false,
+                  timer: 4000,
+                  timerProgressBar: true,
+                  background: isCancelled ? "#fef2f2" : "#eff6ff",
+                  color: isCancelled ? "#991b1b" : "#1e3a8a",
                 });
-                setIsSaving(false);
-                return;
+              }
             }
+            // Update local state without fetching to prevent refresh flickers on status changes
+            setOrders((prev) =>
+              prev.map((o) => (o.id === newData.id ? { ...o, ...newData } : o)),
+            );
+          } else if (payload.eventType === "DELETE" && payload.old) {
+            const oldId = payload.old.id;
+            setOrders((prev) => prev.filter((o) => o.id !== oldId));
+          }
+        },
+      )
+      .subscribe();
 
-            if (changeDetails.length === 0) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'ไม่มีการเปลี่ยนแปลง',
-                    text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของคำสั่งพิมพ์นี้',
-                    confirmButtonText: 'รับทราบ',
-                    confirmButtonColor: '#6b7280',
-                });
-                setIsSaving(false);
-                return;
-            }
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
+  // ✅ ดึง qty_per_a3 + default_paper_type แยกต่างหาก ไม่ยุ่งกับ fetch เดิมที่ใช้ sync ชื่อสินค้า
+  useEffect(() => {
+    const fetchProductMeta = async () => {
+      let allData: {
+        id: string;
+        qty_per_a3: number | null;
+        default_paper_type: string | null;
+      }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-            const summary = `แก้ไข: ${changeDetails.join(' | ')}`;
-            const editorName = getCurrentUserIdentifier();
+      while (hasMore) {
+        const { data } = await supabase
+          .from("fgcode")
+          .select("id, qty_per_a3, default_paper_type")
+          .range(from, from + pageSize - 1);
 
-            const confirmResult = await Swal.fire({
-                icon: 'question',
-                title: 'ยืนยันการแก้ไข?',
-                html: `
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setProductMetaMap(
+        Object.fromEntries(
+          allData.map((p) => [
+            p.id,
+            {
+              qtyPerA3: p.qty_per_a3 || 1,
+              paperType: p.default_paper_type || "",
+            },
+          ]),
+        ),
+      );
+    };
+    fetchProductMeta();
+  }, []);
+
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      const timeA = new Date(a.updated_at || a.created_at).getTime();
+      const timeB = new Date(b.updated_at || b.created_at).getTime();
+      return timeB - timeA;
+    });
+  }, [orders]);
+
+  const isAdmin = role === "moderator" || role === "assistant_moderator";
+  const pendingFileOrders = useMemo(
+    () =>
+      sortedOrders.filter((order) => order.is_no_file && !order.is_cancelled),
+    [sortedOrders],
+  );
+  const filteredOrders = sortedOrders.filter(
+    (order) =>
+      searchTerm.trim() === "" ||
+      order.lot_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.product_name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const focusOrder = (order: OrderInterface) => {
+    setSearchTerm("");
+    const orderIndex = sortedOrders.findIndex(
+      (sortedOrder) => sortedOrder.id === order.id,
+    );
+    setVisibleCount((previousCount) => Math.max(previousCount, orderIndex + 1));
+    setFocusedOrderId(order.id);
+  };
+
+  const getCurrentUserIdentifier = () =>
+    employeeId ? `${userName} (${employeeId})` : userName;
+
+  const deleteOrder = async (id: number) => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+      });
+      return;
+    }
+    const result = await Swal.fire({
+      title: "ยืนยันการลบ?",
+      text: "คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "ใช่, ลบเลย!",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            is_deleted: true,
+            deleted_at: new Date().toISOString(),
+            deleted_by: getCurrentUserIdentifier(),
+          })
+          .eq("id", id);
+        if (error) throw error;
+
+        setOrders((prev) => prev.filter((order) => order.id !== id));
+        Swal.fire({
+          icon: "success",
+          title: "ลบสำเร็จ!",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ลบไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editingOrder) return;
+    if (isSaving) return;
+    setIsSaving(true);
+
+    try {
+      const now = new Date().toISOString();
+      const original = orders.find((o) => o.id === editingOrder.id);
+      const changeDetails: string[] = [];
+
+      if (original) {
+        const displayVal = (val: unknown) =>
+          val === null ||
+          val === undefined ||
+          String(val).trim() === "" ||
+          val === "-"
+            ? "ไม่มี"
+            : String(val).trim();
+
+        // ประเภทคำสั่ง
+        const oldType = displayVal(original.order_type);
+        const newType = displayVal(editingOrder.order_type);
+        if (oldType !== newType)
+          changeDetails.push(`ประเภท: ${oldType} ➡️ ${newType}`);
+
+        // เลขลอต
+        const oldLot = displayVal(original.lot_number);
+        const newLot = displayVal(editingOrder.lot_number);
+        if (oldLot !== newLot)
+          changeDetails.push(`เลขลอต: ${oldLot} ➡️ ${newLot}`);
+
+        // จำนวน
+        const oldQty = Number(original.quantity) || 0;
+        const newQty = Number(editingOrder.quantity) || 0;
+        if (oldQty !== newQty)
+          changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
+
+        // วันที่ผลิต
+        const oldDateRaw = original.production_date || "";
+        const newDateRaw = editingOrder.production_date || "";
+        if (oldDateRaw !== newDateRaw) {
+          const formatDate = (d: string) =>
+            d ? d.split("-").reverse().join("/") : "ไม่มี";
+          changeDetails.push(
+            `วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`,
+          );
+        }
+
+        // หมายเหตุ
+        const oldNotes = displayVal(original.notes);
+        const newNotes = displayVal(editingOrder.notes);
+        if (oldNotes !== newNotes)
+          changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
+      }
+
+      if (!editingOrder.quantity || editingOrder.quantity <= 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "จำนวนไม่ถูกต้อง",
+          text: "จำนวนสั่งทำต้องมากกว่า 0",
+          confirmButtonText: "รับทราบ",
+          confirmButtonColor: "#6b7280",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      if (changeDetails.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "ไม่มีการเปลี่ยนแปลง",
+          text: "คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของคำสั่งพิมพ์นี้",
+          confirmButtonText: "รับทราบ",
+          confirmButtonColor: "#6b7280",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      const summary = `แก้ไข: ${changeDetails.join(" | ")}`;
+      const editorName = getCurrentUserIdentifier();
+
+      const confirmResult = await Swal.fire({
+        icon: "question",
+        title: "ยืนยันการแก้ไข?",
+        html: `
         <div style="text-align:left; font-size:13px;">
             <p style="color:#6b7280; margin-bottom:8px;">รายการที่แก้ไข:</p>
             <table style="width:100%; border-collapse:collapse;">
-                ${changeDetails.map(detail => {
-                    const [label, rest] = detail.split(': ');
-                    const [oldVal, newVal] = (rest || '').split(' ➡️ ');
+                ${changeDetails
+                  .map((detail) => {
+                    const [label, rest] = detail.split(": ");
+                    const [oldVal, newVal] = (rest || "").split(" ➡️ ");
                     return `
                         <tr style="border-bottom:1px solid #f1f5f9;">
                             <td style="padding:6px 8px; color:#6b7280; font-weight:600; white-space:nowrap;">${label}</td>
-                            <td style="padding:6px 8px; color:#ef4444; text-decoration:line-through; font-size:12px;">${oldVal || ''}</td>
+                            <td style="padding:6px 8px; color:#ef4444; text-decoration:line-through; font-size:12px;">${oldVal || ""}</td>
                             <td style="padding:6px 4px; color:#6b7280;">→</td>
-                            <td style="padding:6px 8px; color:#10b981; font-weight:700;">${newVal || ''}</td>
+                            <td style="padding:6px 8px; color:#10b981; font-weight:700;">${newVal || ""}</td>
                         </tr>
                     `;
-                }).join('')}
+                  })
+                  .join("")}
             </table>
         </div>
     `,
-                showCancelButton: true,
-                confirmButtonText: '✓ ยืนยันบันทึก',
-                cancelButtonText: 'กลับไปแก้ไข',
-                confirmButtonColor: '#0f1e3d',
-                cancelButtonColor: '#6b7280',
-                customClass: { popup: 'rounded-xl text-sm' },
-                width: 'clamp(320px, 90vw, 480px)',
-            });
+        showCancelButton: true,
+        confirmButtonText: "✓ ยืนยันบันทึก",
+        cancelButtonText: "กลับไปแก้ไข",
+        confirmButtonColor: "#0f1e3d",
+        cancelButtonColor: "#6b7280",
+        customClass: { popup: "rounded-xl text-sm" },
+        width: "clamp(320px, 90vw, 480px)",
+      });
 
-            if (!confirmResult.isConfirmed) {
-                setIsSaving(false);
-                return;
-            }
+      if (!confirmResult.isConfirmed) {
+        setIsSaving(false);
+        return;
+      }
 
-            const updateData = {
-                order_type: editingOrder.order_type,
-                lot_number: editingOrder.lot_number,
-                quantity: editingOrder.quantity,
-                production_date: editingOrder.production_date,
-                expiry_date: editingOrder.expiry_date,
-                notes: editingOrder.notes,
-                updated_at: now,
-                updated_by: editorName,
-                edit_summary: summary
-            };
+      const updateData = {
+        order_type: editingOrder.order_type,
+        lot_number: editingOrder.lot_number,
+        quantity: editingOrder.quantity,
+        production_date: editingOrder.production_date,
+        expiry_date: editingOrder.expiry_date,
+        notes: editingOrder.notes,
+        updated_at: now,
+        updated_by: editorName,
+        edit_summary: summary,
+      };
 
-            const { error } = await supabase.from('orders').update(updateData).eq('id', editingOrder.id);
-            if (error) throw error;
+      const { error } = await supabase
+        .from("orders")
+        .update(updateData)
+        .eq("id", editingOrder.id);
+      if (error) throw error;
 
-            await logAuditTrail(editingOrder.id, 'UPDATE', summary);
-            setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...updateData } : o));
-            setEditingOrder(null);
-            Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false });
-        } catch {
-            Swal.fire({ icon: 'error', title: 'แก้ไขไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-        } finally {
-            setIsSaving(false);
-        }
-    };
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === editingOrder.id ? { ...o, ...updateData } : o,
+        ),
+      );
+      setEditingOrder(null);
+      Swal.fire({
+        icon: "success",
+        title: "บันทึกสำเร็จ",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "แก้ไขไม่สำเร็จ",
+        text: "กรุณาลองใหม่อีกครั้ง",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-    const startEdit = (order: OrderInterface) => {
-        // ✅ ตรวจสอบสิทธิ์การแก้ไข
-        if (!isAdmin && order.created_by !== userName) {
-            Swal.fire({
-                icon: 'error',
-                title: 'ไม่มีสิทธิ์แก้ไข',
-                html: `
+  const startEdit = (order: OrderInterface) => {
+    // ✅ ตรวจสอบสิทธิ์การแก้ไข
+    if (!isAdmin && order.created_by_user_id !== currentUserId) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์แก้ไข",
+        html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
                         <p class="mt-2 text-red-500 font-medium">คุณสามารถแก้ไขได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ',
-                confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
-        setEditingOrder({ ...order });
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#6b7280",
+      });
+      return;
+    }
+    setEditingOrder({ ...order });
+  };
+
+  // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
+  const startReconcile = (order: OrderInterface) => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะ Moderator และ Assistant Moderator เท่านั้น",
+      });
+      return;
+    }
+    if (!productMetaMap[order.product_id]?.paperType) {
+      Swal.fire({
+        icon: "warning",
+        title: "ยังไม่ได้ตั้งค่าประเภทกระดาษ",
+        text: `สินค้ารหัส ${order.product_id} ยังไม่ได้ตั้งค่าประเภทกระดาษเริ่มต้น กรุณาไปตั้งค่าที่หน้า Product ก่อน`,
+        confirmButtonText: "รับทราบ",
+      });
+      return;
+    }
+    setReconcilingOrder(order);
+    const initial = {
+      wasteQty: order.waste_qty ? String(order.waste_qty) : "",
+      wasteA3: order.waste_a3 ? String(order.waste_a3) : "",
+      wasteQtyRemark: order.waste_qty_remark || "",
+      wasteA3Remark: order.waste_a3_remark || "",
     };
+    setReconcileForm({ ...initial, goodA3Extra: "" });
+    setInitialReconcileForm(initial);
+  };
 
-    // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
-    const startReconcile = (order: OrderInterface) => {
-        if (!isAdmin) {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะ Moderator และ Assistant Moderator เท่านั้น' });
-            return;
-        }
-        if (!productMetaMap[order.product_id]?.paperType) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'ยังไม่ได้ตั้งค่าประเภทกระดาษ',
-                text: `สินค้ารหัส ${order.product_id} ยังไม่ได้ตั้งค่าประเภทกระดาษเริ่มต้น กรุณาไปตั้งค่าที่หน้า Product ก่อน`,
-                confirmButtonText: 'รับทราบ',
-            });
-            return;
-        }
-        setReconcilingOrder(order);
-        const initial = {
-            wasteQty: order.waste_qty ? String(order.waste_qty) : '',
-            wasteA3: order.waste_a3 ? String(order.waste_a3) : '',
-            wasteQtyRemark: order.waste_qty_remark || '',
-            wasteA3Remark: order.waste_a3_remark || '',
-        };
-        setReconcileForm({ ...initial, goodA3Extra: '' });
-        setInitialReconcileForm(initial);
+  const reconcileCalculation = useMemo(() => {
+    if (!reconcilingOrder) return null;
+    const meta = productMetaMap[reconcilingOrder.product_id];
+    if (!meta) return null;
+
+    const qtyPerA3 = meta.qtyPerA3;
+    const target = reconcilingOrder.quantity || 0;
+    const wasteQty = parseInt(reconcileForm.wasteQty) || 0;
+    const wasteA3 = parseInt(reconcileForm.wasteA3) || 0;
+    const goodA3Extra = parseInt(reconcileForm.goodA3Extra) || 0;
+
+    const baseSheetsForTarget = target > 0 ? Math.ceil(target / qtyPerA3) : 0;
+    const naturalTotal = baseSheetsForTarget * qtyPerA3;
+    const naturalExcess = target > 0 ? naturalTotal - target : 0;
+    const extraSheetsForWaste =
+      wasteQty > naturalExcess
+        ? Math.ceil((wasteQty - naturalExcess) / qtyPerA3)
+        : 0;
+    const autoGoodA3 = baseSheetsForTarget + extraSheetsForWaste;
+    const goodA3 = autoGoodA3 + goodA3Extra;
+    const sheetsNeeded = goodA3 + wasteA3;
+    const totalPrinted = goodA3 * qtyPerA3;
+    const excessQty = Math.max(0, totalPrinted - target - wasteQty);
+
+    return {
+      paperType: meta.paperType,
+      qtyPerA3,
+      target,
+      wasteQty,
+      wasteA3,
+      goodA3,
+      autoGoodA3,
+      sheetsNeeded,
+      totalPrinted,
+      excessQty,
     };
+  }, [reconcilingOrder, reconcileForm, productMetaMap]);
 
-    const reconcileCalculation = useMemo(() => {
-        if (!reconcilingOrder) return null;
-        const meta = productMetaMap[reconcilingOrder.product_id];
-        if (!meta) return null;
+  const submitReconcile = async (e?: any) => {
+    // 🟢 ดัก Event ป้องกันไม่ให้การคลิกทะลุไปถึง Modal ข้างหลัง
+    if (e && e.preventDefault) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
-        const qtyPerA3 = meta.qtyPerA3;
-        const target = reconcilingOrder.quantity || 0;
-        const wasteQty = parseInt(reconcileForm.wasteQty) || 0;
-        const wasteA3 = parseInt(reconcileForm.wasteA3) || 0;
-        const goodA3Extra = parseInt(reconcileForm.goodA3Extra) || 0;
+    if (!reconcilingOrder || !reconcileCalculation || !isAdmin) return;
 
-        const baseSheetsForTarget = target > 0 ? Math.ceil(target / qtyPerA3) : 0;
-        const naturalTotal = baseSheetsForTarget * qtyPerA3;
-        const naturalExcess = target > 0 ? (naturalTotal - target) : 0;
-        const extraSheetsForWaste = wasteQty > naturalExcess ? Math.ceil((wasteQty - naturalExcess) / qtyPerA3) : 0;
-        const autoGoodA3 = baseSheetsForTarget + extraSheetsForWaste;
-        const goodA3 = autoGoodA3 + goodA3Extra;
-        const sheetsNeeded = goodA3 + wasteA3;
-        const totalPrinted = goodA3 * qtyPerA3;
-        const excessQty = Math.max(0, totalPrinted - target - wasteQty);
+    // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงไหม (เฉพาะกรณีเคยบันทึกผลผลิตไปแล้ว)
+    const wasAlreadyReconciled = reconcilingOrder.good_a3 != null;
+    const goodA3ExtraEmpty =
+      !reconcileForm.goodA3Extra || parseInt(reconcileForm.goodA3Extra) === 0;
+    const noChange =
+      wasAlreadyReconciled &&
+      goodA3ExtraEmpty &&
+      reconcileForm.wasteQty === initialReconcileForm.wasteQty &&
+      reconcileForm.wasteA3 === initialReconcileForm.wasteA3 &&
+      reconcileForm.wasteQtyRemark === initialReconcileForm.wasteQtyRemark &&
+      reconcileForm.wasteA3Remark === initialReconcileForm.wasteA3Remark;
 
-        return { paperType: meta.paperType, qtyPerA3, target, wasteQty, wasteA3, goodA3, autoGoodA3, sheetsNeeded, totalPrinted, excessQty };
-    }, [reconcilingOrder, reconcileForm, productMetaMap]);
+    if (noChange) {
+      await Swal.fire({
+        icon: "info",
+        title: "ไม่มีการเปลี่ยนแปลง",
+        text: "คุณยังไม่ได้แก้ไขข้อมูลใดๆ",
+        confirmButtonText: "รับทราบ",
+        returnFocus: false, // 🟢 เพิ่มสิ่งนี้เพื่อป้องกัน Modal ปิดตัวเอง
+      });
+      return;
+    }
 
-    const submitReconcile = async (e?: any) => {
-        // 🟢 ดัก Event ป้องกันไม่ให้การคลิกทะลุไปถึง Modal ข้างหลัง
-        if (e && e.preventDefault) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+    // ✅ บังคับระบุเหตุผลเมื่อมีของเสีย (inline validation)
+    const errors: { wasteQtyRemark?: string; wasteA3Remark?: string } = {};
+    if (
+      reconcileCalculation.wasteQty > 0 &&
+      !reconcileForm.wasteQtyRemark.trim()
+    ) {
+      errors.wasteQtyRemark = "มีชิ้นเสีย — กรุณาระบุหมายเหตุ";
+    }
+    if (
+      reconcileCalculation.wasteA3 > 0 &&
+      !reconcileForm.wasteA3Remark.trim()
+    ) {
+      errors.wasteA3Remark = "มีกระดาษเสีย — กรุณาระบุหมายเหตุ";
+    }
+    if (Object.keys(errors).length > 0) {
+      setReconcileErrors(errors);
+      return;
+    }
+    setReconcileErrors({});
 
-        if (!reconcilingOrder || !reconcileCalculation || !isAdmin) return;
+    // ✅ เช็คสต็อคกระดาษคงเหลือก่อนตัด — กันตัดสต็อคติดลบ
+    const { data: txData, error: txErr } = await supabase
+      .from("paper_transactions")
+      .select("transaction_type, qty")
+      .eq("paper_type", reconcileCalculation.paperType);
 
-        // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงไหม (เฉพาะกรณีเคยบันทึกผลผลิตไปแล้ว)
-        const wasAlreadyReconciled = reconcilingOrder.good_a3 != null;
-        const goodA3ExtraEmpty = !reconcileForm.goodA3Extra || parseInt(reconcileForm.goodA3Extra) === 0;
-        const noChange = wasAlreadyReconciled && goodA3ExtraEmpty &&
-            reconcileForm.wasteQty === initialReconcileForm.wasteQty &&
-            reconcileForm.wasteA3 === initialReconcileForm.wasteA3 &&
-            reconcileForm.wasteQtyRemark === initialReconcileForm.wasteQtyRemark &&
-            reconcileForm.wasteA3Remark === initialReconcileForm.wasteA3Remark;
+    if (txErr) {
+      await Swal.fire({
+        icon: "error",
+        title: "เช็คสต็อคไม่สำเร็จ",
+        text: "กรุณาลองใหม่อีกครั้ง",
+        returnFocus: false,
+      });
+      return;
+    }
 
-        if (noChange) {
-            await Swal.fire({
-                icon: 'info',
-                title: 'ไม่มีการเปลี่ยนแปลง',
-                text: 'คุณยังไม่ได้แก้ไขข้อมูลใดๆ',
-                confirmButtonText: 'รับทราบ',
-                returnFocus: false // 🟢 เพิ่มสิ่งนี้เพื่อป้องกัน Modal ปิดตัวเอง
-            });
-            return;
-        }
+    const currentBalance = (txData || []).reduce(
+      (acc, t) => acc + (t.transaction_type === "IN" ? t.qty : -t.qty),
+      0,
+    );
+    const oldSheetsUsed =
+      (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
+    const netChange = reconcileCalculation.sheetsNeeded - oldSheetsUsed;
 
-        // ✅ บังคับระบุเหตุผลเมื่อมีของเสีย (inline validation)
-        const errors: { wasteQtyRemark?: string; wasteA3Remark?: string } = {};
-        if (reconcileCalculation.wasteQty > 0 && !reconcileForm.wasteQtyRemark.trim()) {
-            errors.wasteQtyRemark = 'มีชิ้นเสีย — กรุณาระบุหมายเหตุ';
-        }
-        if (reconcileCalculation.wasteA3 > 0 && !reconcileForm.wasteA3Remark.trim()) {
-            errors.wasteA3Remark = 'มีกระดาษเสีย — กรุณาระบุหมายเหตุ';
-        }
-        if (Object.keys(errors).length > 0) {
-            setReconcileErrors(errors);
-            return;
-        }
-        setReconcileErrors({});
-
-        // ✅ เช็คสต็อคกระดาษคงเหลือก่อนตัด — กันตัดสต็อคติดลบ
-        const { data: txData, error: txErr } = await supabase
-            .from('paper_transactions')
-            .select('transaction_type, qty')
-            .eq('paper_type', reconcileCalculation.paperType);
-
-        if (txErr) {
-            await Swal.fire({
-                icon: 'error',
-                title: 'เช็คสต็อคไม่สำเร็จ',
-                text: 'กรุณาลองใหม่อีกครั้ง',
-                returnFocus: false
-            });
-            return;
-        }
-
-        const currentBalance = (txData || []).reduce(
-            (acc, t) => acc + (t.transaction_type === 'IN' ? t.qty : -t.qty), 0
-        );
-        const oldSheetsUsed = (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
-        const netChange = reconcileCalculation.sheetsNeeded - oldSheetsUsed;
-
-        if (netChange > currentBalance) {
-            await Swal.fire({
-                icon: 'error',
-                title: 'สต็อคกระดาษไม่พอ',
-                html: `
+    if (netChange > currentBalance) {
+      await Swal.fire({
+        icon: "error",
+        title: "สต็อคกระดาษไม่พอ",
+        html: `
                     <div style="text-align:left; font-size:13px;">
                         <p>ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
                         <p>สต็อคคงเหลือ: <b>${currentBalance}</b> ใบ</p>
@@ -768,299 +759,361 @@ export default function DashboardPage() {
                         <p style="margin-top:6px; color:#dc2626;">กรุณารับกระดาษเข้าสต็อคที่หน้า Paper Stock ก่อน</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ',
-                returnFocus: false
-            });
-            return;
-        }
+        confirmButtonText: "รับทราบ",
+        returnFocus: false,
+      });
+      return;
+    }
 
-        const confirmResult = await Swal.fire({
-            icon: 'question',
-            title: 'ยืนยันบันทึกผลผลิต?',
-            html: `
+    const confirmResult = await Swal.fire({
+      icon: "question",
+      title: "ยืนยันบันทึกผลผลิต?",
+      html: `
                 <div style="text-align:left; font-size:13px;">
                     <p>สินค้า: <b>${reconcilingOrder.product_name}</b></p>
                     <p>ล็อต: <b>${reconcilingOrder.lot_number}</b></p>
                     <p style="margin-top:6px; border-top:1px solid #e5e7eb; padding-top:6px;">ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
                     <p>กระดาษดี: <b>${reconcileCalculation.goodA3}</b> ใบ</p>
-                    ${reconcileCalculation.wasteA3 > 0 ? `<p>กระดาษเสีย: <b>${reconcileCalculation.wasteA3}</b> ใบ</p>` : ''}
-                    ${reconcileCalculation.wasteQty > 0 ? `<p>ชิ้นเสีย: <b>${reconcileCalculation.wasteQty}</b> ชิ้น</p>` : ''}
+                    ${reconcileCalculation.wasteA3 > 0 ? `<p>กระดาษเสีย: <b>${reconcileCalculation.wasteA3}</b> ใบ</p>` : ""}
+                    ${reconcileCalculation.wasteQty > 0 ? `<p>ชิ้นเสีย: <b>${reconcileCalculation.wasteQty}</b> ชิ้น</p>` : ""}
                     <p style="margin-top:6px; border-top:1px solid #e5e7eb; padding-top:6px;">รวมตัดสต็อค: <b>${reconcileCalculation.sheetsNeeded}</b> ใบ</p>
                 </div>
             `,
-            showCancelButton: true,
-            confirmButtonText: '✓ ยืนยันบันทึก',
-            cancelButtonText: 'กลับไปแก้ไข',
-            confirmButtonColor: '#0f1e3d',
-            cancelButtonColor: '#6b7280',
-            returnFocus: false
+      showCancelButton: true,
+      confirmButtonText: "✓ ยืนยันบันทึก",
+      cancelButtonText: "กลับไปแก้ไข",
+      confirmButtonColor: "#0f1e3d",
+      cancelButtonColor: "#6b7280",
+      returnFocus: false,
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    setIsSubmittingReconcile(true);
+    try {
+      const entryId = reconcilingOrder.id;
+      const editorName = getCurrentUserIdentifier();
+
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          paper_type: reconcileCalculation.paperType,
+          good_a3: reconcileCalculation.goodA3,
+          waste_qty:
+            reconcileCalculation.wasteQty > 0
+              ? reconcileCalculation.wasteQty
+              : null,
+          waste_qty_remark: reconcileForm.wasteQtyRemark || null,
+          waste_a3:
+            reconcileCalculation.wasteA3 > 0
+              ? reconcileCalculation.wasteA3
+              : null,
+          waste_a3_remark: reconcileForm.wasteA3Remark || null,
+          reconciled_by: editorName,
+          reconciled_at: new Date().toISOString(),
+          qty_per_a3_used: reconcileCalculation.qtyPerA3,
+        })
+        .eq("id", entryId);
+
+      if (updateErr) throw updateErr;
+
+      const { data: existingGoodTx } = await supabase
+        .from("paper_transactions")
+        .select("id")
+        .eq("reference_id", entryId)
+        .eq("transaction_type", "OUT")
+        .or("transaction_category.eq.GOOD,transaction_category.is.null")
+        .limit(1)
+        .maybeSingle();
+
+      if (existingGoodTx) {
+        const { error: goodTxErr } = await supabase
+          .from("paper_transactions")
+          .update({
+            paper_type: reconcileCalculation.paperType,
+            qty: reconcileCalculation.goodA3,
+            transaction_category: "GOOD",
+            description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
+          })
+          .eq("id", existingGoodTx.id);
+        if (goodTxErr)
+          throw new Error(`ตัดสต็อคกระดาษดีไม่สำเร็จ: ${goodTxErr.message}`);
+      } else {
+        const { error: goodTxErr } = await supabase
+          .from("paper_transactions")
+          .insert({
+            reference_id: entryId,
+            transaction_type: "OUT",
+            transaction_category: "GOOD",
+            paper_type: reconcileCalculation.paperType,
+            qty: reconcileCalculation.goodA3,
+            date: new Date().toLocaleDateString("en-CA", {
+              timeZone: "Asia/Bangkok",
+            }),
+            created_by: editorName,
+            description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
+          });
+        if (goodTxErr)
+          throw new Error(`ตัดสต็อคกระดาษดีไม่สำเร็จ: ${goodTxErr.message}`);
+      }
+
+      if (reconcileCalculation.wasteA3 > 0) {
+        const { data: existingWasteTx } = await supabase
+          .from("paper_transactions")
+          .select("id")
+          .eq("reference_id", entryId)
+          .eq("transaction_type", "OUT")
+          .eq("transaction_category", "WASTE")
+          .maybeSingle();
+
+        if (existingWasteTx) {
+          const { error: wasteTxErr } = await supabase
+            .from("paper_transactions")
+            .update({
+              paper_type: reconcileCalculation.paperType,
+              qty: reconcileCalculation.wasteA3,
+              description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
+            })
+            .eq("id", existingWasteTx.id);
+          if (wasteTxErr)
+            throw new Error(
+              `ตัดสต็อคกระดาษเสียไม่สำเร็จ: ${wasteTxErr.message}`,
+            );
+        } else {
+          const { error: wasteTxErr } = await supabase
+            .from("paper_transactions")
+            .insert({
+              reference_id: entryId,
+              transaction_type: "OUT",
+              transaction_category: "WASTE",
+              paper_type: reconcileCalculation.paperType,
+              qty: reconcileCalculation.wasteA3,
+              date: new Date().toLocaleDateString("en-CA", {
+                timeZone: "Asia/Bangkok",
+              }),
+              created_by: editorName,
+              description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
+            });
+          if (wasteTxErr)
+            throw new Error(
+              `ตัดสต็อคกระดาษเสียไม่สำเร็จ: ${wasteTxErr.message}`,
+            );
+        }
+      } else {
+        const { error: clearWasteErr } = await supabase
+          .from("paper_transactions")
+          .delete()
+          .eq("reference_id", entryId)
+          .eq("transaction_type", "OUT")
+          .eq("transaction_category", "WASTE");
+        if (clearWasteErr)
+          throw new Error(
+            `ล้างรายการกระดาษเสียเดิมไม่สำเร็จ: ${clearWasteErr.message}`,
+          );
+      }
+
+      // อัปเดตตาราง paper_reports
+      const { data: existingReport } = await supabase
+        .from("paper_reports")
+        .select("id")
+        .eq("order_id", entryId)
+        .maybeSingle();
+      if (existingReport) {
+        await supabase
+          .from("paper_reports")
+          .update({
+            target_qty: reconcilingOrder.quantity || 0,
+            target_a3: (reconcilingOrder as any).target_a3 || 0,
+            good_a3: reconcileCalculation.goodA3,
+            waste_a3: reconcileCalculation.wasteA3,
+            waste_qty: reconcileCalculation.wasteQty,
+            waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+            waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+            paper_type: reconcileCalculation.paperType,
+            product_id: reconcilingOrder.product_id,
+            department: reconcilingOrder.created_by_department,
+            lot_number: reconcilingOrder.lot_number,
+            qty_per_a3_used: reconcileCalculation.qtyPerA3,
+          })
+          .eq("id", existingReport.id);
+      } else {
+        await supabase.from("paper_reports").insert({
+          order_id: entryId,
+          report_type: "ORDER",
+          lot_number: reconcilingOrder.lot_number,
+          product_id: reconcilingOrder.product_id,
+          department: reconcilingOrder.created_by_department,
+          paper_type: reconcileCalculation.paperType,
+          target_qty: reconcilingOrder.quantity || 0,
+          target_a3: (reconcilingOrder as any).target_a3 || 0,
+          good_a3: reconcileCalculation.goodA3,
+          waste_a3: reconcileCalculation.wasteA3,
+          waste_qty: reconcileCalculation.wasteQty,
+          waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+          waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+          created_by: editorName,
+          created_at: new Date().toISOString(),
+          qty_per_a3_used: reconcileCalculation.qtyPerA3,
         });
+      }
 
-        if (!confirmResult.isConfirmed) return;
-
-        setIsSubmittingReconcile(true);
-        try {
-            const entryId = reconcilingOrder.id;
-            const editorName = getCurrentUserIdentifier();
-            const summary = `บันทึกผลผลิต: กระดาษดี ${reconcileCalculation.goodA3} ใบ, เสีย ${reconcileCalculation.wasteA3} ใบ`;
-
-                const { error: updateErr } = await supabase.from('orders').update({
-                paper_type: reconcileCalculation.paperType,
-                good_a3: reconcileCalculation.goodA3,
-                waste_qty: reconcileCalculation.wasteQty > 0 ? reconcileCalculation.wasteQty : null,
-                waste_qty_remark: reconcileForm.wasteQtyRemark || null,
-                waste_a3: reconcileCalculation.wasteA3 > 0 ? reconcileCalculation.wasteA3 : null,
-                waste_a3_remark: reconcileForm.wasteA3Remark || null,
-                reconciled_by: editorName,
-                reconciled_at: new Date().toISOString(),
-                qty_per_a3_used: reconcileCalculation.qtyPerA3,
-
-            }).eq('id', entryId);
-
-            if (updateErr) throw updateErr;
-
-            const { data: existingGoodTx } = await supabase
-                .from('paper_transactions')
-                .select('id')
-                .eq('reference_id', entryId)
-                .eq('transaction_type', 'OUT')
-                .or('transaction_category.eq.GOOD,transaction_category.is.null')
-                .limit(1)
-                .maybeSingle();
-
-            if (existingGoodTx) {
-                const { error: goodTxErr } = await supabase.from('paper_transactions').update({
-                    paper_type: reconcileCalculation.paperType,
-                    qty: reconcileCalculation.goodA3,
-                    transaction_category: 'GOOD',
-                    description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
-                }).eq('id', existingGoodTx.id);
-                if (goodTxErr) throw new Error(`ตัดสต็อคกระดาษดีไม่สำเร็จ: ${goodTxErr.message}`);
-            } else {
-                const { error: goodTxErr } = await supabase.from('paper_transactions').insert({
-                    reference_id: entryId,
-                    transaction_type: 'OUT',
-                    transaction_category: 'GOOD',
-                    paper_type: reconcileCalculation.paperType,
-                    qty: reconcileCalculation.goodA3,
-                    date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
-                    created_by: editorName,
-                    description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษดี)`,
-                });
-                if (goodTxErr) throw new Error(`ตัดสต็อคกระดาษดีไม่สำเร็จ: ${goodTxErr.message}`);
-            }
-
-            if (reconcileCalculation.wasteA3 > 0) {
-                const { data: existingWasteTx } = await supabase
-                    .from('paper_transactions')
-                    .select('id')
-                    .eq('reference_id', entryId)
-                    .eq('transaction_type', 'OUT')
-                    .eq('transaction_category', 'WASTE')
-                    .maybeSingle();
-
-                if (existingWasteTx) {
-                    const { error: wasteTxErr } = await supabase.from('paper_transactions').update({
-                        paper_type: reconcileCalculation.paperType,
-                        qty: reconcileCalculation.wasteA3,
-                        description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
-                    }).eq('id', existingWasteTx.id);
-                    if (wasteTxErr) throw new Error(`ตัดสต็อคกระดาษเสียไม่สำเร็จ: ${wasteTxErr.message}`);
-                } else {
-                    const { error: wasteTxErr } = await supabase.from('paper_transactions').insert({
-                        reference_id: entryId,
-                        transaction_type: 'OUT',
-                        transaction_category: 'WASTE',
-                        paper_type: reconcileCalculation.paperType,
-                        qty: reconcileCalculation.wasteA3,
-                        date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }),
-                        created_by: editorName,
-                        description: `คำสั่งพิมพ์ ล็อต ${reconcilingOrder.lot_number} (กระดาษเสีย)`,
-                    });
-                    if (wasteTxErr) throw new Error(`ตัดสต็อคกระดาษเสียไม่สำเร็จ: ${wasteTxErr.message}`);
-                }
-            } else {
-                const { error: clearWasteErr } = await supabase.from('paper_transactions')
-                    .delete()
-                    .eq('reference_id', entryId)
-                    .eq('transaction_type', 'OUT')
-                    .eq('transaction_category', 'WASTE');
-                if (clearWasteErr) throw new Error(`ล้างรายการกระดาษเสียเดิมไม่สำเร็จ: ${clearWasteErr.message}`);
-            }
-
-            
-            // อัปเดตตาราง paper_reports
-            const { data: existingReport } = await supabase.from('paper_reports').select('id').eq('order_id', entryId).maybeSingle();
-            if (existingReport) {
-                await supabase.from('paper_reports').update({
-                    target_qty: reconcilingOrder.quantity || 0,
-                    target_a3: (reconcilingOrder as any).target_a3 || 0,
-                    good_a3: reconcileCalculation.goodA3,
-                    waste_a3: reconcileCalculation.wasteA3,
-                    waste_qty: reconcileCalculation.wasteQty,
-                    waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
-                    waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
-                    paper_type: reconcileCalculation.paperType,
-                    product_id: reconcilingOrder.product_id,
-                    department: reconcilingOrder.created_by_department,
-                    lot_number: reconcilingOrder.lot_number,
-                    qty_per_a3_used: reconcileCalculation.qtyPerA3,
-                }).eq('id', existingReport.id);
-            } else {
-                await supabase.from('paper_reports').insert({
-                    order_id: entryId,
-                    report_type: 'ORDER',
-                    lot_number: reconcilingOrder.lot_number,
-                    product_id: reconcilingOrder.product_id,
-                    department: reconcilingOrder.created_by_department,
-                    paper_type: reconcileCalculation.paperType,
-                    target_qty: reconcilingOrder.quantity || 0,
-                    target_a3: (reconcilingOrder as any).target_a3 || 0,
-                    good_a3: reconcileCalculation.goodA3,
-                    waste_a3: reconcileCalculation.wasteA3,
-                    waste_qty: reconcileCalculation.wasteQty,
-                    waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
-                    waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
-                    created_by: editorName,
-                    created_at: new Date().toISOString(),
-                    qty_per_a3_used: reconcileCalculation.qtyPerA3,
-                });
-            }
-
-            await logAuditTrail(entryId, 'RECONCILE', summary);
-
-            // อัปเดต Orders ใน State หลังฉาก
-            setOrders(prev => prev.map(o => o.id === entryId ? {
+      // อัปเดต Orders ใน State หลังฉาก
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === entryId
+            ? {
                 ...o,
                 paper_type: reconcileCalculation.paperType,
                 good_a3: reconcileCalculation.goodA3,
-                waste_qty: reconcileCalculation.wasteQty > 0 ? reconcileCalculation.wasteQty : undefined,
+                waste_qty:
+                  reconcileCalculation.wasteQty > 0
+                    ? reconcileCalculation.wasteQty
+                    : undefined,
                 waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
-                waste_a3: reconcileCalculation.wasteA3 > 0 ? reconcileCalculation.wasteA3 : undefined,
+                waste_a3:
+                  reconcileCalculation.wasteA3 > 0
+                    ? reconcileCalculation.wasteA3
+                    : undefined,
                 waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
                 reconciled_by: editorName,
                 reconciled_at: new Date().toISOString(),
                 qty_per_a3_used: reconcileCalculation.qtyPerA3,
+              }
+            : o,
+        ),
+      );
 
-            } : o));
+      // อัปเดตค่าที่ค้างอยู่ใน Modal เพื่อแสดงค่าล่าสุด แทนการปิด Modal
+      setReconcilingOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              paper_type: reconcileCalculation.paperType,
+              good_a3: reconcileCalculation.goodA3,
+              waste_qty:
+                reconcileCalculation.wasteQty > 0
+                  ? reconcileCalculation.wasteQty
+                  : undefined,
+              waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+              waste_a3:
+                reconcileCalculation.wasteA3 > 0
+                  ? reconcileCalculation.wasteA3
+                  : undefined,
+              waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
+              reconciled_by: editorName,
+              reconciled_at: new Date().toISOString(),
+              qty_per_a3_used: reconcileCalculation.qtyPerA3,
+            }
+          : null,
+      );
 
-            // อัปเดตค่าที่ค้างอยู่ใน Modal เพื่อแสดงค่าล่าสุด แทนการปิด Modal
-            setReconcilingOrder(prev => prev ? {
-                ...prev,
-                paper_type: reconcileCalculation.paperType,
-                good_a3: reconcileCalculation.goodA3,
-                waste_qty: reconcileCalculation.wasteQty > 0 ? reconcileCalculation.wasteQty : undefined,
-                waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
-                waste_a3: reconcileCalculation.wasteA3 > 0 ? reconcileCalculation.wasteA3 : undefined,
-                waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
-                reconciled_by: editorName,
-                reconciled_at: new Date().toISOString(),
-                qty_per_a3_used: reconcileCalculation.qtyPerA3,
+      setInitialReconcileForm({
+        wasteQty: reconcileForm.wasteQty,
+        wasteA3: reconcileForm.wasteA3,
+        wasteQtyRemark: reconcileForm.wasteQtyRemark,
+        wasteA3Remark: reconcileForm.wasteA3Remark,
+      });
 
-            } : null);
+      await Swal.fire({
+        icon: "success",
+        title: "บันทึกสำเร็จ",
+        text: "ตัดสต็อคกระดาษเรียบร้อยแล้ว",
+        timer: 1800,
+        showConfirmButton: false,
+        returnFocus: false,
+      });
+      setReconcilingOrder(null);
+    } catch (error) {
+      await Swal.fire({
+        icon: "error",
+        title: "บันทึกไม่สำเร็จ",
+        text: (error as Error).message || "กรุณาลองใหม่อีกครั้ง",
+        returnFocus: false,
+      });
+    } finally {
+      setIsSubmittingReconcile(false);
+    }
+  };
 
-            setInitialReconcileForm({
-                wasteQty: reconcileForm.wasteQty,
-                wasteA3: reconcileForm.wasteA3,
-                wasteQtyRemark: reconcileForm.wasteQtyRemark,
-                wasteA3Remark: reconcileForm.wasteA3Remark,
-            });
+  const undoReconcile = async (order: OrderInterface) => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะ Moderator และ Assistant Moderator เท่านั้น",
+      });
+      return;
+    }
+    const goodA3 = order.good_a3 || 0;
+    const wasteA3 = order.waste_a3 || 0;
+    const totalSheets = goodA3 + wasteA3;
 
-            await Swal.fire({
-                icon: 'success',
-                title: 'บันทึกสำเร็จ',
-                text: 'ตัดสต็อคกระดาษเรียบร้อยแล้ว',
-                timer: 1800,
-                showConfirmButton: false,
-                returnFocus: false
-            });
-            setReconcilingOrder(null);
-        } catch (error) {
-            await Swal.fire({
-                icon: 'error',
-                title: 'บันทึกไม่สำเร็จ',
-                text: (error as Error).message || 'กรุณาลองใหม่อีกครั้ง',
-                returnFocus: false
-            });
-        } finally {
-            setIsSubmittingReconcile(false);
-        }
-    };
+    // ✅ เช็คว่าอัตราส่วนชิ้น/A3 ตอนตัดสต็อค ยังตรงกับอัตราปัจจุบันของสินค้านี้ไหม
+    const currentQtyPerA3 = productMetaMap[order.product_id]?.qtyPerA3;
+    let ratioWarningHtml = "";
+    if (order.qty_per_a3_used == null) {
+      ratioWarningHtml = `<p style="margin-top:6px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px;">⚠️ ไม่สามารถตรวจสอบอัตราส่วนของรายการนี้ได้ (บันทึกไว้ก่อนระบบอัปเดต) กรุณาตรวจสอบยอดด้วยตนเอง</p>`;
+    } else if (currentQtyPerA3 && order.qty_per_a3_used !== currentQtyPerA3) {
+      ratioWarningHtml = `<p style="margin-top:6px; color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:6px 8px;">⚠️ อัตราส่วนชิ้น/A3 ของสินค้านี้เปลี่ยนไปหลังตัดสต็อคครั้งนี้ (ตอนตัด: <b>${order.qty_per_a3_used}</b> ชิ้น/A3 ตอนนี้: <b>${currentQtyPerA3}</b> ชิ้น/A3) กรุณาตรวจสอบยอดให้แน่ใจก่อนยกเลิก</p>`;
+    }
 
-
-        const undoReconcile = async (order: OrderInterface) => {
-        if (!isAdmin) {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะ Moderator และ Assistant Moderator เท่านั้น' });
-            return;
-        }
-        const goodA3 = order.good_a3 || 0;
-        const wasteA3 = order.waste_a3 || 0;
-        const totalSheets = goodA3 + wasteA3;
-
-                // ✅ เช็คว่าอัตราส่วนชิ้น/A3 ตอนตัดสต็อค ยังตรงกับอัตราปัจจุบันของสินค้านี้ไหม
-        const currentQtyPerA3 = productMetaMap[order.product_id]?.qtyPerA3;
-        let ratioWarningHtml = '';
-        if (order.qty_per_a3_used == null) {
-            ratioWarningHtml = `<p style="margin-top:6px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px;">⚠️ ไม่สามารถตรวจสอบอัตราส่วนของรายการนี้ได้ (บันทึกไว้ก่อนระบบอัปเดต) กรุณาตรวจสอบยอดด้วยตนเอง</p>`;
-        } else if (currentQtyPerA3 && order.qty_per_a3_used !== currentQtyPerA3) {
-            ratioWarningHtml = `<p style="margin-top:6px; color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:6px 8px;">⚠️ อัตราส่วนชิ้น/A3 ของสินค้านี้เปลี่ยนไปหลังตัดสต็อคครั้งนี้ (ตอนตัด: <b>${order.qty_per_a3_used}</b> ชิ้น/A3 ตอนนี้: <b>${currentQtyPerA3}</b> ชิ้น/A3) กรุณาตรวจสอบยอดให้แน่ใจก่อนยกเลิก</p>`;
-        }
-
-
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'ยกเลิกการตัดสต็อค?',
-            html: `
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "ยกเลิกการตัดสต็อค?",
+      html: `
                 <div style="text-align:left; font-size:13px;">
                     <p>สินค้า: <b>${order.product_name}</b></p>
                     <p>ล็อต: <b>${order.lot_number}</b></p>
                     <p style="margin-top:6px; border-top:1px solid #e5e7eb; padding-top:6px;">
-                        กระดาษ <b>${totalSheets}</b> ใบ (ประเภท <b>${order.paper_type || '-'}</b>) จะถูกคืนเข้าสต็อค
+                        กระดาษ <b>${totalSheets}</b> ใบ (ประเภท <b>${order.paper_type || "-"}</b>) จะถูกคืนเข้าสต็อค
                     </p>
                                         ${ratioWarningHtml}
                     <p style="margin-top:4px; color:#dc2626;">รายการตัดสต็อคเดิมของคำสั่งนี้จะถูกลบทั้งหมด</p>
                 </div>
             `,
-            showCancelButton: true,
-            confirmButtonText: 'ยืนยันยกเลิกตัดสต็อค',
-            cancelButtonText: 'ปิด',
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            returnFocus: false
-        });
-        if (!result.isConfirmed) return;
+      showCancelButton: true,
+      confirmButtonText: "ยืนยันยกเลิกตัดสต็อค",
+      cancelButtonText: "ปิด",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      returnFocus: false,
+    });
+    if (!result.isConfirmed) return;
 
-        try {
-            const { error: txErr } = await supabase
-                .from('paper_transactions')
-                .delete()
-                .eq('reference_id', order.id)
-                .eq('transaction_type', 'OUT');
-            if (txErr) throw txErr;
+    try {
+      const { error: txErr } = await supabase
+        .from("paper_transactions")
+        .delete()
+        .eq("reference_id", order.id)
+        .eq("transaction_type", "OUT");
+      if (txErr) throw txErr;
 
-            const { error: reportErr } = await supabase
-                .from('paper_reports')
-                .delete()
-                .eq('order_id', order.id);
-            if (reportErr) throw reportErr;
+      const { error: reportErr } = await supabase
+        .from("paper_reports")
+        .delete()
+        .eq("order_id", order.id);
+      if (reportErr) throw reportErr;
 
-            const { error: updateErr } = await supabase.from('orders').update({
-                paper_type: null,
-                good_a3: null,
-                waste_qty: null,
-                waste_qty_remark: null,
-                waste_a3: null,
-                waste_a3_remark: null,
-                reconciled_by: null,
-                reconciled_at: null,
-                qty_per_a3_used: null,
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          paper_type: null,
+          good_a3: null,
+          waste_qty: null,
+          waste_qty_remark: null,
+          waste_a3: null,
+          waste_a3_remark: null,
+          reconciled_by: null,
+          reconciled_at: null,
+          qty_per_a3_used: null,
+        })
+        .eq("id", order.id);
+      if (updateErr) throw updateErr;
 
-            }).eq('id', order.id);
-            if (updateErr) throw updateErr;
-
-            await logAuditTrail(order.id, 'CANCEL_RECONCILE', `ยกเลิกการตัดสต็อคกระดาษ (คืน ${totalSheets} ใบ)`);
-
-            setOrders(prev => prev.map(o => o.id === order.id ? {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === order.id
+            ? {
                 ...o,
                 paper_type: undefined,
                 good_a3: undefined,
@@ -1071,1221 +1124,2009 @@ export default function DashboardPage() {
                 reconciled_by: undefined,
                 reconciled_at: undefined,
                 qty_per_a3_used: undefined,
+              }
+            : o,
+        ),
+      );
 
-            } : o));
+      Swal.fire({
+        icon: "success",
+        title: "ยกเลิกตัดสต็อคสำเร็จ",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "ยกเลิกไม่สำเร็จ",
+        text: (error as Error).message || "กรุณาลองใหม่อีกครั้ง",
+      });
+    }
+  };
 
-            Swal.fire({ icon: 'success', title: 'ยกเลิกตัดสต็อคสำเร็จ', timer: 1500, showConfirmButton: false });
-        } catch (error) {
-            Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: (error as Error).message || 'กรุณาลองใหม่อีกครั้ง' });
-        }
-    };
-
-
-
-    const verifyOrder = async (order: OrderInterface) => {
-        if (!isAdmin) {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
-            return;
-        }
-        if (order.is_verified) {
-            Swal.fire({
-                icon: 'warning', title: 'ตรวจสอบไปแล้ว',
-                html: `
+  const verifyOrder = async (order: OrderInterface) => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+      });
+      return;
+    }
+    if (order.is_verified) {
+      Swal.fire({
+        icon: "warning",
+        title: "ตรวจสอบไปแล้ว",
+        html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งรายการนี้ได้รับการตรวจสอบและตัดชิ้นงานเสร็จแล้ว</p>
-                        <p class="mt-2">✅ <b>ผู้ตรวจสอบ:</b> ${order.verified_by || 'ไม่ระบุ'}</p>
+                        <p class="mt-2">✅ <b>ผู้ตรวจสอบ:</b> ${order.verified_by || "ไม่ระบุ"}</p>
                         <p>🕐 <b>เวลา:</b> ${formatThaiDateTimeFromISO(order.verified_at)}</p>
                         <p class="mt-2 text-orange-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
-        const result = await Swal.fire({
-            title: 'ยืนยันการตรวจสอบ', text: 'คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?',
-            icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', cancelButtonColor: '#6b7280',
-            confirmButtonText: '✓ ยืนยันการตรวจสอบ', cancelButtonText: 'ยกเลิก'
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#6b7280",
+      });
+      return;
+    }
+    const result = await Swal.fire({
+      title: "ยืนยันการตรวจสอบ",
+      text: "คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "✓ ยืนยันการตรวจสอบ",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (result.isConfirmed) {
+      try {
+        const now = new Date().toISOString();
+        const verifierName = getCurrentUserIdentifier();
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            is_verified: true,
+            verified_by: verifierName,
+            verified_at: now,
+          })
+          .eq("id", order.id);
+        if (error) throw error;
+
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id
+              ? {
+                  ...o,
+                  is_verified: true,
+                  verified_by: verifierName,
+                  verified_by_user_id: currentUserId,
+                  verified_at: now,
+                }
+              : o,
+          ),
+        );
+
+        Swal.fire({
+          icon: "success",
+          title: "ตรวจสอบสำเร็จ!",
+          html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`,
+          timer: 2000,
+          showConfirmButton: false,
         });
-        if (result.isConfirmed) {
-            try {
-                const now = new Date().toISOString();
-                const verifierName = getCurrentUserIdentifier();
-                const { error } = await supabase.from('orders').update({
-                    is_verified: true, verified_by: verifierName, verified_at: now
-                }).eq('id', order.id);
-                if (error) throw error;
-                await logAuditTrail(order.id, 'VERIFY', 'ตรวจสอบและยืนยันคำสั่งพิมพ์');
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_verified: true, verified_by: verifierName, verified_at: now } : o
-                ));
-                Swal.fire({ icon: 'success', title: 'ตรวจสอบสำเร็จ!', html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`, timer: 2000, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ตรวจสอบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ตรวจสอบไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-    // ✅ markPrinted — ดึง DB ก่อน + บันทึก printed_by, printed_by_user_id, printed_at
-    const markPrinted = async (order: OrderInterface) => {
-        if (!isAdmin) return;
+  // ✅ markPrinted — ดึง DB ก่อน + บันทึก printed_by, printed_by_user_id, printed_at
+  const markPrinted = async (order: OrderInterface) => {
+    if (!isAdmin) return;
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
 
-        const { data: freshOrder, error: fetchError } = await supabase
-            .from('orders').select('is_printed, printed_by, printed_by_user_id').eq('id', order.id).single();
+    const { data: freshOrder, error: fetchError } = await supabase
+      .from("orders")
+      .select("is_printed, printed_by, printed_by_user_id")
+      .eq("id", order.id)
+      .single();
 
-        if (fetchError || !freshOrder) {
-            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่' });
-            return;
-        }
+    if (fetchError || !freshOrder) {
+      Swal.fire({
+        icon: "error",
+        title: "โหลดข้อมูลไม่สำเร็จ",
+        text: "กรุณาลองใหม่",
+      });
+      return;
+    }
 
-        // ✅ ดักซ้ำด้วย UUID
-        if (freshOrder.is_printed) {
-            Swal.fire({
-                icon: 'warning', title: 'พิมพ์ฉลากไปแล้ว!',
-                html: `
+    // ✅ ดักซ้ำด้วย UUID
+    if (freshOrder.is_printed) {
+      Swal.fire({
+        icon: "warning",
+        title: "พิมพ์ฉลากไปแล้ว!",
+        html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ได้รับการยืนยันพิมพ์ฉลากแล้ว</p>
-                        <p class="mt-2">🖨️ <b>ผู้พิมพ์:</b> ${freshOrder.printed_by || 'ไม่ระบุ'}</p>
+                        <p class="mt-2">🖨️ <b>ผู้พิมพ์:</b> ${freshOrder.printed_by || "ไม่ระบุ"}</p>
                         <p class="mt-2 text-orange-500 font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#6b7280",
+      });
+      return;
+    }
 
-        const result = await Swal.fire({
-            title: 'ยืนยันพิมพ์ฉลากแล้ว?',
-            text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} เสร็จแล้วหรือไม่?`,
-            icon: 'question', showCancelButton: true,
-            confirmButtonColor: '#3b82f6', cancelButtonColor: '#6b7280',
-            confirmButtonText: '✓ ยืนยันพิมพ์แล้ว', cancelButtonText: 'ยกเลิก'
+    const result = await Swal.fire({
+      title: "ยืนยันพิมพ์ฉลากแล้ว?",
+      text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} เสร็จแล้วหรือไม่?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3b82f6",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "✓ ยืนยันพิมพ์แล้ว",
+      cancelButtonText: "ยกเลิก",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const printerName = getCurrentUserIdentifier();
+        const now = new Date().toISOString();
+
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            is_printed: true,
+            is_no_file: false,
+            printed_by: printerName, // ✅ ชื่อผู้พิมพ์
+            printed_by_user_id: session.user.id, // ✅ UUID ผู้พิมพ์
+            printed_at: now, // ✅ เวลาที่พิมพ์
+          })
+          .eq("id", order.id);
+
+        if (error) throw error;
+
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id
+              ? {
+                  ...o,
+                  is_printed: true,
+                  is_no_file: false,
+                  printed_by: printerName,
+                  printed_by_user_id: session.user.id,
+                  printed_at: now,
+                }
+              : o,
+          ),
+        );
+        Swal.fire({
+          icon: "success",
+          title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"',
+          timer: 1500,
+          showConfirmButton: false,
         });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "เปลี่ยนสถานะไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-        if (result.isConfirmed) {
-            try {
-                const printerName = getCurrentUserIdentifier();
-                const now = new Date().toISOString();
+  // ✅ unmarkPrinted — เปรียบเทียบ UUID จาก DB กับ session โดยตรง
+  const unmarkPrinted = async (order: OrderInterface) => {
+    if (!isAdmin) return;
 
-                const { error } = await supabase.from('orders').update({
-                    is_printed: true,
-                    is_no_file: false,
-                    printed_by: printerName,           // ✅ ชื่อผู้พิมพ์
-                    printed_by_user_id: session.user.id, // ✅ UUID ผู้พิมพ์
-                    printed_at: now,                   // ✅ เวลาที่พิมพ์
-                }).eq('id', order.id);
+    const [
+      { data: freshOrder, error: fetchError },
+      {
+        data: { session },
+      },
+    ] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("is_printed, printed_by, printed_by_user_id")
+        .eq("id", order.id)
+        .single(),
+      supabase.auth.getSession(),
+    ]);
 
-                if (error) throw error;
+    if (fetchError || !freshOrder || !session) {
+      Swal.fire({
+        icon: "error",
+        title: "โหลดข้อมูลไม่สำเร็จ",
+        text: "กรุณาลองใหม่",
+      });
+      return;
+    }
 
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_printed: true, is_no_file: false, printed_by: printerName, printed_by_user_id: session.user.id, printed_at: now } : o
-                ));
-                Swal.fire({ icon: 'success', title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    // ✅ unmarkPrinted — เปรียบเทียบ UUID จาก DB กับ session โดยตรง
-    const unmarkPrinted = async (order: OrderInterface) => {
-        if (!isAdmin) return;
-
-        const [{ data: freshOrder, error: fetchError }, { data: { session } }] = await Promise.all([
-            supabase.from('orders').select('is_printed, printed_by, printed_by_user_id').eq('id', order.id).single(),
-            supabase.auth.getSession()
-        ]);
-
-        if (fetchError || !freshOrder || !session) {
-            Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาลองใหม่' });
-            return;
-        }
-
-        // ✅ เปรียบเทียบ UUID ตรงๆ ไม่มีปัญหา format
-        if (freshOrder.printed_by_user_id && freshOrder.printed_by_user_id !== session.user.id) {
-            Swal.fire({
-                icon: 'error', title: 'ไม่มีสิทธิ์ยกเลิก',
-                html: `
+    // ✅ เปรียบเทียบ UUID ตรงๆ ไม่มีปัญหา format
+    if (
+      freshOrder.printed_by_user_id &&
+      freshOrder.printed_by_user_id !== session.user.id
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์ยกเลิก",
+        html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
-                        <p>คำสั่งนี้ถูกยืนยันพิมพ์โดย <b>${freshOrder.printed_by || 'ไม่ระบุ'}</b></p>
+                        <p>คำสั่งนี้ถูกยืนยันพิมพ์โดย <b>${freshOrder.printed_by || "ไม่ระบุ"}</b></p>
                         <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#6b7280",
+      });
+      return;
+    }
 
-        const result = await Swal.fire({
-            title: 'ยกเลิกการพิมพ์?', text: 'คุณต้องการยกเลิกสถานะ "พิมพ์ฉลากแล้ว" ใช่หรือไม่?',
-            icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ใช่, ยกเลิกการพิมพ์', cancelButtonText: 'ปิด'
+    const result = await Swal.fire({
+      title: "ยกเลิกการพิมพ์?",
+      text: 'คุณต้องการยกเลิกสถานะ "พิมพ์ฉลากแล้ว" ใช่หรือไม่?',
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "ใช่, ยกเลิกการพิมพ์",
+      cancelButtonText: "ปิด",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            is_printed: false,
+            printed_by: null,
+            printed_by_user_id: null, // ✅ เคลียร์ UUID
+            printed_at: null, // ✅ เคลียร์เวลา
+          })
+          .eq("id", order.id);
+        if (error) throw error;
+
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id
+              ? {
+                  ...o,
+                  is_printed: false,
+                  printed_by: null,
+                  printed_by_user_id: null,
+                  printed_at: null,
+                }
+              : o,
+          ),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "ยกเลิกการพิมพ์สำเร็จ",
+          timer: 1500,
+          showConfirmButton: false,
         });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "เปลี่ยนสถานะไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-        if (result.isConfirmed) {
-            try {
-                const { error } = await supabase.from('orders').update({
-                    is_printed: false,
-                    printed_by: null,
-                    printed_by_user_id: null, // ✅ เคลียร์ UUID
-                    printed_at: null,          // ✅ เคลียร์เวลา
-                }).eq('id', order.id);
-                if (error) throw error;
-
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_printed: false, printed_by: null, printed_by_user_id: null, printed_at: null } : o
-                ));
-                Swal.fire({ icon: 'success', title: 'ยกเลิกการพิมพ์สำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'เปลี่ยนสถานะไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const unverifyOrder = async (order: OrderInterface) => {
-        if (!isAdmin) {
-            Swal.fire({ icon: 'error', title: 'ไม่มีสิทธิ์', text: 'เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น' });
-            return;
-        }
-        const currentUserIdentifier = getCurrentUserIdentifier();
-        if (order.verified_by && order.verified_by !== currentUserIdentifier) {
-            Swal.fire({
-                icon: 'error', title: 'ไม่มีสิทธิ์ยกเลิก',
-                html: `
+  const unverifyOrder = async (order: OrderInterface) => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+      });
+      return;
+    }
+    if (
+      order.verified_by_user_id &&
+      order.verified_by_user_id !== currentUserId
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์ยกเลิก",
+        html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกตรวจสอบโดย <b>${order.verified_by}</b> แล้ว</p>
                         <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ', confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
-        const result = await Swal.fire({
-            title: 'ยกเลิกการตรวจสอบ?', text: 'คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?',
-            icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ใช่, ยกเลิก', cancelButtonText: 'ปิด'
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#6b7280",
+      });
+      return;
+    }
+    const result = await Swal.fire({
+      title: "ยกเลิกการตรวจสอบ?",
+      text: "คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "ใช่, ยกเลิก",
+      cancelButtonText: "ปิด",
+    });
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            is_verified: false,
+            verified_by: null,
+            verified_at: null,
+          })
+          .eq("id", order.id);
+        if (error) throw error;
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id
+              ? {
+                  ...o,
+                  is_verified: false,
+                  verified_by: null,
+                  verified_by_user_id: null,
+                  verified_at: null,
+                }
+              : o,
+          ),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "ยกเลิกสำเร็จ!",
+          timer: 1500,
+          showConfirmButton: false,
         });
-        if (result.isConfirmed) {
-            try {
-                const { error } = await supabase.from('orders').update({
-                    is_verified: false, verified_by: null, verified_at: null
-                }).eq('id', order.id);
-                if (error) throw error;
-                setOrders(prev => prev.map(o =>
-                    o.id === order.id ? { ...o, is_verified: false, verified_by: null, verified_at: null } : o
-                ));
-                Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ยกเลิกไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-    const handleCancelOrder = async (order: OrderInterface) => {
-        // ✅ ตรวจสอบสิทธิ์การยกเลิก
-        if (!isAdmin && order.created_by !== userName) {
-            Swal.fire({
-                icon: 'error',
-                title: 'ไม่มีสิทธิ์ยกเลิก',
-                html: `
+  const handleCancelOrder = async (order: OrderInterface) => {
+    // ✅ ตรวจสอบสิทธิ์การยกเลิก
+    if (!isAdmin && order.created_by_user_id !== currentUserId) {
+      Swal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์ยกเลิก",
+        html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
                         <p class="mt-2 text-red-500 font-medium">คุณสามารถยกเลิกได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
                     </div>
                 `,
-                confirmButtonText: 'รับทราบ',
-                confirmButtonColor: '#6b7280',
-            });
-            return;
-        }
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#6b7280",
+      });
+      return;
+    }
 
-        const result = await Swal.fire({
-            title: 'ยืนยันการยกเลิกสั่งพิมพ์?', text: 'กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้',
-            icon: 'warning', input: 'text', inputPlaceholder: 'ใส่เหตุผลการยกเลิกที่นี่...',
-            showCancelButton: true, confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ยืนยันยกเลิก', cancelButtonText: 'ไม่ยกเลิก',
-            inputValidator: (value) => { if (!value) return 'คุณต้องระบุเหตุผลในการยกเลิก!'; }
-        });
-        if (result.isConfirmed) {
-            try {
-                const now = new Date().toISOString();
-                const editorName = getCurrentUserIdentifier();
-                const summary = `ยกเลิกเพราะ: ${result.value}`;
-                const updateData = {
-                    is_printed: false, is_verified: false, is_cancelled: true,
-                    updated_at: now, updated_by: editorName, edit_summary: summary
-                };
-                const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
-                if (error) throw error;
-                await logAuditTrail(order.id, 'CANCEL', summary);
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
-                Swal.fire({ icon: 'success', title: 'ยกเลิกสำเร็จ', text: 'รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว', timer: 1500 });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ยกเลิกไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const markNoFile = async (order: OrderInterface) => {
-        const result = await Swal.fire({
-            title: 'แจ้งเตือนไม่มีไฟล์?', text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
-            icon: 'warning', showCancelButton: true, confirmButtonColor: '#eab308', cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก'
-        });
-        if (result.isConfirmed) {
-            try {
-                const { error } = await supabase.from('orders').update({ is_no_file: true }).eq('id', order.id);
-                if (error) throw error;
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: true } : o));
-                Swal.fire({ icon: 'success', title: 'ทำเครื่องหมายสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const unmarkNoFile = async (order: OrderInterface) => {
-        const result = await Swal.fire({
-            title: 'ยกเลิกการแจ้งเตือนไม่มีไฟล์?',
-            text: 'สถานะ "ไม่มีไฟล์" จะถูกยกเลิก และคำสั่งจะกลับสู่ปกติ',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ใช่, ยกเลิก',
-            cancelButtonText: 'ปิด'
-        });
-
-        if (result.isConfirmed) {
-            try {
-                const { error } = await supabase.from('orders').update({ is_no_file: false }).eq('id', order.id);
-                if (error) throw error;
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, is_no_file: false } : o));
-                Swal.fire({ icon: 'success', title: 'ยกเลิกการแจ้งเตือนสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ดำเนินการไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const restoreOrder = async (order: OrderInterface) => {
-        const result = await Swal.fire({
-            title: 'กู้คืนคำสั่งผลิต?', text: 'รายการนี้จะถูกดึงกลับมาเป็นรายการใหม่เพื่อให้ดำเนินการต่อได้',
-            icon: 'question', showCancelButton: true, confirmButtonColor: '#10b981', cancelButtonColor: '#6b7280',
-            confirmButtonText: 'ยืนยันกู้คืน', cancelButtonText: 'ยกเลิก'
-        });
-        if (result.isConfirmed) {
-            try {
-                const now = new Date().toISOString();
-                const editorName = getCurrentUserIdentifier();
-                const updateData = {
-                    is_cancelled: false, is_printed: false, is_verified: false,
-                    updated_at: now, updated_by: editorName, edit_summary: 'กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)'
-                };
-                const { error } = await supabase.from('orders').update(updateData).eq('id', order.id);
-                if (error) throw error;
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updateData } : o));
-                Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'รายการกลับมาเป็นปกติแล้ว', timer: 1500 });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const deleteImage = async (order: OrderInterface) => {
-        if (!isAdmin || !order.image_url) return;
-        const result = await Swal.fire({
-            title: 'ยืนยันการลบรูปภาพ?', text: 'รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร', icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
-        });
-        if (result.isConfirmed) {
-            try {
-                const urlObj = new URL(order.image_url);
-                const marker = '/order-images/';
-                const markerIdx = urlObj.pathname.indexOf(marker);
-
-                if (markerIdx === -1) {
-                    throw new Error(`ไม่สามารถระบุ path ของไฟล์ได้: ${order.image_url}`);
-                }
-
-                const filePath = urlObj.pathname.substring(markerIdx + marker.length);
-
-                const { error: storageError } = await supabase.storage
-                    .from('order-images')
-                    .remove([filePath]);
-
-                if (storageError) throw storageError;
-
-                const { error: dbError } = await supabase.from('orders')
-                    .update({ image_url: null })
-                    .eq('id', order.id);
-
-                if (dbError) throw dbError;
-
-                setOrders(prev => prev.map(o => o.id === order.id ? { ...o, image_url: null } : o));
-                Swal.fire({ icon: 'success', title: 'ลบรูปภาพสำเร็จ!', timer: 1500, showConfirmButton: false });
-            } catch {
-                Swal.fire({ icon: 'error', title: 'ลบรูปภาพไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
-            }
-        }
-    };
-
-    const formatThaiDateTimeFromISO = (isoString?: string | null): string => {
-        if (!isoString) return 'ไม่ระบุ';
-        try {
-            const hasTimezone = isoString.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(isoString);
-            const normalized = hasTimezone ? isoString : isoString + '+07:00';
-            const date = new Date(normalized);
-            if (isNaN(date.getTime())) return isoString;
-            const thaiDate = date.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: '2-digit', month: '2-digit', year: 'numeric' });
-            const thaiTime = date.toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false });
-            return `${thaiDate}, ${thaiTime}`;
-        } catch { return isoString; }
-    };
-
-    const formatWaitingDuration = (createdAt?: string | null): string => {
-        if (!createdAt) return 'ไม่ทราบเวลาที่สั่ง';
-
-        const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60_000));
-        const days = Math.floor(elapsedMinutes / 1_440);
-        const hours = Math.floor((elapsedMinutes % 1_440) / 60);
-        const minutes = elapsedMinutes % 60;
-
-        if (days > 0) return `รอมาแล้ว ${days} วัน ${hours} ชม. ${minutes} นาที`;
-        if (hours > 0) return `รอมาแล้ว ${hours} ชม. ${minutes} นาที`;
-        return `รอมาแล้ว ${minutes} นาที`;
-    };
-
-    const formatToThaiDate = (dateString: string) => {
-        if (!dateString) return '';
-        try {
-            const date = new Date(dateString);
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const yearCE = date.getFullYear();
-            return (<>{day}/{month}/{yearCE + 543}<br /><span className="text-sm opacity-75">{day}/{month}/{yearCE}</span></>);
-        } catch { return dateString; }
-    };
-
-    const formatLastRefreshed = (date: Date): string => {
-        return date.toLocaleTimeString('th-TH', {
-            timeZone: 'Asia/Bangkok',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false,
-        });
-    };
-
-    const calculateExpiryDate = (manufactureDate: string, shelfLife: string): string => {
-        if (!manufactureDate || !shelfLife) return '';
-        try {
-            const mfgDate = new Date(manufactureDate);
-            if (isNaN(mfgDate.getTime())) return '';
-            const trimmed = shelfLife.trim();
-            const spaceIdx = trimmed.indexOf(' ');
-            const numValue = parseInt(spaceIdx === -1 ? trimmed : trimmed.substring(0, spaceIdx));
-            const unit = spaceIdx === -1 ? 'months' : trimmed.substring(spaceIdx + 1).toLowerCase();
-            if (isNaN(numValue) || numValue <= 0) return '';
-            const newDate = new Date(mfgDate);
-            if (unit.includes('day') || unit.includes('วัน')) newDate.setDate(newDate.getDate() + numValue);
-            else if (unit.includes('month') || unit.includes('mon') || unit.includes('เดือน')) newDate.setMonth(newDate.getMonth() + numValue);
-            else if (unit.includes('year') || unit.includes('yr') || unit.includes('ปี')) newDate.setFullYear(newDate.getFullYear() + numValue);
-            else newDate.setMonth(newDate.getMonth() + numValue);
-            return newDate.toISOString().split('T')[0];
-        } catch { return ''; }
-    };
-    useEffect(() => {
-        const sentinel = sentinelRef.current
-        if (!sentinel) return
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    setVisibleCount(prev => prev + 10)
-                }
-            },
-            { threshold: 0.1 }
-        )
-
-        observer.observe(sentinel)
-        return () => observer.disconnect()
-    }, [filteredOrders])
-
-    // เพิ่มใน useEffect ที่ฟัง searchTerm หรือ filter
-    useEffect(() => {
-        if (focusedOrderId) return;
-        setVisibleCount(10)
-    }, [searchTerm]) // ใส่ตัวแปร filter ที่มีด้วย
-
-    useEffect(() => {
-        if (!focusedOrderId) return;
-
-        const card = document.getElementById(`order-card-${focusedOrderId}`);
-        if (!card) return;
-
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const highlightTimeout = window.setTimeout(() => setFocusedOrderId(null), 2200);
-        return () => window.clearTimeout(highlightTimeout);
-    }, [focusedOrderId, visibleCount, searchTerm]);
-
-    useEffect(() => {
-        // รีเฟรชทุก 2 นาที
-        const refreshInterval = setInterval(() => {
-            loadOrders();
-            setLastRefreshed(new Date());
-            setCountdown(240);
-        }, 240_000);
-
-        // นับถอยหลังทุก 1 วินาที
-        const countdownInterval = setInterval(() => {
-            setCountdown(prev => (prev <= 1 ? 240 : prev - 1));
-        }, 1000);
-
-        return () => {
-            clearInterval(refreshInterval);
-            clearInterval(countdownInterval);
+    const result = await Swal.fire({
+      title: "ยืนยันการยกเลิกสั่งพิมพ์?",
+      text: "กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้",
+      icon: "warning",
+      input: "text",
+      inputPlaceholder: "ใส่เหตุผลการยกเลิกที่นี่...",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "ยืนยันยกเลิก",
+      cancelButtonText: "ไม่ยกเลิก",
+      inputValidator: (value) => {
+        if (!value) return "คุณต้องระบุเหตุผลในการยกเลิก!";
+      },
+    });
+    if (result.isConfirmed) {
+      try {
+        const now = new Date().toISOString();
+        const editorName = getCurrentUserIdentifier();
+        const summary = `ยกเลิกเพราะ: ${result.value}`;
+        const updateData = {
+          is_printed: false,
+          is_verified: false,
+          is_cancelled: true,
+          updated_at: now,
+          updated_by: editorName,
+          edit_summary: summary,
         };
-    }, []);
+        const { error } = await supabase
+          .from("orders")
+          .update(updateData)
+          .eq("id", order.id);
+        if (error) throw error;
+        setOrders((prev) =>
+          prev.map((o) => (o.id === order.id ? { ...o, ...updateData } : o)),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "ยกเลิกสำเร็จ",
+          text: "รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว",
+          timer: 1500,
+        });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ยกเลิกไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-    useEffect(() => {
-        const scrollContainer = document.querySelector('main');
-        if (!scrollContainer) return;
+  const markNoFile = async (order: OrderInterface) => {
+    const result = await Swal.fire({
+      title: "แจ้งเตือนไม่มีไฟล์?",
+      text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#eab308",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "ยืนยัน",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({ is_no_file: true })
+          .eq("id", order.id);
+        if (error) throw error;
+        setOrders((prev) =>
+          prev.map((o) => (o.id === order.id ? { ...o, is_no_file: true } : o)),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "ทำเครื่องหมายสำเร็จ",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ดำเนินการไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-        const handleScroll = () => setShowScrollTop(scrollContainer.scrollTop > 420);
-        handleScroll();
-        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        return () => scrollContainer.removeEventListener('scroll', handleScroll);
-    }, []);
+  const unmarkNoFile = async (order: OrderInterface) => {
+    const result = await Swal.fire({
+      title: "ยกเลิกการแจ้งเตือนไม่มีไฟล์?",
+      text: 'สถานะ "ไม่มีไฟล์" จะถูกยกเลิก และคำสั่งจะกลับสู่ปกติ',
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "ใช่, ยกเลิก",
+      cancelButtonText: "ปิด",
+    });
 
-    if (isLoading) return <DashboardSkeleton />;
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({ is_no_file: false })
+          .eq("id", order.id);
+        if (error) throw error;
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id ? { ...o, is_no_file: false } : o,
+          ),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "ยกเลิกการแจ้งเตือนสำเร็จ",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ดำเนินการไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-    return (
-        <div className="text-gray-800">
-            {/* Header Block */}
-            <div className="bg-gradient-to-br from-[#0f1e3d] via-[#152a54] to-[#1e3a8a] rounded-3xl shadow-xl p-6 md:p-8 mb-8 border border-blue-900/10 relative overflow-hidden">
-                {/* Background decorative glowing circles */}
-                <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
-                <div className="absolute bottom-0 left-0 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -ml-12 -mb-12" />
+  const restoreOrder = async (order: OrderInterface) => {
+    const result = await Swal.fire({
+      title: "กู้คืนคำสั่งผลิต?",
+      text: "รายการนี้จะถูกดึงกลับมาเป็นรายการใหม่เพื่อให้ดำเนินการต่อได้",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "ยืนยันกู้คืน",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (result.isConfirmed) {
+      try {
+        const now = new Date().toISOString();
+        const editorName = getCurrentUserIdentifier();
+        const updateData = {
+          is_cancelled: false,
+          is_printed: false,
+          is_verified: false,
+          updated_at: now,
+          updated_by: editorName,
+          edit_summary: "กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)",
+        };
+        const { error } = await supabase
+          .from("orders")
+          .update(updateData)
+          .eq("id", order.id);
+        if (error) throw error;
+        setOrders((prev) =>
+          prev.map((o) => (o.id === order.id ? { ...o, ...updateData } : o)),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "กู้คืนสำเร็จ",
+          text: "รายการกลับมาเป็นปกติแล้ว",
+          timer: 1500,
+        });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "กู้คืนไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
 
-                <div className="relative flex flex-col gap-6">
-                    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                        {/* Title */}
-                        <div className="min-w-0">
-                        <div className="flex items-center gap-3 mb-1.5">
-                            <div className="w-2 h-7 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-full" />
-                            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-                                Dashboard
-                                <span className="text-blue-200/80 ml-3 font-medium text-lg md:text-xl">คำสั่งพิมพ์ชิ้นงาน</span>
-                            </h1>
-                        </div>
-                        <p className="text-[12.5px] text-slate-300/90 font-bold uppercase tracking-wider ml-5">
-                            Label & Bag Stamp Production Control Center
-                        </p>
-                        </div>
+  const deleteImage = async (order: OrderInterface) => {
+    if (!isAdmin || !order.image_url) return;
+    const result = await Swal.fire({
+      title: "ยืนยันการลบรูปภาพ?",
+      text: "รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "ใช่, ลบเลย!",
+      cancelButtonText: "ยกเลิก",
+    });
+    if (result.isConfirmed) {
+      try {
+        const urlObj = new URL(order.image_url);
+        const marker = "/order-images/";
+        const markerIdx = urlObj.pathname.indexOf(marker);
 
-                        <div className="w-full min-w-0 space-y-3 md:max-w-[440px]">
-                            {/* Search */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="ค้นหาเลขลอต หรือชื่อสินค้า..."
-                                className="w-full pl-9 pr-4 py-3 bg-white/10 hover:bg-white/15 focus:bg-white border border-white/15 focus:border-white rounded-2xl text-white focus:text-[#0f1e3d] placeholder-blue-200/50 focus:placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold transition-all duration-300 shadow-inner"
-                            />
-                        </div>
-                        {searchTerm && (
-                            <div className="mt-2 text-xs text-blue-200 flex justify-between items-center px-1">
-                                <span className="font-medium">พบ {filteredOrders.length} รายการ</span>
-                                <button type="button" onClick={() => setSearchTerm('')} className="text-rose-300 hover:text-rose-400 font-bold underline transition-colors">ล้างการค้นหา</button>
-                            </div>
-                        )}
-                            {/* Auto-refresh status bar */}
-                            <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-white/10 pt-3">
-                        <span className="text-[11px] text-slate-300/80 font-medium flex items-center gap-1.5">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            รีเฟรชล่าสุด: <span className="text-white font-bold">{formatLastRefreshed(lastRefreshed)}</span>
-                        </span>
+        if (markerIdx === -1) {
+          throw new Error(`ไม่สามารถระบุ path ของไฟล์ได้: ${order.image_url}`);
+        }
 
-                        <div className="flex items-center gap-2">
-                            {/* Progress bar */}
-                            <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full transition-all duration-1000"
-                                    style={{ width: `${(countdown / 240) * 100}%` }}
-                                />
-                            </div>
-                            <span className="text-[11px] font-bold text-blue-200/90 tabular-nums whitespace-nowrap">
-                                รีเฟรชในอีก {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
-                            </span>
-                            {/* ปุ่ม refresh ทันที */}
-                            <button
-                                type="button"
-                                onClick={() => { loadOrders(); setLastRefreshed(new Date()); setCountdown(240); }}
-                                className="text-[10px] font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/10 transition-all duration-200"
-                                title="รีเฟรชทันที"
-                            >
-                                ↻ รีเฟรชเลย
-                            </button>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
+        const filePath = urlObj.pathname.substring(markerIdx + marker.length);
 
-                    {isAdmin && (
-                        <div className="w-full rounded-2xl border border-amber-300/40 bg-slate-950/20 text-left shadow-inner">
-                            <button
-                                type="button"
-                                onClick={() => setIsPendingFilePanelOpen(previousOpen => !previousOpen)}
-                                className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-white/5 md:px-4"
-                                aria-expanded={isPendingFilePanelOpen}
-                            >
-                                <div className="flex items-center gap-2 text-amber-100">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/20">
-                                        <FileQuestion className="h-4 w-4" />
-                                    </span>
-                                    <div>
-                                        <h2 className="text-sm font-black">คำสั่งรอไฟล์</h2>
-                                        <p className="text-[10px] text-amber-100/65">กดเพื่อดูรายละเอียดและไปยังคำสั่ง</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="rounded-full bg-amber-400 px-3 py-1 text-base font-black text-amber-950">
-                                        {pendingFileOrders.length} คำสั่ง
-                                    </span>
-                                    <ChevronDown className={`h-4 w-4 text-amber-200 transition-transform ${isPendingFilePanelOpen ? 'rotate-180' : ''}`} />
-                                </div>
-                            </button>
-                            {isPendingFilePanelOpen && (
-                                <div className="border-t border-white/10 p-3 md:p-4">
-                                    {pendingFileOrders.length > 0 ? (
-                                        <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
-                                            {pendingFileOrders.map(order => (
-                                                <button
-                                                    key={order.id}
-                                                    type="button"
-                                                    onClick={() => focusOrder(order)}
-                                                    className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-amber-50 transition-colors hover:border-amber-300/60 hover:bg-white/10"
-                                                    title={`ไปยังคำสั่งล็อต ${order.lot_number}`}
-                                                >
-                                                    <div className="flex min-w-0 items-start justify-between gap-3">
-                                                        <span className="shrink-0 text-xs font-black">ล็อต {order.lot_number}</span>
-                                                        <span className="min-w-0 truncate text-right text-[11px] font-semibold text-amber-100/90">{order.product_name}</span>
-                                                    </div>
-                                                    <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-amber-100/65">
-                                                        <span className="truncate">ผู้สั่ง: {order.created_by || 'ไม่ระบุ'}</span>
-                                                        <span>{formatThaiDateTimeFromISO(order.created_at)}</span>
-                                                        <span className="font-bold text-amber-200">{formatWaitingDuration(order.created_at)}</span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-emerald-200">ไม่มีคำสั่งที่รอไฟล์</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+        const { error: storageError } = await supabase.storage
+          .from("order-images")
+          .remove([filePath]);
 
+        if (storageError) throw storageError;
+
+        const { error: dbError } = await supabase
+          .from("orders")
+          .update({ image_url: null })
+          .eq("id", order.id);
+
+        if (dbError) throw dbError;
+
+        setOrders((prev) =>
+          prev.map((o) => (o.id === order.id ? { ...o, image_url: null } : o)),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "ลบรูปภาพสำเร็จ!",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch {
+        Swal.fire({
+          icon: "error",
+          title: "ลบรูปภาพไม่สำเร็จ",
+          text: "กรุณาลองใหม่อีกครั้ง",
+        });
+      }
+    }
+  };
+
+  const formatThaiDateTimeFromISO = (isoString?: string | null): string => {
+    if (!isoString) return "ไม่ระบุ";
+    try {
+      const hasTimezone =
+        isoString.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(isoString);
+      const normalized = hasTimezone ? isoString : isoString + "+07:00";
+      const date = new Date(normalized);
+      if (isNaN(date.getTime())) return isoString;
+      const thaiDate = date.toLocaleDateString("th-TH", {
+        timeZone: "Asia/Bangkok",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      const thaiTime = date.toLocaleTimeString("th-TH", {
+        timeZone: "Asia/Bangkok",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      return `${thaiDate}, ${thaiTime}`;
+    } catch {
+      return isoString;
+    }
+  };
+
+  const formatWaitingDuration = (createdAt?: string | null): string => {
+    if (!createdAt) return "ไม่ทราบเวลาที่สั่ง";
+
+    const elapsedMinutes = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(createdAt).getTime()) / 60_000),
+    );
+    const days = Math.floor(elapsedMinutes / 1_440);
+    const hours = Math.floor((elapsedMinutes % 1_440) / 60);
+    const minutes = elapsedMinutes % 60;
+
+    if (days > 0) return `รอมาแล้ว ${days} วัน ${hours} ชม. ${minutes} นาที`;
+    if (hours > 0) return `รอมาแล้ว ${hours} ชม. ${minutes} นาที`;
+    return `รอมาแล้ว ${minutes} นาที`;
+  };
+
+  const formatToThaiDate = (dateString: string) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      const day = date.getDate().toString().padStart(2, "0");
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const yearCE = date.getFullYear();
+      return (
+        <>
+          {day}/{month}/{yearCE + 543}
+          <br />
+          <span className="text-sm opacity-75">
+            {day}/{month}/{yearCE}
+          </span>
+        </>
+      );
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatLastRefreshed = (date: Date): string => {
+    return date.toLocaleTimeString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  };
+
+  const calculateExpiryDate = (
+    manufactureDate: string,
+    shelfLife: string,
+  ): string => {
+    if (!manufactureDate || !shelfLife) return "";
+    try {
+      const mfgDate = new Date(manufactureDate);
+      if (isNaN(mfgDate.getTime())) return "";
+      const trimmed = shelfLife.trim();
+      const spaceIdx = trimmed.indexOf(" ");
+      const numValue = parseInt(
+        spaceIdx === -1 ? trimmed : trimmed.substring(0, spaceIdx),
+      );
+      const unit =
+        spaceIdx === -1
+          ? "months"
+          : trimmed.substring(spaceIdx + 1).toLowerCase();
+      if (isNaN(numValue) || numValue <= 0) return "";
+      const newDate = new Date(mfgDate);
+      if (unit.includes("day") || unit.includes("วัน"))
+        newDate.setDate(newDate.getDate() + numValue);
+      else if (
+        unit.includes("month") ||
+        unit.includes("mon") ||
+        unit.includes("เดือน")
+      )
+        newDate.setMonth(newDate.getMonth() + numValue);
+      else if (
+        unit.includes("year") ||
+        unit.includes("yr") ||
+        unit.includes("ปี")
+      )
+        newDate.setFullYear(newDate.getFullYear() + numValue);
+      else newDate.setMonth(newDate.getMonth() + numValue);
+      return newDate.toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  };
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 10);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredOrders]);
+
+  // เพิ่มใน useEffect ที่ฟัง searchTerm หรือ filter
+  useEffect(() => {
+    if (focusedOrderId) return;
+    setVisibleCount(10);
+  }, [searchTerm]); // ใส่ตัวแปร filter ที่มีด้วย
+
+  useEffect(() => {
+    if (!focusedOrderId) return;
+
+    const card = document.getElementById(`order-card-${focusedOrderId}`);
+    if (!card) return;
+
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    const highlightTimeout = window.setTimeout(
+      () => setFocusedOrderId(null),
+      2200,
+    );
+    return () => window.clearTimeout(highlightTimeout);
+  }, [focusedOrderId, visibleCount, searchTerm]);
+
+  useEffect(() => {
+    // รีเฟรชทุก 2 นาที
+    const refreshInterval = setInterval(() => {
+      loadOrders();
+      setLastRefreshed(new Date());
+      setCountdown(240);
+    }, 240_000);
+
+    // นับถอยหลังทุก 1 วินาที
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => (prev <= 1 ? 240 : prev - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(refreshInterval);
+      clearInterval(countdownInterval);
+    };
+  }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector("main");
+    if (!scrollContainer) return;
+
+    const handleScroll = () =>
+      setShowScrollTop(scrollContainer.scrollTop > 420);
+    handleScroll();
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  if (isLoading) return <DashboardSkeleton />;
+
+  return (
+    <div className="text-gray-800">
+      {/* Header Block */}
+      <div className="bg-gradient-to-br from-[#0f1e3d] via-[#152a54] to-[#1e3a8a] rounded-3xl shadow-xl p-6 md:p-8 mb-8 border border-blue-900/10 relative overflow-hidden">
+        {/* Background decorative glowing circles */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -ml-12 -mb-12" />
+
+        <div className="relative flex flex-col gap-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            {/* Title */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className="w-2 h-7 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-full" />
+                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  Dashboard
+                  <span className="text-blue-200/80 ml-3 font-medium text-lg md:text-xl">
+                    คำสั่งพิมพ์ชิ้นงาน
+                  </span>
+                </h1>
+              </div>
+              <p className="text-[12.5px] text-slate-300/90 font-bold uppercase tracking-wider ml-5">
+                Label & Bag Stamp Production Control Center
+              </p>
             </div>
 
+            <div className="w-full min-w-0 space-y-3 md:max-w-[440px]">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="ค้นหาเลขลอต หรือชื่อสินค้า..."
+                  className="w-full pl-9 pr-4 py-3 bg-white/10 hover:bg-white/15 focus:bg-white border border-white/15 focus:border-white rounded-2xl text-white focus:text-[#0f1e3d] placeholder-blue-200/50 focus:placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold transition-all duration-300 shadow-inner"
+                />
+              </div>
+              {searchTerm && (
+                <div className="mt-2 text-xs text-blue-200 flex justify-between items-center px-1">
+                  <span className="font-medium">
+                    พบ {filteredOrders.length} รายการ
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="text-rose-300 hover:text-rose-400 font-bold underline transition-colors"
+                  >
+                    ล้างการค้นหา
+                  </button>
+                </div>
+              )}
+              {/* Auto-refresh status bar */}
+              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-white/10 pt-3">
+                <span className="text-[11px] text-slate-300/80 font-medium flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  รีเฟรชล่าสุด:{" "}
+                  <span className="text-white font-bold">
+                    {formatLastRefreshed(lastRefreshed)}
+                  </span>
+                </span>
 
+                <div className="flex items-center gap-2">
+                  {/* Progress bar */}
+                  <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full transition-all duration-1000"
+                      style={{ width: `${(countdown / 240) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-bold text-blue-200/90 tabular-nums whitespace-nowrap">
+                    รีเฟรชในอีก {Math.floor(countdown / 60)}:
+                    {String(countdown % 60).padStart(2, "0")}
+                  </span>
+                  {/* ปุ่ม refresh ทันที */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      loadOrders();
+                      setLastRefreshed(new Date());
+                      setCountdown(240);
+                    }}
+                    className="text-[10px] font-bold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/10 transition-all duration-200"
+                    title="รีเฟรชทันที"
+                  >
+                    ↻ รีเฟรชเลย
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            {
-                filteredOrders.length === 0 ? (
-                    <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-slate-200/80">
-                        <div className="text-6xl mb-4 opacity-50">📦</div>
-                        <h2 className="text-2xl font-bold text-slate-500 tracking-tight">
-                            {searchTerm ? `ไม่พบเลขลอต "${searchTerm}"` : 'ไม่มีคำสั่งฉลากในขณะนี้'}
-                        </h2>
+          {isAdmin && (
+            <div className="w-full rounded-2xl border border-amber-300/40 bg-slate-950/20 text-left shadow-inner">
+              <button
+                type="button"
+                onClick={() =>
+                  setIsPendingFilePanelOpen((previousOpen) => !previousOpen)
+                }
+                className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-white/5 md:px-4"
+                aria-expanded={isPendingFilePanelOpen}
+              >
+                <div className="flex items-center gap-2 text-amber-100">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/20">
+                    <FileQuestion className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-black">คำสั่งรอไฟล์</h2>
+                    <p className="text-[10px] text-amber-100/65">
+                      กดเพื่อดูรายละเอียดและไปยังคำสั่ง
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="rounded-full bg-amber-400 px-3 py-1 text-base font-black text-amber-950">
+                    {pendingFileOrders.length} คำสั่ง
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-amber-200 transition-transform ${isPendingFilePanelOpen ? "rotate-180" : ""}`}
+                  />
+                </div>
+              </button>
+              {isPendingFilePanelOpen && (
+                <div className="border-t border-white/10 p-3 md:p-4">
+                  {pendingFileOrders.length > 0 ? (
+                    <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                      {pendingFileOrders.map((order) => (
+                        <button
+                          key={order.id}
+                          type="button"
+                          onClick={() => focusOrder(order)}
+                          className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-amber-50 transition-colors hover:border-amber-300/60 hover:bg-white/10"
+                          title={`ไปยังคำสั่งล็อต ${order.lot_number}`}
+                        >
+                          <div className="flex min-w-0 items-start justify-between gap-3">
+                            <span className="shrink-0 text-xs font-black">
+                              ล็อต {order.lot_number}
+                            </span>
+                            <span className="min-w-0 truncate text-right text-[11px] font-semibold text-amber-100/90">
+                              {order.product_name}
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-amber-100/65">
+                            <span className="truncate">
+                              ผู้สั่ง: {order.created_by || "ไม่ระบุ"}
+                            </span>
+                            <span>
+                              {formatThaiDateTimeFromISO(order.created_at)}
+                            </span>
+                            <span className="font-bold text-amber-200">
+                              {formatWaitingDuration(order.created_at)}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {filteredOrders.slice(0, visibleCount).map((order, index) => {
-                            // Status classes
-                            let borderLeftCls = 'border-l-4 border-l-slate-300';
-                            let headerBgCls = 'bg-slate-50/50 border-b border-slate-100 px-5 py-4.5 flex flex-col gap-3.5';
-                            if (order.is_cancelled) {
-                                borderLeftCls = 'border-l-4 border-l-rose-500';
-                                headerBgCls = 'bg-rose-50/60 border-b border-rose-100/80 px-5 py-4.5 flex flex-col gap-3.5';
-                            } else if (order.is_verified) {
-                                borderLeftCls = 'border-l-4 border-l-emerald-500';
-                                headerBgCls = 'bg-emerald-50/30 border-b border-emerald-100/50 px-5 py-4.5 flex flex-col gap-3.5';
-                            } else if (order.is_no_file) {
-                                borderLeftCls = 'border-l-4 border-l-amber-500';
-                                headerBgCls = 'bg-amber-50/30 border-b border-amber-100/50 px-5 py-4.5 flex flex-col gap-3.5';
-                            } else if (order.is_printed) {
-                                borderLeftCls = 'border-l-4 border-l-blue-500';
-                                headerBgCls = 'bg-blue-50/30 border-b border-blue-100/50 px-5 py-4.5 flex flex-col gap-3.5';
-                            }
+                  ) : (
+                    <p className="text-xs text-emerald-200">
+                      ไม่มีคำสั่งที่รอไฟล์
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-                            return (
-                                <div id={`order-card-${order.id}`} key={order.id} className={`
+      {filteredOrders.length === 0 ? (
+        <div className="bg-white/95 rounded-2xl shadow-lg p-12 text-center border border-slate-200/80">
+          <div className="text-6xl mb-4 opacity-50">📦</div>
+          <h2 className="text-2xl font-bold text-slate-500 tracking-tight">
+            {searchTerm
+              ? `ไม่พบเลขลอต "${searchTerm}"`
+              : "ไม่มีคำสั่งฉลากในขณะนี้"}
+          </h2>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredOrders.slice(0, visibleCount).map((order, index) => {
+            // Status classes
+            let borderLeftCls = "border-l-4 border-l-slate-300";
+            let headerBgCls =
+              "bg-slate-50/50 border-b border-slate-100 px-5 py-4.5 flex flex-col gap-3.5";
+            if (order.is_cancelled) {
+              borderLeftCls = "border-l-4 border-l-rose-500";
+              headerBgCls =
+                "bg-rose-50/60 border-b border-rose-100/80 px-5 py-4.5 flex flex-col gap-3.5";
+            } else if (order.is_verified) {
+              borderLeftCls = "border-l-4 border-l-emerald-500";
+              headerBgCls =
+                "bg-emerald-50/30 border-b border-emerald-100/50 px-5 py-4.5 flex flex-col gap-3.5";
+            } else if (order.is_no_file) {
+              borderLeftCls = "border-l-4 border-l-amber-500";
+              headerBgCls =
+                "bg-amber-50/30 border-b border-amber-100/50 px-5 py-4.5 flex flex-col gap-3.5";
+            } else if (order.is_printed) {
+              borderLeftCls = "border-l-4 border-l-blue-500";
+              headerBgCls =
+                "bg-blue-50/30 border-b border-blue-100/50 px-5 py-4.5 flex flex-col gap-3.5";
+            }
+
+            return (
+              <div
+                id={`order-card-${order.id}`}
+                key={order.id}
+                className={`
                                 bg-white border border-slate-200/85 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl overflow-hidden flex flex-col group relative ${borderLeftCls}
-                                ${order.is_cancelled ? 'opacity-85' : ''}
-                                ${focusedOrderId === order.id ? 'ring-4 ring-amber-300 ring-offset-2 shadow-xl' : ''}
-                            `}>
-                                    {isAdmin && (order.paper_type || typeof order.good_a3 === 'number' || order.waste_qty || order.waste_a3) && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setStockDetailOrder(order)}
-                                            className="relative z-20 w-full cursor-pointer rounded-none border-b border-emerald-300/60 bg-gradient-to-br from-emerald-600 to-emerald-400 px-3 py-1.5 text-left text-white shadow-md transition-colors hover:from-emerald-700 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
-                                            title={`ตัดสต็อคโดย ${order.reconciled_by || 'ไม่ระบุชื่อ'} เมื่อ ${formatThaiDateTimeFromISO(order.reconciled_at)}`}
-                                        >
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                                                <span className="truncate text-[10px] font-black">ตัดสต็อค: {order.reconciled_by || 'ไม่ระบุชื่อ'}</span>
-                                            </div>
-                                        </button>
-                                    )}
-                                    <div className={headerBgCls}>
-                                        <div className="w-full">
-                                            <div className="flex flex-col gap-1.5 mb-2.5">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="font-mono text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 shrink-0 tracking-wider">
-                                                        {order.product_id}
-                                                    </span>
-                                                    {order.order_type && (
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? 'bg-rose-50 text-rose-700 border-rose-200' : order.order_type === 'พิมพ์ฉลาก' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
-                                                            {order.order_type === 'พิมพ์ฉลาก' ? '🖨️ พิมพ์ฉลาก' : '🔖 ปั๊มถุง'}
-                                                        </span>
-                                                    )}
-                                                    {order.is_cancelled && <span className="bg-rose-600 text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-sm">ยกเลิกแล้ว</span>}
-                                                    {order.updated_at && !order.is_verified && !order.is_cancelled && (
-                                                        <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">แก้ไขแล้ว</span>
-                                                    )}
-                                                    {(() => {
-                                                        const isPending = !order.is_printed && !order.is_verified && !order.is_cancelled;
-                                                        const isRecent = new Date().getTime() - new Date(order.created_at).getTime() < 5 * 60 * 1000;
-                                                        return isPending && isRecent && (
-                                                            <span className="bg-rose-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">New</span>
-                                                        );
-                                                    })()}
-                                                </div>
-                                                <h3 className="text-[16px] md:text-[17px] font-black text-[#0f1e3d] leading-snug break-words">
-                                                    {order.product_name}
-                                                </h3>
-                                            </div>
-                                            <h4 className="text-[14px] font-black text-indigo-950 tracking-tight flex items-center gap-2.5 mt-2.5">
-                                                <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider bg-indigo-100/50 px-2 py-0.5 rounded-lg border border-indigo-200/60 shrink-0">LOT NO.</span>
-                                                <span className="text-indigo-950 font-black text-[16px] tracking-wide">{order.lot_number}</span>
-                                                {isAdmin && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(order.lot_number);
-                                                            setCopiedId(order.id);
-                                                            setTimeout(() => setCopiedId(null), 2000);
-                                                        }}
-                                                        className="ml-1 w-6 h-6 flex items-center justify-center rounded-md text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all duration-200"
-                                                        title="คัดลอกเลขลอต"
-                                                    >
-                                                        {copiedId === order.id
-                                                            ? <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                                            : <Copy className="w-3.5 h-3.5" />
-                                                        }
-                                                    </button>
-                                                )}
-                                            </h4>
-                                        </div>
-                                        <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 shrink-0 justify-center">
-                                            {isAdmin && !order.is_cancelled && (
-                                                <>
-                                                    {!order.is_verified ? (
-                                                        <>
-                                                            {!order.is_printed ? (
-                                                                <>
-                                                                    <button type="button" onClick={() => markPrinted(order)} className="w-8 h-8 rounded-lg bg-transparent text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100/80 flex items-center justify-center transition-all duration-200" title="พิมพ์แล้ว">
-                                                                        <Printer className="w-3.5 h-3.5" />
-                                                                    </button>
-                                                                    {!order.is_no_file ? (
-                                                                        <button type="button" onClick={() => markNoFile(order)} className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200" title="ไม่มีไฟล์">
-                                                                            <FileQuestion className="w-3.5 h-3.5" />
-                                                                        </button>
-                                                                    ) : (
-                                                                        <button type="button" onClick={() => unmarkNoFile(order)} className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 flex items-center justify-center transition-all duration-200 shadow-sm" title="ยกเลิกการแจ้งเตือนไม่มีไฟล์">
-                                                                            <Undo className="w-3.5 h-3.5" />
-                                                                        </button>
-                                                                    )}
-                                                                </>
-                                                            ) : (
-                                                                <button type="button" onClick={() => unmarkPrinted(order)} className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200" title="ยกเลิกการพิมพ์">
-                                                                    <Undo className="w-3.5 h-3.5" />
-                                                                </button>
-                                                            )}
-                                                            <button type="button" onClick={() => verifyOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200" title="ตรวจสอบเสร็จและตัดงานจบ">
-                                                                <Check className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <button type="button" onClick={() => unverifyOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/85 flex items-center justify-center transition-all duration-200" title="ยกเลิกการตรวจสอบ">
-                                                            <Undo className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-                                                </>
-                                            )}
-                                            {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
-                                                <button type="button" onClick={() => startEdit(order)} className="w-8 h-8 rounded-lg bg-transparent text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100/80 flex items-center justify-center transition-all duration-200" title="แก้ไข">
-                                                    <Edit2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                          {isAdmin && !order.is_cancelled && (
-                                        (order.paper_type || typeof order.good_a3 === 'number' || order.waste_qty || order.waste_a3) ? (
-                                           <button type="button" onClick={() => undoReconcile(order)} className="w-8 h-8 rounded-lg bg-transparent text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200" title="ยกเลิกการตัดสต็อคกระดาษ">
-                                              <Undo className="w-3.5 h-3.5" />
-                                           </button>
-                                             ) : (
-                                        <button type="button" onClick={() => startReconcile(order)} className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/80 flex items-center justify-center transition-all duration-200" title="บันทึกผลผลิต / ตัดสต็อคกระดาษ">
-                                         <Layers className="w-3.5 h-3.5" />
-                                               </button>
-                                              )
-                                                )}
-
-                                            {!order.is_cancelled && !order.is_verified && (isAdmin || order.created_by === userName) && (
-                                                <button type="button" onClick={() => handleCancelOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200" title="ยกเลิกการสั่งพิมพ์">
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                            {isAdmin && order.is_cancelled && (
-                                                <button type="button" onClick={() => restoreOrder(order)} className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200" title="กู้คืนคำสั่งพิมพ์">
-                                                    <Undo className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                            {isAdmin && (
-                                                <button type="button" onClick={() => deleteOrder(order.id)} className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200" title="ลบ">
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="p-5 flex-1 space-y-4">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">เวลาสั่ง (Order Time):</span>
-                                            <span className="font-bold text-slate-700 sm:text-right">{formatThaiDateTimeFromISO(order.created_at)}</span>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">ผู้สั่ง (Created By):</span>
-                                            <span className="font-bold text-slate-700 flex items-center gap-1.5 flex-wrap sm:justify-end">
-                                                <UserCircle className="w-4 h-4 text-slate-400 inline" /> {order.created_by || '-'}
-                                                <span className="text-[10px] font-bold text-slate-400">
-                                                    ({order.created_by_department
-                                                        ? order.created_by_department.split(' ')[0]
-                                                        : 'ไม่ระบุ'})
-                                                </span>
-                                            </span>
-                                        </div>
-                                        <div className="my-3 border-t border-slate-100"></div>
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">วันที่ผลิต (Mfg Date):</span>
-                                            <span className="font-bold text-slate-700 sm:text-right">{formatToThaiDate(order.production_date)}</span>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">วันหมดอายุ (Exp Date):</span>
-                                            <span className="font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-100/40 sm:text-right shrink-0">{formatToThaiDate(order.expiry_date)}</span>
-                                        </div>
-                                        <div className="my-3 border-t border-slate-100"></div>
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">อายุผลิตภัณฑ์ (Shelf Life):</span>
-                                            <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">{order.product_exp} เดือน</span>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                                            <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">จำนวน (Quantity):</span>
-                                            <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">{order.quantity}</span>
-                                        </div>
-
-
-
-                                        <EditHistory orderId={order.id} updatedAt={order.updated_at} auditKey={auditKey} />
-
-                                        {order.notes && order.notes !== '-' && (
-                                            <div className="mt-3 bg-amber-50/50 p-3 rounded-xl border border-amber-200/50 text-[12.5px] text-amber-800 shadow-inner">
-                                                <span className="font-bold text-amber-900 block mb-1">📝 หมายเหตุ:</span>
-                                                <span className="text-amber-800 font-medium">{order.notes}</span>
-                                            </div>
-                                        )}
-
-                                        {order.image_url && (
-                                            <div className="mt-4 pt-4 border-t border-slate-100 relative">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">📷 ภาพตัวอย่างฉลาก:</span>
-                                                    {isAdmin && (
-                                                        <button type="button" onClick={() => deleteImage(order)} className="text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-2 py-1 rounded-lg border border-rose-200/60 transition-all duration-300 flex items-center gap-1 shadow-sm">
-                                                            <Trash2 className="w-3 h-3" /> ลบรูป
-                                                        </button>
-                                                    )}
-                                                </div>
-                                                <div className="w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex justify-center group/img relative shadow-sm">
-                                                    <img src={order.image_url} alt={`ตัวอย่างฉลาก ${order.lot_number}`}
-                                                        className="max-h-48 object-contain w-full hover:scale-105 transition-transform duration-500 cursor-pointer"
-                                                        onClick={() => window.open(order.image_url || '', '_blank')}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* ✅ Card Footer */}
-                                    <div className={`p-4 text-center tracking-wide font-bold 
-                                    ${order.is_cancelled ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-inner animate-pulse'
-                                            : order.is_verified ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-inner'
-                                                : order.is_no_file ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-inner'
-                                                    : order.is_printed ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-inner'
-                                                        : 'bg-slate-100 text-slate-400 border-t border-slate-200/80'}`}
-                                    >
-                                        {order.is_cancelled ? (
-                                            <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
-                                                <X className="w-5 h-5 inline mr-1" /> คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
-                                            </span>
-                                        ) : order.is_verified ? (
-                                            <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                                                <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-sm text-center">
-                                                    <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 shrink-0" /> ผู้ปฏิบัติงาน:</span>
-                                                    {order.verified_by && order.verified_by.includes('(') ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{order.verified_by.substring(0, order.verified_by.indexOf('(')).trim()}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span>{order.verified_by || '-'}</span>
-                                                    )}
-                                                </div>
-                                                <span className="text-[11px] font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full shadow-inner">
-                                                    วันที่และเวลาตรวจสอบ: {formatThaiDateTimeFromISO(order.verified_at)}
-                                                </span>
-                                            </div>
-                                        ) : order.is_no_file ? (
-                                            <span className="flex items-center justify-center gap-2 text-sm">
-                                                <FileQuestion className="w-5 h-5 inline mr-1" /> แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
-                                            </span>
-                                        ) : order.is_printed ? (
-                                            <div className="flex flex-col items-center justify-center gap-1.5 py-1">
-                                                <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
-                                                    <Printer className="w-4 h-4" /> พิมพ์ฉลากแล้ว รอตัดชิ้นงาน
-                                                </span>
-                                                {order.printed_by && (
-                                                    <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1">
-                                                        <span className="flex items-center gap-1 text-[11px] text-blue-100">
-                                                            ชื่อผู้พิมพ์ชิ้นงาน:
-                                                            {order.printed_by.includes('(') ? (
-                                                                <>
-                                                                    <span>{order.printed_by.substring(0, order.printed_by.indexOf('(')).trim()}</span>
-                                                                </>
-                                                            ) : (
-                                                                <span>{order.printed_by}</span>
-                                                            )}
-                                                        </span>
-                                                        {order.printed_at && (
-                                                            <span className="text-[10px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
-                                                                วันที่และเวลาพิมพ์: {formatThaiDateTimeFromISO(order.printed_at)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span className="flex items-center justify-center gap-2 text-[12.5px] uppercase tracking-wider font-bold">
-                                                <Clock className="w-4 h-4 inline mr-1" /> กำลังรอการจัดทำชิ้นงาน
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                ${order.is_cancelled ? "opacity-85" : ""}
+                                ${focusedOrderId === order.id ? "ring-4 ring-amber-300 ring-offset-2 shadow-xl" : ""}
+                            `}
+              >
+                {isAdmin &&
+                  (order.paper_type ||
+                    typeof order.good_a3 === "number" ||
+                    order.waste_qty ||
+                    order.waste_a3) && (
+                    <button
+                      type="button"
+                      onClick={() => setStockDetailOrder(order)}
+                      className="relative z-20 w-full cursor-pointer rounded-none border-b border-emerald-300/60 bg-gradient-to-br from-emerald-600 to-emerald-400 px-3 py-1.5 text-left text-white shadow-md transition-colors hover:from-emerald-700 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
+                      title={`ตัดสต็อคโดย ${order.reconciled_by || "ไม่ระบุชื่อ"} เมื่อ ${formatThaiDateTimeFromISO(order.reconciled_at)}`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate text-[10px] font-black">
+                          ตัดสต็อค: {order.reconciled_by || "ไม่ระบุชื่อ"}
+                        </span>
+                      </div>
+                    </button>
+                  )}
+                <div className={headerBgCls}>
+                  <div className="w-full">
+                    <div className="flex flex-col gap-1.5 mb-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 shrink-0 tracking-wider">
+                          {order.product_id}
+                        </span>
+                        {order.order_type && (
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? "bg-rose-50 text-rose-700 border-rose-200" : order.order_type === "พิมพ์ฉลาก" ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"}`}
+                          >
+                            {order.order_type === "พิมพ์ฉลาก"
+                              ? "🖨️ พิมพ์ฉลาก"
+                              : "🔖 ปั๊มถุง"}
+                          </span>
+                        )}
+                        {order.is_cancelled && (
+                          <span className="bg-rose-600 text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-sm">
+                            ยกเลิกแล้ว
+                          </span>
+                        )}
+                        {order.updated_at &&
+                          !order.is_verified &&
+                          !order.is_cancelled && (
+                            <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
+                              แก้ไขแล้ว
+                            </span>
+                          )}
+                        {(() => {
+                          const isPending =
+                            !order.is_printed &&
+                            !order.is_verified &&
+                            !order.is_cancelled;
+                          const isRecent =
+                            new Date().getTime() -
+                              new Date(order.created_at).getTime() <
+                            5 * 60 * 1000;
+                          return (
+                            isPending &&
+                            isRecent && (
+                              <span className="bg-rose-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
+                                New
+                              </span>
+                            )
+                          );
+                        })()}
+                      </div>
+                      <h3 className="text-[16px] md:text-[17px] font-black text-[#0f1e3d] leading-snug break-words">
+                        {order.product_name}
+                      </h3>
                     </div>
+                    <h4 className="text-[14px] font-black text-indigo-950 tracking-tight flex items-center gap-2.5 mt-2.5">
+                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider bg-indigo-100/50 px-2 py-0.5 rounded-lg border border-indigo-200/60 shrink-0">
+                        LOT NO.
+                      </span>
+                      <span className="text-indigo-950 font-black text-[16px] tracking-wide">
+                        {order.lot_number}
+                      </span>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(order.lot_number);
+                            setCopiedId(order.id);
+                            setTimeout(() => setCopiedId(null), 2000);
+                          }}
+                          className="ml-1 w-6 h-6 flex items-center justify-center rounded-md text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all duration-200"
+                          title="คัดลอกเลขลอต"
+                        >
+                          {copiedId === order.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </h4>
+                  </div>
+                  <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 shrink-0 justify-center">
+                    {isAdmin && !order.is_cancelled && (
+                      <>
+                        {!order.is_verified ? (
+                          <>
+                            {!order.is_printed ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => markPrinted(order)}
+                                  className="w-8 h-8 rounded-lg bg-transparent text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100/80 flex items-center justify-center transition-all duration-200"
+                                  title="พิมพ์แล้ว"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                                {!order.is_no_file ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => markNoFile(order)}
+                                    className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200"
+                                    title="ไม่มีไฟล์"
+                                  >
+                                    <FileQuestion className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => unmarkNoFile(order)}
+                                    className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 flex items-center justify-center transition-all duration-200 shadow-sm"
+                                    title="ยกเลิกการแจ้งเตือนไม่มีไฟล์"
+                                  >
+                                    <Undo className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => unmarkPrinted(order)}
+                                className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200"
+                                title="ยกเลิกการพิมพ์"
+                              >
+                                <Undo className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => verifyOrder(order)}
+                              className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200"
+                              title="ตรวจสอบเสร็จและตัดงานจบ"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => unverifyOrder(order)}
+                            className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/85 flex items-center justify-center transition-all duration-200"
+                            title="ยกเลิกการตรวจสอบ"
+                          >
+                            <Undo className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {!order.is_cancelled &&
+                      !order.is_verified &&
+                      (isAdmin ||
+                        order.created_by_user_id === currentUserId) && (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(order)}
+                          className="w-8 h-8 rounded-lg bg-transparent text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100/80 flex items-center justify-center transition-all duration-200"
+                          title="แก้ไข"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    {isAdmin &&
+                      !order.is_cancelled &&
+                      (order.paper_type ||
+                      typeof order.good_a3 === "number" ||
+                      order.waste_qty ||
+                      order.waste_a3 ? (
+                        <button
+                          type="button"
+                          onClick={() => undoReconcile(order)}
+                          className="w-8 h-8 rounded-lg bg-transparent text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200"
+                          title="ยกเลิกการตัดสต็อคกระดาษ"
+                        >
+                          <Undo className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startReconcile(order)}
+                          className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/80 flex items-center justify-center transition-all duration-200"
+                          title="บันทึกผลผลิต / ตัดสต็อคกระดาษ"
+                        >
+                          <Layers className="w-3.5 h-3.5" />
+                        </button>
+                      ))}
+
+                    {!order.is_cancelled &&
+                      !order.is_verified &&
+                      (isAdmin ||
+                        order.created_by_user_id === currentUserId) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelOrder(order)}
+                          className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200"
+                          title="ยกเลิกการสั่งพิมพ์"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    {isAdmin && order.is_cancelled && (
+                      <button
+                        type="button"
+                        onClick={() => restoreOrder(order)}
+                        className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200"
+                        title="กู้คืนคำสั่งพิมพ์"
+                      >
+                        <Undo className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => deleteOrder(order.id)}
+                        className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200"
+                        title="ลบ"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-5 flex-1 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                      เวลาสั่ง (Order Time):
+                    </span>
+                    <span className="font-bold text-slate-700 sm:text-right">
+                      {formatThaiDateTimeFromISO(order.created_at)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                      ผู้สั่ง (Created By):
+                    </span>
+                    <span className="font-bold text-slate-700 flex items-center gap-1.5 flex-wrap sm:justify-end">
+                      <UserCircle className="w-4 h-4 text-slate-400 inline" />{" "}
+                      {order.created_by || "-"}
+                      <span className="text-[10px] font-bold text-slate-400">
+                        (
+                        {order.created_by_department
+                          ? order.created_by_department.split(" ")[0]
+                          : "ไม่ระบุ"}
+                        )
+                      </span>
+                    </span>
+                  </div>
+                  <div className="my-3 border-t border-slate-100"></div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                      วันที่ผลิต (Mfg Date):
+                    </span>
+                    <span className="font-bold text-slate-700 sm:text-right">
+                      {formatToThaiDate(order.production_date)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                      วันหมดอายุ (Exp Date):
+                    </span>
+                    <span className="font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-100/40 sm:text-right shrink-0">
+                      {formatToThaiDate(order.expiry_date)}
+                    </span>
+                  </div>
+                  <div className="my-3 border-t border-slate-100"></div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                      อายุผลิตภัณฑ์ (Shelf Life):
+                    </span>
+                    <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">
+                      {order.product_exp} เดือน
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                      จำนวน (Quantity):
+                    </span>
+                    <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">
+                      {order.quantity}
+                    </span>
+                  </div>
+
+                  <EditHistory
+                    orderId={order.id}
+                    updatedAt={order.updated_at}
+                    auditKey={auditKey}
+                  />
+
+                  {order.notes && order.notes !== "-" && (
+                    <div className="mt-3 bg-amber-50/50 p-3 rounded-xl border border-amber-200/50 text-[12.5px] text-amber-800 shadow-inner">
+                      <span className="font-bold text-amber-900 block mb-1">
+                        📝 หมายเหตุ:
+                      </span>
+                      <span className="text-amber-800 font-medium">
+                        {order.notes}
+                      </span>
+                    </div>
+                  )}
+
+                  {order.image_url && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 relative">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                          📷 ภาพตัวอย่างฉลาก:
+                        </span>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => deleteImage(order)}
+                            className="text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-2 py-1 rounded-lg border border-rose-200/60 transition-all duration-300 flex items-center gap-1 shadow-sm"
+                          >
+                            <Trash2 className="w-3 h-3" /> ลบรูป
+                          </button>
+                        )}
+                      </div>
+                      <div className="w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex justify-center group/img relative shadow-sm">
+                        <img
+                          src={order.image_url}
+                          alt={`ตัวอย่างฉลาก ${order.lot_number}`}
+                          className="max-h-48 object-contain w-full hover:scale-105 transition-transform duration-500 cursor-pointer"
+                          onClick={() =>
+                            window.open(order.image_url || "", "_blank")
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ✅ Card Footer */}
+                <div
+                  className={`p-4 text-center tracking-wide font-bold 
+                                    ${
+                                      order.is_cancelled
+                                        ? "bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-inner animate-pulse"
+                                        : order.is_verified
+                                          ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-inner"
+                                          : order.is_no_file
+                                            ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-inner"
+                                            : order.is_printed
+                                              ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-inner"
+                                              : "bg-slate-100 text-slate-400 border-t border-slate-200/80"
+                                    }`}
+                >
+                  {order.is_cancelled ? (
+                    <span className="flex items-center justify-center gap-2 text-sm tracking-widest uppercase">
+                      <X className="w-5 h-5 inline mr-1" />{" "}
+                      คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
+                    </span>
+                  ) : order.is_verified ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                      <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-sm text-center">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />{" "}
+                          ผู้ปฏิบัติงาน:
+                        </span>
+                        {order.verified_by &&
+                        order.verified_by.includes("(") ? (
+                          <div className="flex items-center gap-2">
+                            <span>
+                              {order.verified_by
+                                .substring(0, order.verified_by.indexOf("("))
+                                .trim()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span>{order.verified_by || "-"}</span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full shadow-inner">
+                        วันที่และเวลาตรวจสอบ:{" "}
+                        {formatThaiDateTimeFromISO(order.verified_at)}
+                      </span>
+                    </div>
+                  ) : order.is_no_file ? (
+                    <span className="flex items-center justify-center gap-2 text-sm">
+                      <FileQuestion className="w-5 h-5 inline mr-1" />{" "}
+                      แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
+                    </span>
+                  ) : order.is_printed ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                      <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
+                        <Printer className="w-4 h-4" /> พิมพ์ฉลากแล้ว
+                        รอตัดชิ้นงาน
+                      </span>
+                      {order.printed_by && (
+                        <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1">
+                          <span className="flex items-center gap-1 text-[11px] text-blue-100">
+                            ชื่อผู้พิมพ์ชิ้นงาน:
+                            {order.printed_by.includes("(") ? (
+                              <>
+                                <span>
+                                  {order.printed_by
+                                    .substring(0, order.printed_by.indexOf("("))
+                                    .trim()}
+                                </span>
+                              </>
+                            ) : (
+                              <span>{order.printed_by}</span>
+                            )}
+                          </span>
+                          {order.printed_at && (
+                            <span className="text-[10px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
+                              วันที่และเวลาพิมพ์:{" "}
+                              {formatThaiDateTimeFromISO(order.printed_at)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2 text-[12.5px] uppercase tracking-wider font-bold">
+                      <Clock className="w-4 h-4 inline mr-1" />{" "}
+                      กำลังรอการจัดทำชิ้นงาน
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {visibleCount < filteredOrders.length && (
+        <div
+          ref={sentinelRef}
+          className="flex justify-center py-8 col-span-full"
+        >
+          <div className="flex items-center gap-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+            <span className="text-slate-400 text-xs font-medium ml-1">
+              กำลังโหลด {Math.min(10, filteredOrders.length - visibleCount)}{" "}
+              รายการถัดไป...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {visibleCount >= filteredOrders.length && filteredOrders.length > 10 && (
+        <div className="text-center py-6 text-slate-400 text-xs col-span-full">
+          แสดงครบทั้ง {filteredOrders.length} รายการแล้ว
+        </div>
+      )}
+
+      {/* Editing Dialog Modal */}
+      {editingOrder && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md animate-slide-up relative overflow-hidden">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <Edit2 className="w-5 h-5" />
+                </span>
+                <h2 className="text-lg font-black text-[#0f1e3d] tracking-tight">
+                  แก้ไขข้อมูลคำสั่งชิ้นงาน
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingOrder(null)}
+                className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  เลขลอตสินค้า (Lot Number)
+                </label>
+                <input
+                  type="text"
+                  value={editingOrder.lot_number}
+                  onChange={(e) =>
+                    setEditingOrder({
+                      ...editingOrder,
+                      lot_number: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
+                />
+              </div>
+
+              {/* ประเภทคำสั่ง */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  ประเภทคำสั่ง (Order Type)
+                </label>
+                <div className="flex gap-3">
+                  <label
+                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "พิมพ์ฉลาก" ? "bg-[#0f1e3d] text-white border-[#0f1e3d] shadow-md shadow-blue-900/10" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="edit_orderType"
+                      value="พิมพ์ฉลาก"
+                      checked={editingOrder.order_type === "พิมพ์ฉลาก"}
+                      onChange={(e) =>
+                        setEditingOrder({
+                          ...editingOrder,
+                          order_type: e.target.value,
+                        })
+                      }
+                      className="hidden"
+                    />
+                    🖨️ พิมพ์ฉลาก
+                  </label>
+                  <label
+                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "ปั๊มถุง" ? "bg-indigo-950 text-white border-indigo-950 shadow-md shadow-indigo-900/10" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="edit_orderType"
+                      value="ปั๊มถุง"
+                      checked={editingOrder.order_type === "ปั๊มถุง"}
+                      onChange={(e) =>
+                        setEditingOrder({
+                          ...editingOrder,
+                          order_type: e.target.value,
+                        })
+                      }
+                      className="hidden"
+                    />
+                    🔖 ปั๊มถุง
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  จำนวนสั่งทำ (Quantity)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editingOrder.quantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    setEditingOrder({
+                      ...editingOrder,
+                      quantity: Math.max(1, val),
+                    });
+                  }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  วันที่ผลิต (Production Date)
+                </label>
+                <input
+                  type="date"
+                  value={editingOrder.production_date || ""}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    setEditingOrder({
+                      ...editingOrder,
+                      production_date: newDate,
+                      expiry_date: calculateExpiryDate(
+                        newDate,
+                        editingOrder.product_exp,
+                      ),
+                    });
+                  }}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
+                />
+                {editingOrder.expiry_date && (
+                  <p className="mt-2 text-xs text-rose-500 font-bold flex items-center gap-1">
+                    <span>💡</span> วันหมดอายุใหม่:{" "}
+                    {editingOrder.expiry_date.split("-").reverse().join("/")}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  หมายเหตุ (Notes)
+                </label>
+                <textarea
+                  value={editingOrder.notes || ""}
+                  onChange={(e) =>
+                    setEditingOrder({ ...editingOrder, notes: e.target.value })
+                  }
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none shadow-sm"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setEditingOrder(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                disabled={isSaving}
+                className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] text-white py-3 rounded-xl font-bold text-xs shadow-md  disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
+              >
+                {isSaving ? "กำลังบันทึก..." : "💾 บันทึกการแก้ไข"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && stockDetailOrder && (
+        <Modal
+          id="stock-detail-modal"
+          title="รายละเอียดการตัดสต็อค"
+          onClose={() => setStockDetailOrder(null)}
+          size="sm"
+        >
+          {(() => {
+            const goodA3 = stockDetailOrder.good_a3 || 0;
+            const wasteA3 = stockDetailOrder.waste_a3 || 0;
+            const totalSheets = goodA3 + wasteA3;
+
+            return (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+                  <div className="text-[11px] font-bold text-emerald-700">
+                    ตัดสต็อคโดย
+                  </div>
+                  <div className="mt-0.5 break-words text-sm font-black text-emerald-900">
+                    {stockDetailOrder.reconciled_by || "ไม่ระบุชื่อ"}
+                  </div>
+                  <div className="mt-1 text-[11px] text-emerald-700">
+                    {formatThaiDateTimeFromISO(stockDetailOrder.reconciled_at)}
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">ประเภทกระดาษ</span>
+                    <span className="text-right font-bold text-blue-700">
+                      {stockDetailOrder.paper_type || "ไม่ระบุ"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">ตัดออกทั้งหมด</span>
+                    <span className="font-black text-slate-800">
+                      {totalSheets.toLocaleString()} ใบ
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">กระดาษดี</span>
+                    <span className="font-bold text-emerald-600">
+                      {goodA3.toLocaleString()} ใบ
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">กระดาษเสีย</span>
+                    <span className="font-bold text-rose-600">
+                      {wasteA3.toLocaleString()} ใบ
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-500">ชิ้นเสีย</span>
+                    <span className="font-bold text-rose-600">
+                      {(stockDetailOrder.waste_qty || 0).toLocaleString()} ชิ้น
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </Modal>
+      )}
+
+      {/* ✅ Reconcile Modal — บันทึกผลผลิต/ตัดสต็อคกระดาษ (เฉพาะ isAdmin) */}
+      {isAdmin && reconcilingOrder && reconcileCalculation && (
+        <Modal
+          id="reconcile-modal"
+          title="บันทึกผลผลิต / ตัดสต็อคกระดาษ"
+          onClose={() => setReconcilingOrder(null)}
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500">ลอต</span>
+                <span className="font-bold text-slate-700">
+                  {reconcilingOrder.lot_number}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">สินค้า</span>
+                <span className="font-bold text-slate-700">
+                  {reconcilingOrder.product_name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">จำนวนสั่งทำ (เป้าหมาย)</span>
+                <span className="font-bold text-slate-700">
+                  {reconcileCalculation.target}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">
+                  ประเภทกระดาษ (ล็อคจาก Product)
+                </span>
+                <span className="font-bold text-blue-600">
+                  {reconcileCalculation.paperType}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">อัตราส่วน</span>
+                <span className="font-bold text-slate-700">
+                  {reconcileCalculation.qtyPerA3} ชิ้น/แผ่น
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  ชิ้นเสีย (Waste Qty)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={reconcileForm.wasteQty}
+                  onChange={(e) =>
+                    setReconcileForm((prev) => ({
+                      ...prev,
+                      wasteQty: e.target.value,
+                    }))
+                  }
+                  onWheel={(e) => e.currentTarget.blur()}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  กระดาษเสีย (Waste A3, ใบ)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={reconcileForm.wasteA3}
+                  onChange={(e) =>
+                    setReconcileForm((prev) => ({
+                      ...prev,
+                      wasteA3: e.target.value,
+                    }))
+                  }
+                  onWheel={(e) => e.currentTarget.blur()}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {(parseInt(reconcileForm.wasteQty) || 0) > 0 && (
+              <div>
+                <label
+                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteQtyRemark.trim() ? "text-red-600" : "text-slate-500"}`}
+                >
+                  หมายเหตุชิ้นเสีย{" "}
+                  {!reconcileForm.wasteQtyRemark.trim() && (
+                    <span className="normal-case">*</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={reconcileForm.wasteQtyRemark}
+                  onChange={(e) => {
+                    setReconcileForm((prev) => ({
+                      ...prev,
+                      wasteQtyRemark: e.target.value,
+                    }));
+                    setReconcileErrors((prev) => ({
+                      ...prev,
+                      wasteQtyRemark: undefined,
+                    }));
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
+                    !reconcileForm.wasteQtyRemark.trim()
+                      ? "bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                      : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  }`}
+                  placeholder="เช่น สีเพี้ยน"
+                />
+                {!reconcileForm.wasteQtyRemark.trim() && (
+                  <p className="mt-1 text-[11px] text-red-500 font-medium">
+                    มีชิ้นเสีย — กรุณาระบุหมายเหตุ
+                  </p>
+                )}
+              </div>
+            )}
+            {(parseInt(reconcileForm.wasteA3) || 0) > 0 && (
+              <div>
+                <label
+                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteA3Remark.trim() ? "text-red-600" : "text-slate-500"}`}
+                >
+                  หมายเหตุกระดาษเสีย{" "}
+                  {!reconcileForm.wasteA3Remark.trim() && (
+                    <span className="normal-case">*</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={reconcileForm.wasteA3Remark}
+                  onChange={(e) => {
+                    setReconcileForm((prev) => ({
+                      ...prev,
+                      wasteA3Remark: e.target.value,
+                    }));
+                    setReconcileErrors((prev) => ({
+                      ...prev,
+                      wasteA3Remark: undefined,
+                    }));
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
+                    !reconcileForm.wasteA3Remark.trim()
+                      ? "bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                      : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  }`}
+                  placeholder="เช่น กระดาษยับตอนป้อนเครื่อง"
+                />
+                {!reconcileForm.wasteA3Remark.trim() && (
+                  <p className="mt-1 text-[11px] text-red-500 font-medium">
+                    มีกระดาษเสีย — กรุณาระบุหมายเหตุ
+                  </p>
+                )}
+              </div>
+            )}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                กระดาษดีเพิ่มเติม (ถ้ามี, ใบ)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={reconcileForm.goodA3Extra}
+                onChange={(e) =>
+                  setReconcileForm((prev) => ({
+                    ...prev,
+                    goodA3Extra: e.target.value,
+                  }))
+                }
+                onWheel={(e) => e.currentTarget.blur()}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                placeholder="0"
+              />
+              <p className="mt-1 text-[11px] text-slate-400">
+                ปกติระบบคำนวณกระดาษดีให้อัตโนมัติจากจำนวนสั่งทำ
+                ใส่ช่องนี้เฉพาะกรณีต้องการเพิ่มพิเศษ
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
+              {/* ซ่อน ชิ้นเกิน ถ้าเป็น 0 */}
+              {reconcileCalculation.excessQty > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-yellow-600">ชิ้นเกิน (Excess)</span>
+                  <span className="font-black text-yellow-600">
+                    {reconcileCalculation.excessQty} ชิ้น
+                  </span>
+                </div>
+              )}
+
+              {/* ซ่อน ชิ้นเสีย ถ้าเป็น 0 */}
+              {reconcileCalculation.wasteQty > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-rose-600">ชิ้นเสีย (Waste Qty)</span>
+                  <span className="font-black text-rose-600">
+                    {reconcileCalculation.wasteQty} ชิ้น
+                  </span>
+                </div>
+              )}
+
+              {/* เส้นคั่นบางๆ จะแสดงก็ต่อเมื่อมีข้อมูลข้างบน และมีข้อมูลข้างล่าง */}
+              {(reconcileCalculation.excessQty > 0 ||
+                reconcileCalculation.wasteQty > 0) &&
+                (reconcileCalculation.goodA3 > 0 ||
+                  reconcileCalculation.wasteA3 > 0) && (
+                  <div className="border-t border-emerald-200 my-0.5"></div>
                 )}
 
-            {visibleCount < filteredOrders.length && (
-                <div ref={sentinelRef} className="flex justify-center py-8 col-span-full">
-                    <div className="flex items-center gap-2">
-                        {[0, 1, 2].map(i => (
-                            <div key={i} className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
-                                style={{ animationDelay: `${i * 0.15}s` }} />
-                        ))}
-                        <span className="text-slate-400 text-xs font-medium ml-1">
-                            กำลังโหลด {Math.min(10, filteredOrders.length - visibleCount)} รายการถัดไป...
-                        </span>
-                    </div>
+              {/* ซ่อน กระดาษดี ถ้าเป็น 0 (เผื่อไว้) */}
+              {reconcileCalculation.goodA3 > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-emerald-700">กระดาษดี (A3)</span>
+                  <span className="font-black text-emerald-700">
+                    {reconcileCalculation.goodA3} ใบ
+                  </span>
                 </div>
-            )}
+              )}
 
-            {visibleCount >= filteredOrders.length && filteredOrders.length > 10 && (
-                <div className="text-center py-6 text-slate-400 text-xs col-span-full">
-                    แสดงครบทั้ง {filteredOrders.length} รายการแล้ว
+              {/* ซ่อน กระดาษเสีย ถ้าเป็น 0 */}
+              {reconcileCalculation.wasteA3 > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-rose-600">กระดาษเสีย (A3)</span>
+                  <span className="font-black text-rose-600">
+                    {reconcileCalculation.wasteA3} ใบ
+                  </span>
                 </div>
-            )}
+              )}
 
+              <div className="border-t border-emerald-200 my-0.5"></div>
 
-            {/* Editing Dialog Modal */}
-            {editingOrder && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md animate-slide-up relative overflow-hidden">
-                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                                    <Edit2 className="w-5 h-5" />
-                                </span>
-                                <h2 className="text-lg font-black text-[#0f1e3d] tracking-tight">แก้ไขข้อมูลคำสั่งชิ้นงาน</h2>
-                            </div>
-                            <button type="button" onClick={() => setEditingOrder(null)} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-full transition-colors">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
+              {/* สรุปยอดรวม (ให้แสดงเสมอเพื่อให้เห็นจำนวนตัดสต็อคที่ชัดเจน) */}
+              <div className="flex justify-between">
+                <span className="text-emerald-700 font-bold">
+                  รวมตัดสต็อคทั้งหมด
+                </span>
+                <span className="font-black text-emerald-700">
+                  {reconcileCalculation.sheetsNeeded} ใบ
+                </span>
+              </div>
+            </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">เลขลอตสินค้า (Lot Number)</label>
-                                <input type="text" value={editingOrder.lot_number}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, lot_number: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
-                            </div>
+            <div className="flex gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setReconcilingOrder(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={submitReconcile}
+                disabled={isSubmittingReconcile}
+                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
+              >
+                {isSubmittingReconcile
+                  ? "กำลังบันทึก..."
+                  : "📄 บันทึกและตัดสต็อค"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
-                            {/* ประเภทคำสั่ง */}
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">ประเภทคำสั่ง (Order Type)</label>
-                                <div className="flex gap-3">
-                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === 'พิมพ์ฉลาก' ? 'bg-[#0f1e3d] text-white border-[#0f1e3d] shadow-md shadow-blue-900/10' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50'}`}>
-                                        <input
-                                            type="radio"
-                                            name="edit_orderType"
-                                            value="พิมพ์ฉลาก"
-                                            checked={editingOrder.order_type === 'พิมพ์ฉลาก'}
-                                            onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
-                                            className="hidden"
-                                        />
-                                        🖨️ พิมพ์ฉลาก
-                                    </label>
-                                    <label className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === 'ปั๊มถุง' ? 'bg-indigo-950 text-white border-indigo-950 shadow-md shadow-indigo-900/10' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50'}`}>
-                                        <input
-                                            type="radio"
-                                            name="edit_orderType"
-                                            value="ปั๊มถุง"
-                                            checked={editingOrder.order_type === 'ปั๊มถุง'}
-                                            onChange={(e) => setEditingOrder({ ...editingOrder, order_type: e.target.value })}
-                                            className="hidden"
-                                        />
-                                        🔖 ปั๊มถุง
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">จำนวนสั่งทำ (Quantity)</label>
-                                <input type="number" min="1" value={editingOrder.quantity}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value) || 1;
-                                        setEditingOrder({ ...editingOrder, quantity: Math.max(1, val) });
-                                    }}
-                                    onWheel={(e) => e.currentTarget.blur()}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm" />
-                            </div>
-
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">วันที่ผลิต (Production Date)</label>
-                                <input type="date" value={editingOrder.production_date || ''}
-                                    onChange={(e) => {
-                                        const newDate = e.target.value;
-                                        setEditingOrder({ ...editingOrder, production_date: newDate, expiry_date: calculateExpiryDate(newDate, editingOrder.product_exp) });
-                                    }}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
-                                />
-                                {editingOrder.expiry_date && (
-                                    <p className="mt-2 text-xs text-rose-500 font-bold flex items-center gap-1">
-                                        <span>💡</span> วันหมดอายุใหม่: {editingOrder.expiry_date.split('-').reverse().join('/')}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">หมายเหตุ (Notes)</label>
-                                <textarea value={editingOrder.notes || ''}
-                                    onChange={(e) => setEditingOrder({ ...editingOrder, notes: e.target.value })}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none shadow-sm" rows={3} />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-6 border-t border-slate-100 pt-4">
-                            <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300">ยกเลิก</button>
-                            <button type="button" onClick={saveEdit} disabled={isSaving} className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] text-white py-3 rounded-xl font-bold text-xs shadow-md  disabled:opacity-50 disabled:cursor-not-allowed transition duration-300">
-                                {isSaving ? 'กำลังบันทึก...' : '💾 บันทึกการแก้ไข'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {isAdmin && stockDetailOrder && (
-                <Modal id="stock-detail-modal" title="รายละเอียดการตัดสต็อค" onClose={() => setStockDetailOrder(null)} size="sm">
-                    {(() => {
-                        const goodA3 = stockDetailOrder.good_a3 || 0;
-                        const wasteA3 = stockDetailOrder.waste_a3 || 0;
-                        const totalSheets = goodA3 + wasteA3;
-
-                        return (
-                            <div className="space-y-4">
-                                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
-                                    <div className="text-[11px] font-bold text-emerald-700">ตัดสต็อคโดย</div>
-                                    <div className="mt-0.5 break-words text-sm font-black text-emerald-900">{stockDetailOrder.reconciled_by || 'ไม่ระบุชื่อ'}</div>
-                                    <div className="mt-1 text-[11px] text-emerald-700">{formatThaiDateTimeFromISO(stockDetailOrder.reconciled_at)}</div>
-                                </div>
-
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
-                                        <span className="text-slate-500">ประเภทกระดาษ</span>
-                                        <span className="text-right font-bold text-blue-700">{stockDetailOrder.paper_type || 'ไม่ระบุ'}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
-                                        <span className="text-slate-500">ตัดออกทั้งหมด</span>
-                                        <span className="font-black text-slate-800">{totalSheets.toLocaleString()} ใบ</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
-                                        <span className="text-slate-500">กระดาษดี</span>
-                                        <span className="font-bold text-emerald-600">{goodA3.toLocaleString()} ใบ</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
-                                        <span className="text-slate-500">กระดาษเสีย</span>
-                                        <span className="font-bold text-rose-600">{wasteA3.toLocaleString()} ใบ</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="text-slate-500">ชิ้นเสีย</span>
-                                        <span className="font-bold text-rose-600">{(stockDetailOrder.waste_qty || 0).toLocaleString()} ชิ้น</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
-                </Modal>
-            )}
-
-            {/* ✅ Reconcile Modal — บันทึกผลผลิต/ตัดสต็อคกระดาษ (เฉพาะ isAdmin) */}
-            {isAdmin && reconcilingOrder && reconcileCalculation && (
-                <Modal id="reconcile-modal" title="บันทึกผลผลิต / ตัดสต็อคกระดาษ" onClose={() => setReconcilingOrder(null)} size="md">
-                    <div className="space-y-4">
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[12.5px] space-y-1">
-                            <div className="flex justify-between"><span className="text-slate-500">ลอต</span><span className="font-bold text-slate-700">{reconcilingOrder.lot_number}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">สินค้า</span><span className="font-bold text-slate-700">{reconcilingOrder.product_name}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">จำนวนสั่งทำ (เป้าหมาย)</span><span className="font-bold text-slate-700">{reconcileCalculation.target}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">ประเภทกระดาษ (ล็อคจาก Product)</span><span className="font-bold text-blue-600">{reconcileCalculation.paperType}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">อัตราส่วน</span><span className="font-bold text-slate-700">{reconcileCalculation.qtyPerA3} ชิ้น/แผ่น</span></div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">ชิ้นเสีย (Waste Qty)</label>
-                                <input type="number" min="0" value={reconcileForm.wasteQty}
-                                    onChange={e => setReconcileForm(prev => ({ ...prev, wasteQty: e.target.value }))}
-                                    onWheel={e => e.currentTarget.blur()}
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="0" />
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">กระดาษเสีย (Waste A3, ใบ)</label>
-                                <input type="number" min="0" value={reconcileForm.wasteA3}
-                                    onChange={e => setReconcileForm(prev => ({ ...prev, wasteA3: e.target.value }))}
-                                    onWheel={e => e.currentTarget.blur()}
-                                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="0" />
-                            </div>
-                        </div>
-
-                        {(parseInt(reconcileForm.wasteQty) || 0) > 0 && (
-                        <div>
-                            <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteQtyRemark.trim() ? 'text-red-600' : 'text-slate-500'}`}>หมายเหตุชิ้นเสีย {!reconcileForm.wasteQtyRemark.trim() && <span className="normal-case">*</span>}</label>
-                            <input type="text" value={reconcileForm.wasteQtyRemark}
-                                onChange={e => { setReconcileForm(prev => ({ ...prev, wasteQtyRemark: e.target.value })); setReconcileErrors(prev => ({ ...prev, wasteQtyRemark: undefined })); }}
-                                className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
-                                    !reconcileForm.wasteQtyRemark.trim()
-                                        ? 'bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                                        : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10'
-                                }`} placeholder="เช่น สีเพี้ยน" />
-                            {!reconcileForm.wasteQtyRemark.trim() && <p className="mt-1 text-[11px] text-red-500 font-medium">มีชิ้นเสีย — กรุณาระบุหมายเหตุ</p>}
-                        </div>
-                        )}
-                        {(parseInt(reconcileForm.wasteA3) || 0) > 0 && (
-                        <div>
-                            <label className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteA3Remark.trim() ? 'text-red-600' : 'text-slate-500'}`}>หมายเหตุกระดาษเสีย {!reconcileForm.wasteA3Remark.trim() && <span className="normal-case">*</span>}</label>
-                            <input type="text" value={reconcileForm.wasteA3Remark}
-                                onChange={e => { setReconcileForm(prev => ({ ...prev, wasteA3Remark: e.target.value })); setReconcileErrors(prev => ({ ...prev, wasteA3Remark: undefined })); }}
-                                className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
-                                    !reconcileForm.wasteA3Remark.trim()
-                                        ? 'bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                                        : 'bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10'
-                                }`} placeholder="เช่น กระดาษยับตอนป้อนเครื่อง" />
-                            {!reconcileForm.wasteA3Remark.trim() && <p className="mt-1 text-[11px] text-red-500 font-medium">มีกระดาษเสีย — กรุณาระบุหมายเหตุ</p>}
-                        </div>
-                        )}
-                        <div>
-                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">กระดาษดีเพิ่มเติม (ถ้ามี, ใบ)</label>
-                            <input type="number" min="0" value={reconcileForm.goodA3Extra}
-                                onChange={e => setReconcileForm(prev => ({ ...prev, goodA3Extra: e.target.value }))}
-                                onWheel={e => e.currentTarget.blur()}
-                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" placeholder="0" />
-                            <p className="mt-1 text-[11px] text-slate-400">ปกติระบบคำนวณกระดาษดีให้อัตโนมัติจากจำนวนสั่งทำ ใส่ช่องนี้เฉพาะกรณีต้องการเพิ่มพิเศษ</p>
-                        </div>
-
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
-                            {/* ซ่อน ชิ้นเกิน ถ้าเป็น 0 */}
-                            {reconcileCalculation.excessQty > 0 && (
-                                <div className="flex justify-between"><span className="text-yellow-600">ชิ้นเกิน (Excess)</span><span className="font-black text-yellow-600">{reconcileCalculation.excessQty} ชิ้น</span></div>
-                            )}
-
-                            {/* ซ่อน ชิ้นเสีย ถ้าเป็น 0 */}
-                            {reconcileCalculation.wasteQty > 0 && (
-                                <div className="flex justify-between"><span className="text-rose-600">ชิ้นเสีย (Waste Qty)</span><span className="font-black text-rose-600">{reconcileCalculation.wasteQty} ชิ้น</span></div>
-                            )}
-
-                            {/* เส้นคั่นบางๆ จะแสดงก็ต่อเมื่อมีข้อมูลข้างบน และมีข้อมูลข้างล่าง */}
-                            {(reconcileCalculation.excessQty > 0 || reconcileCalculation.wasteQty > 0) &&
-                                (reconcileCalculation.goodA3 > 0 || reconcileCalculation.wasteA3 > 0) && (
-                                    <div className="border-t border-emerald-200 my-0.5"></div>
-                                )}
-
-                            {/* ซ่อน กระดาษดี ถ้าเป็น 0 (เผื่อไว้) */}
-                            {reconcileCalculation.goodA3 > 0 && (
-                                <div className="flex justify-between"><span className="text-emerald-700">กระดาษดี (A3)</span><span className="font-black text-emerald-700">{reconcileCalculation.goodA3} ใบ</span></div>
-                            )}
-
-                            {/* ซ่อน กระดาษเสีย ถ้าเป็น 0 */}
-                            {reconcileCalculation.wasteA3 > 0 && (
-                                <div className="flex justify-between"><span className="text-rose-600">กระดาษเสีย (A3)</span><span className="font-black text-rose-600">{reconcileCalculation.wasteA3} ใบ</span></div>
-                            )}
-
-                            <div className="border-t border-emerald-200 my-0.5"></div>
-
-                            {/* สรุปยอดรวม (ให้แสดงเสมอเพื่อให้เห็นจำนวนตัดสต็อคที่ชัดเจน) */}
-                            <div className="flex justify-between"><span className="text-emerald-700 font-bold">รวมตัดสต็อคทั้งหมด</span><span className="font-black text-emerald-700">{reconcileCalculation.sheetsNeeded} ใบ</span></div>
-                        </div>
-
-
-                        <div className="flex gap-3 pt-2 border-t border-slate-100">
-                            <button type="button" onClick={() => setReconcilingOrder(null)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300">ยกเลิก</button>
-                            <button type="button" onClick={submitReconcile} disabled={isSubmittingReconcile} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300">
-                                {isSubmittingReconcile ? 'กำลังบันทึก...' : '📄 บันทึกและตัดสต็อค'}
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
-
-            {showScrollTop && (
-                <button
-                    type="button"
-                    onClick={() => document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0f1e3d] text-white shadow-xl ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-1 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-400/40"
-                    title="เลื่อนกลับด้านบน"
-                    aria-label="เลื่อนกลับด้านบน"
-                >
-                    <ArrowUp className="h-5 w-5" />
-                </button>
-            )}
-        </div>
-    );
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() =>
+            document
+              .querySelector("main")
+              ?.scrollTo({ top: 0, behavior: "smooth" })
+          }
+          className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0f1e3d] text-white shadow-xl ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-1 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-400/40"
+          title="เลื่อนกลับด้านบน"
+          aria-label="เลื่อนกลับด้านบน"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
+    </div>
+  );
 }

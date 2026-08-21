@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
-import { logAction } from '@/lib/logger';
 import { ImagePlus, X } from 'lucide-react';
 
 export interface OrderInterface {
@@ -313,12 +312,6 @@ export default function OrderPage() {
             }).select('id');
 
             if (error) throw new Error(error.message);
-
-            await logAction('CREATE_ORDER', {
-                product_id: orderData.productId,
-                lot_number: orderData.lotNumber,
-                quantity: orderData.quantity
-            });
 
             Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: 'บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว' });
 
