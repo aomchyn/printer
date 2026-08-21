@@ -19,6 +19,8 @@ import {
   Building2,
   Shield,
   Users,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { UserSkeleton } from "./skeleton-loading-user";
 import {
@@ -258,6 +260,7 @@ export default function UserManagement() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUserPassword, setShowUserPassword] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -365,6 +368,7 @@ export default function UserManagement() {
     setJobTitle("");
     setDepartment("");
     setPassword("");
+    setShowUserPassword(false);
     setRole("user");
     setSignatureFile(null);
     setSignaturePreview(null);
@@ -463,6 +467,19 @@ export default function UserManagement() {
         });
         return;
       }
+
+      if (password && password.trim().length > 0) {
+        const passwordCheck = validatePassword(password);
+
+        if (!passwordCheck.valid) {
+          Swal.fire({
+            icon: "error",
+            title: "รหัสผ่านไม่ปลอดภัย",
+            text: PASSWORD_POLICY_MESSAGE,
+          });
+          return;
+        }
+      }
       Swal.fire({
         title: "กำลังบันทึก...",
         allowOutsideClick: false,
@@ -531,11 +548,6 @@ export default function UserManagement() {
           }
         }
         if (password && password.trim().length > 0) {
-          const passwordCheck = validatePassword(password);
-
-          if (!passwordCheck.valid) {
-            throw new Error(PASSWORD_POLICY_MESSAGE);
-          }
           const { error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError) throw new Error("Session หมดอายุ กรุณา Login ใหม่");
           const {
@@ -732,6 +744,7 @@ export default function UserManagement() {
     setDepartment(user.department || "");
     setRole(user.role ?? "user");
     setPassword("");
+    setShowUserPassword(false);
     setSignatureFile(null);
     setSignaturePreview(user.signature_preview_url || null);
     setShowModal(true);
@@ -745,6 +758,7 @@ export default function UserManagement() {
     setJobTitle("");
     setDepartment("");
     setPassword("");
+    setShowUserPassword(false);
     setRole("user");
     setShowModal(true);
   };
@@ -1057,18 +1071,36 @@ export default function UserManagement() {
                 <label className={labelCls}>
                   {editingUser ? "ตั้งรหัสผ่านใหม่ (ไม่บังคับ)" : "Password"}
                 </label>
-                <input
-                  type="password"
-                  className={inputCls}
-                  value={password}
-                  placeholder={
-                    editingUser
-                      ? "ปล่อยว่างหากไม่เปลี่ยน"
-                      : "อย่างน้อย 10 ตัว พร้อม A-Z, a-z, 0-9 และสัญลักษณ์"
-                  }
-                  onChange={(e) => setPassword(e.target.value)}
-                  required={!editingUser}
-                />
+
+                <div className="relative">
+                  <input
+                    type={showUserPassword ? "text" : "password"}
+                    className={`${inputCls} pr-11`}
+                    value={password}
+                    placeholder={
+                      editingUser
+                        ? "ปล่อยว่างหากไม่เปลี่ยน"
+                        : "อย่างน้อย 10 ตัว พร้อม A-Z, a-z, 0-9 และสัญลักษณ์"
+                    }
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={!editingUser}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowUserPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={
+                      showUserPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"
+                    }
+                  >
+                    {showUserPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className={labelCls}>ระดับสิทธิ์ (Role)</label>

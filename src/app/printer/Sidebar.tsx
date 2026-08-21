@@ -18,6 +18,8 @@ import {
   Trash2,
   Activity,
   Layers,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   PASSWORD_POLICY_MESSAGE,
@@ -46,6 +48,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [qaPendingCount, setQaPendingCount] = useState(0);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -189,6 +193,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       new_password: "",
       confirm_password: "",
     });
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setIsProfileOpen(true);
   };
 
@@ -650,37 +656,74 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
                   เปลี่ยนรหัสผ่าน (ถ้าต้องการ)
                 </div>
+
                 <div className="space-y-3">
-                  {[
-                    {
-                      label: "รหัสผ่านใหม่",
-                      key: "new_password",
-                      placeholder: "ปล่อยว่างถ้าไม่ต้องการเปลี่ยน",
-                    },
-                    {
-                      label: "ยืนยันรหัสผ่านใหม่",
-                      key: "confirm_password",
-                      placeholder: "",
-                    },
-                  ].map(({ label, key, placeholder }) => (
-                    <div key={key}>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                        {label}
-                      </label>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      รหัสผ่านใหม่
+                    </label>
+                    <div className="relative">
                       <input
-                        type="password"
-                        value={profileForm[key as keyof typeof profileForm]}
+                        type={showNewPassword ? "text" : "password"}
+                        value={profileForm.new_password}
                         onChange={(e) =>
                           setProfileForm((f) => ({
                             ...f,
-                            [key]: e.target.value,
+                            new_password: e.target.value,
                           }))
                         }
-                        placeholder={placeholder}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                        placeholder="ปล่อยว่างถ้าไม่ต้องการเปลี่ยน"
+                        className="w-full px-4 py-2.5 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        aria-label={
+                          showNewPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"
+                        }
+                      >
+                        {showNewPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
                     </div>
-                  ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                      ยืนยันรหัสผ่านใหม่
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={profileForm.confirm_password}
+                        onChange={(e) =>
+                          setProfileForm((f) => ({
+                            ...f,
+                            confirm_password: e.target.value,
+                          }))
+                        }
+                        className="w-full px-4 py-2.5 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        aria-label={
+                          showConfirmPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"
+                        }
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
