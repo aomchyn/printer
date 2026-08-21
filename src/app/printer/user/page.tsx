@@ -21,6 +21,10 @@ import {
   Users,
 } from "lucide-react";
 import { UserSkeleton } from "./skeleton-loading-user";
+import {
+  PASSWORD_POLICY_MESSAGE,
+  validatePassword,
+} from "@/lib/passwordPolicy";
 
 interface User {
   id: string;
@@ -527,8 +531,11 @@ export default function UserManagement() {
           }
         }
         if (password && password.trim().length > 0) {
-          if (password.length < 8)
-            throw new Error("รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร");
+          const passwordCheck = validatePassword(password);
+
+          if (!passwordCheck.valid) {
+            throw new Error(PASSWORD_POLICY_MESSAGE);
+          }
           const { error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError) throw new Error("Session หมดอายุ กรุณา Login ใหม่");
           const {
@@ -574,11 +581,13 @@ export default function UserManagement() {
         });
         return;
       }
-      if (password.length < 8) {
+      const passwordCheck = validatePassword(password);
+
+      if (!passwordCheck.valid) {
         Swal.fire({
           icon: "error",
-          title: "รหัสผ่านอ่อนเกินไป",
-          text: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
+          title: "รหัสผ่านไม่ปลอดภัย",
+          text: PASSWORD_POLICY_MESSAGE,
         });
         return;
       }
@@ -1055,7 +1064,7 @@ export default function UserManagement() {
                   placeholder={
                     editingUser
                       ? "ปล่อยว่างหากไม่เปลี่ยน"
-                      : "อย่างน้อย 8 ตัวอักษร"
+                      : "อย่างน้อย 10 ตัว พร้อม A-Z, a-z, 0-9 และสัญลักษณ์"
                   }
                   onChange={(e) => setPassword(e.target.value)}
                   required={!editingUser}

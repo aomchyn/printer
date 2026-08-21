@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { writeUserAudit } from "@/lib/serverAudit";
+import {
+  PASSWORD_POLICY_MESSAGE,
+  validatePassword,
+} from "@/lib/passwordPolicy";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,15 +25,14 @@ export async function PUT(
 
     const body = await request.json();
     const newPassword =
-      typeof body.newPassword === "string"
-        ? body.newPassword
-        : "";
+      typeof body.newPassword === "string" ? body.newPassword : "";
 
-    if (newPassword.length < 8) {
+    const passwordCheck = validatePassword(newPassword);
+
+    if (!passwordCheck.valid) {
       return NextResponse.json(
         {
-          error:
-            "Password must be at least 8 characters long",
+          error: PASSWORD_POLICY_MESSAGE,
         },
         { status: 400 },
       );
@@ -45,15 +48,10 @@ export async function PUT(
       );
     }
 
-    const token = request.headers
-      .get("Authorization")
-      ?.replace("Bearer ", "");
+    const token = request.headers.get("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userClient = createClient(
@@ -73,29 +71,21 @@ export async function PUT(
     } = await userClient.auth.getUser(token);
 
     if (userError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
-    );
+    });
 
-    const { data: caller, error: callerError } =
-      await supabaseAdmin
-        .from("users")
-        .select("id, name, employee_id, role")
-        .eq("id", user.id)
-        .single();
+    const { data: caller, error: callerError } = await supabaseAdmin
+      .from("users")
+      .select("id, name, employee_id, role")
+      .eq("id", user.id)
+      .single();
 
     if (callerError || !caller) {
       return NextResponse.json(
@@ -104,12 +94,11 @@ export async function PUT(
       );
     }
 
-    const { data: target, error: targetError } =
-      await supabaseAdmin
-        .from("users")
-        .select("id, email, name, role")
-        .eq("id", id)
-        .single();
+    const { data: target, error: targetError } = await supabaseAdmin
+      .from("users")
+      .select("id, email, name, role")
+      .eq("id", id)
+      .single();
 
     if (targetError || !target) {
       return NextResponse.json(
@@ -121,14 +110,10 @@ export async function PUT(
     const isSelf = user.id === id;
 
     const isManager =
-      caller.role === "moderator" ||
-      caller.role === "assistant_moderator";
+      caller.role === "moderator" || caller.role === "assistant_moderator";
 
     if (!isSelf && !isManager) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (
@@ -138,18 +123,16 @@ export async function PUT(
     ) {
       return NextResponse.json(
         {
-          error:
-            "Assistant Moderator cannot change a Moderator password",
+          error: "Assistant Moderator cannot change a Moderator password",
         },
         { status: 403 },
       );
     }
 
     const { error: passwordError } =
-      await supabaseAdmin.auth.admin.updateUserById(
-        id,
-        { password: newPassword },
-      );
+      await supabaseAdmin.auth.admin.updateUserById(id, {
+        password: newPassword,
+      });
 
     if (passwordError) {
       return NextResponse.json(
@@ -158,19 +141,14 @@ export async function PUT(
       );
     }
 
-    const action =
-      isSelf
-        ? "UPDATE_PROFILE"
-        : "UPDATE_USER";
+    const action = isSelf ? "UPDATE_PROFILE" : "UPDATE_USER";
 
     try {
       await writeUserAudit(
         supabaseAdmin,
         caller,
         action,
-        isSelf
-          ? "เปลี่ยนรหัสผ่านของตนเอง"
-          : "เปลี่ยนรหัสผ่านผู้ใช้",
+        isSelf ? "เปลี่ยนรหัสผ่านของตนเอง" : "เปลี่ยนรหัสผ่านผู้ใช้",
         {
           id: target.id,
           name: target.name,
@@ -183,15 +161,11 @@ export async function PUT(
         },
       );
     } catch (auditError) {
-      console.error(
-        "Password changed but audit logging failed:",
-        auditError,
-      );
+      console.error("Password changed but audit logging failed:", auditError);
 
       return NextResponse.json(
         {
-          error:
-            "Password was changed, but audit logging failed",
+          error: "Password was changed, but audit logging failed",
         },
         { status: 500 },
       );
@@ -202,10 +176,7 @@ export async function PUT(
       message: "Password updated successfully",
     });
   } catch (error) {
-    console.error(
-      "Unexpected password update error:",
-      error,
-    );
+    console.error("Unexpected password update error:", error);
 
     return NextResponse.json(
       { error: "Internal Server Error" },

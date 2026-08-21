@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { writeUserAudit } from "@/lib/serverAudit";
+import {
+  PASSWORD_POLICY_MESSAGE,
+  validatePassword,
+} from "@/lib/passwordPolicy";
 
 const ALLOWED_ROLES = [
   "user",
@@ -20,20 +24,13 @@ function nullableText(value: unknown) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabaseUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    const supabaseAnonKey =
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    const serviceRoleKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (
-      !supabaseUrl ||
-      !supabaseAnonKey ||
-      !serviceRoleKey
-    ) {
+    if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 },
@@ -50,22 +47,15 @@ export async function POST(request: NextRequest) {
       .trim();
 
     if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
-    );
+    });
 
     const {
       data: { user },
@@ -73,35 +63,23 @@ export async function POST(request: NextRequest) {
     } = await userClient.auth.getUser(token);
 
     if (userError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
-    );
+    });
 
     // ========================================================
     // AUTHORIZE CALLER
     // ========================================================
 
-    const {
-      data: caller,
-      error: callerError,
-    } = await supabaseAdmin
+    const { data: caller, error: callerError } = await supabaseAdmin
       .from("users")
-      .select(
-        "id, name, employee_id, role",
-      )
+      .select("id, name, employee_id, role")
       .eq("id", user.id)
       .single();
 
@@ -112,14 +90,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      caller.role !== "moderator" &&
-      caller.role !== "assistant_moderator"
-    ) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 },
-      );
+    if (caller.role !== "moderator" && caller.role !== "assistant_moderator") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // ========================================================
@@ -129,82 +101,48 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const email =
-      typeof body.email === "string"
-        ? body.email.trim().toLowerCase()
-        : "";
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
 
-    const password =
-      typeof body.password === "string"
-        ? body.password
-        : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
-    const name =
-      typeof body.name === "string"
-        ? body.name.trim()
-        : "";
+    const name = typeof body.name === "string" ? body.name.trim() : "";
 
-    const role =
-      typeof body.role === "string"
-        ? body.role
-        : "";
+    const role = typeof body.role === "string" ? body.role : "";
 
-    const employeeId =
-      nullableText(body.employee_id);
+    const employeeId = nullableText(body.employee_id);
 
-    const jobTitle =
-      nullableText(body.job_title);
+    const jobTitle = nullableText(body.job_title);
 
-    const department =
-      nullableText(body.department);
+    const department = nullableText(body.department);
 
-    if (
-      !email ||
-      !email.includes("@") ||
-      !email.includes(".")
-    ) {
-      return NextResponse.json(
-        { error: "Invalid email" },
-        { status: 400 },
-      );
+    if (!email || !email.includes("@") || !email.includes(".")) {
+      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
     }
 
-    if (password.length < 8) {
+    const passwordCheck = validatePassword(password);
+
+    if (!passwordCheck.valid) {
       return NextResponse.json(
         {
-          error:
-            "Password must be at least 8 characters long",
+          error: PASSWORD_POLICY_MESSAGE,
         },
         { status: 400 },
       );
     }
 
     if (!name) {
-      return NextResponse.json(
-        { error: "Name is required" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    if (
-      !ALLOWED_ROLES.includes(
-        role as UserRole,
-      )
-    ) {
-      return NextResponse.json(
-        { error: "Invalid role" },
-        { status: 400 },
-      );
+    if (!ALLOWED_ROLES.includes(role as UserRole)) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
     // Assistant Moderator ห้ามสร้าง Moderator
-    if (
-      caller.role === "assistant_moderator" &&
-      role === "moderator"
-    ) {
+    if (caller.role === "assistant_moderator" && role === "moderator") {
       return NextResponse.json(
         {
-          error:
-            "Assistant Moderator cannot create a Moderator",
+          error: "Assistant Moderator cannot create a Moderator",
         },
         { status: 403 },
       );
@@ -214,10 +152,7 @@ export async function POST(request: NextRequest) {
     // DUPLICATE NAME CHECK
     // ========================================================
 
-    const {
-      data: existingNames,
-      error: duplicateError,
-    } = await supabaseAdmin
+    const { data: existingNames, error: duplicateError } = await supabaseAdmin
       .from("users")
       .select("id, name")
       .ilike("name", name)
@@ -226,21 +161,16 @@ export async function POST(request: NextRequest) {
     if (duplicateError) {
       return NextResponse.json(
         {
-          error:
-            "Unable to validate user name",
+          error: "Unable to validate user name",
         },
         { status: 500 },
       );
     }
 
-    if (
-      existingNames &&
-      existingNames.length > 0
-    ) {
+    if (existingNames && existingNames.length > 0) {
       return NextResponse.json(
         {
-          error:
-            "มีชื่อผู้ใช้นี้ในระบบแล้ว",
+          error: "มีชื่อผู้ใช้นี้ในระบบแล้ว",
         },
         { status: 409 },
       );
@@ -250,61 +180,45 @@ export async function POST(request: NextRequest) {
     // CREATE AUTH USER
     // ========================================================
 
-    const {
-      data: createdAuth,
-      error: createAuthError,
-    } =
-      await supabaseAdmin.auth.admin.createUser(
-        {
-          email,
-          password,
+    const { data: createdAuth, error: createAuthError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
 
-          // Admin-created account ใช้งานได้ทันที
-          email_confirm: true,
-        },
-      );
+        // Admin-created account ใช้งานได้ทันที
+        email_confirm: true,
+      });
 
-    if (
-      createAuthError ||
-      !createdAuth.user
-    ) {
+    if (createAuthError || !createdAuth.user) {
       return NextResponse.json(
         {
           error:
-            createAuthError?.message ||
-            "Failed to create authentication user",
+            createAuthError?.message || "Failed to create authentication user",
         },
         { status: 400 },
       );
     }
 
-    const newUserId =
-      createdAuth.user.id;
+    const newUserId = createdAuth.user.id;
 
     // ========================================================
     // CREATE PUBLIC PROFILE
     // ========================================================
 
-    const {
-      error: profileError,
-    } = await supabaseAdmin
-      .from("users")
-      .insert({
-        id: newUserId,
-        email,
-        name,
-        role,
-        employee_id: employeeId,
-        job_title: jobTitle,
-        department,
-      });
+    const { error: profileError } = await supabaseAdmin.from("users").insert({
+      id: newUserId,
+      email,
+      name,
+      role,
+      employee_id: employeeId,
+      job_title: jobTitle,
+      department,
+    });
 
     if (profileError) {
       // compensating rollback:
       // ไม่ปล่อย auth.users ค้างโดยไม่มี public.users
-      await supabaseAdmin.auth.admin.deleteUser(
-        newUserId,
-      );
+      await supabaseAdmin.auth.admin.deleteUser(newUserId);
 
       return NextResponse.json(
         {
@@ -325,8 +239,7 @@ export async function POST(request: NextRequest) {
         {
           id: user.id,
           name: caller.name,
-          employee_id:
-            caller.employee_id,
+          employee_id: caller.employee_id,
         },
         "CREATE_USER",
         `สร้างบัญชีผู้ใช้ ${name}`,
@@ -343,12 +256,8 @@ export async function POST(request: NextRequest) {
     } catch (auditError) {
       // Audit ถือเป็นส่วนหนึ่งของ operation
       // rollback account ที่เพิ่งสร้าง
-      const {
-        error: rollbackError,
-      } =
-        await supabaseAdmin.auth.admin.deleteUser(
-          newUserId,
-        );
+      const { error: rollbackError } =
+        await supabaseAdmin.auth.admin.deleteUser(newUserId);
 
       if (rollbackError) {
         console.error(
@@ -366,15 +275,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.error(
-        "CREATE_USER audit failed:",
-        auditError,
-      );
+      console.error("CREATE_USER audit failed:", auditError);
 
       return NextResponse.json(
         {
-          error:
-            "Unable to create user because audit logging failed",
+          error: "Unable to create user because audit logging failed",
         },
         { status: 500 },
       );
@@ -393,17 +298,11 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error(
-      "POST /api/users error:",
-      error,
-    );
+    console.error("POST /api/users error:", error);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Internal server error",
+        error: error instanceof Error ? error.message : "Internal server error",
       },
       { status: 500 },
     );

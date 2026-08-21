@@ -19,6 +19,10 @@ import {
   Activity,
   Layers,
 } from "lucide-react";
+import {
+  PASSWORD_POLICY_MESSAGE,
+  validatePassword,
+} from "@/lib/passwordPolicy";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -208,13 +212,18 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       });
       return;
     }
-    if (profileForm.new_password && profileForm.new_password.length < 8) {
-      Swal.fire({
-        icon: "warning",
-        title: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
-        confirmButtonColor: "#6b7280",
-      });
-      return;
+    if (profileForm.new_password) {
+      const passwordCheck = validatePassword(profileForm.new_password);
+
+      if (!passwordCheck.valid) {
+        Swal.fire({
+          icon: "warning",
+          title: "รหัสผ่านไม่ปลอดภัย",
+          text: PASSWORD_POLICY_MESSAGE,
+          confirmButtonColor: "#6b7280",
+        });
+        return;
+      }
     }
     const hasChanges =
       profileForm.name.trim() !== name ||
