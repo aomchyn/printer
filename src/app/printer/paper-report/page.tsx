@@ -595,7 +595,7 @@ export default function PaperReportPage() {
       showCancelButton: true,
       confirmButtonText: "ลบ",
       cancelButtonText: "ยกเลิก",
-      confirmButtonColor: "#ef4444",
+      confirmButtonColor: "#C8102E",
     });
     if (!result.isConfirmed) return;
 
@@ -717,8 +717,8 @@ export default function PaperReportPage() {
           text: "คุณแน่ใจหรือไม่ว่าต้องการบันทึกข้อมูลโดยไม่ระบุจำนวนชิ้นที่สั่ง?",
           icon: "warning",
           showCancelButton: true,
-          confirmButtonColor: "#3b82f6",
-          cancelButtonColor: "#ef4444",
+          confirmButtonColor: "#0057B8",
+          cancelButtonColor: "#C8102E",
           confirmButtonText: "ดำเนินการต่อ",
           cancelButtonText: "กลับไปแก้ไข",
         });
@@ -731,8 +731,8 @@ export default function PaperReportPage() {
           text: "ต้องการบันทึกการตัดสต็อคด้วยเป้าหมาย 0 ใบ A3 หรือไม่?",
           icon: "warning",
           showCancelButton: true,
-          confirmButtonColor: "#3b82f6",
-          cancelButtonColor: "#ef4444",
+          confirmButtonColor: "#0057B8",
+          cancelButtonColor: "#C8102E",
           confirmButtonText: "ดำเนินการต่อ",
           cancelButtonText: "ยกเลิก",
         });
@@ -777,7 +777,7 @@ export default function PaperReportPage() {
             text: "ข้อมูลยังคงเหมือนเดิม ไม่จำเป็นต้องบันทึก",
             icon: "info",
             confirmButtonText: "รับทราบ",
-            confirmButtonColor: "#3b82f6",
+            confirmButtonColor: "#0057B8",
           });
           return;
         }
@@ -821,7 +821,7 @@ export default function PaperReportPage() {
             text: `ประเภทกระดาษ ${mdPaperType} คงเหลือ ${currentStock.toLocaleString()} ใบ (ต้องการใช้ ${manualDeductCalc.totalA3.toLocaleString()} ใบ)`,
             icon: "error",
             confirmButtonText: "รับทราบ",
-            confirmButtonColor: "#ef4444",
+            confirmButtonColor: "#C8102E",
           });
           return;
         }
@@ -852,8 +852,8 @@ export default function PaperReportPage() {
         showCancelButton: true,
         confirmButtonText: editReportId ? "บันทึกการแก้ไข" : "ยืนยันบันทึก",
         cancelButtonText: "ยกเลิก",
-        confirmButtonColor: "#3b82f6",
-        cancelButtonColor: "#ef4444",
+        confirmButtonColor: "#0057B8",
+        cancelButtonColor: "#C8102E",
       });
 
       if (!confirm.isConfirmed) return;
@@ -996,23 +996,23 @@ export default function PaperReportPage() {
         title: "⚠️ รีเซ็ตข้อมูลประจำสัปดาห์",
         html: `
           <div style="text-align: left; font-size: 14px; line-height: 1.8;">
-            <p>คุณกำลังจะ <strong style="color: #ef4444;">ลบข้อมูลทั้งหมด</strong> และ <strong style="color: #10b981;">ยกยอดสต็อคกระดาษใหม่</strong></p>
+            <p>คุณกำลังจะ <strong style="color: #C8102E;">ลบข้อมูลทั้งหมด</strong> และ <strong style="color: #00B398;">ยกยอดสต็อคกระดาษใหม่</strong></p>
             <hr style="margin: 10px 0;">
             <p>⛔ สิ่งที่จะเกิดขึ้น:</p>
             <ul style="margin-left: 16px; list-style: disc;">
               <li>ลบประวัติตัดสต็อค Manual และแดชบอร์ดทั้งหมด</li>
               <li>ลบประวัติการรับเข้า-เบิกจ่ายกระดาษทั้งหมด</li>
-              <li style="color: #10b981; font-weight: bold;">คำนวณและยกยอดคงเหลือปัจจุบันไปเป็นรายการรับเข้าใหม่ (ยกยอดมา)</li>
+              <li style="color: #00B398; font-weight: bold;">คำนวณและยกยอดคงเหลือปัจจุบันไปเป็นรายการรับเข้าใหม่ (ยกยอดมา)</li>
             </ul>
-            <p style="color: #ef4444; margin-top: 8px;"><strong>การดำเนินการนี้ไม่สามารถย้อนคืนได้!</strong></p>
+            <p style="color: #C8102E; margin-top: 8px;"><strong>การดำเนินการนี้ไม่สามารถย้อนคืนได้!</strong></p>
           </div>
         `,
         icon: "warning",
         showCancelButton: true,
         confirmButtonText: "ยืนยันรีเซ็ตและยกยอด",
         cancelButtonText: "ยกเลิก",
-        confirmButtonColor: "#ef4444",
-        cancelButtonColor: "#64748b",
+        confirmButtonColor: "#C8102E",
+        cancelButtonColor: "#5F6B70",
       });
 
       if (!firstConfirm.isConfirmed) return;
@@ -1024,8 +1024,8 @@ export default function PaperReportPage() {
         showCancelButton: true,
         confirmButtonText: "ดำเนินการเลย",
         cancelButtonText: "ยกเลิก",
-        confirmButtonColor: "#ef4444",
-        cancelButtonColor: "#64748b",
+        confirmButtonColor: "#C8102E",
+        cancelButtonColor: "#5F6B70",
       });
 
       if (!secondConfirm.isConfirmed) return;
@@ -1093,7 +1093,7 @@ export default function PaperReportPage() {
         text: "ลบข้อมูล Paper Reports ทั้งหมดเรียบร้อยแล้ว",
         icon: "success",
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#3b82f6",
+        confirmButtonColor: "#0057B8",
       });
 
       fetchOrders();
@@ -1157,7 +1157,7 @@ export default function PaperReportPage() {
           title: "บังคับใช้ลายเซ็น",
           text: 'คุณจำเป็นต้องมีลายเซ็นในระบบก่อนจึงจะสามารถออกรายงานได้ กรุณาติดต่อผู้ดูแลระบบ (Moderator) เพื่อเพิ่มลายเซ็นใน "หน้าจัดการผู้ใช้"',
           icon: "error",
-          confirmButtonColor: "#3b82f6",
+          confirmButtonColor: "#0057B8",
           confirmButtonText: "ตกลง",
         });
 
@@ -1537,7 +1537,7 @@ export default function PaperReportPage() {
         text: "ดาวน์โหลดไฟล์ Excel เรียบร้อยแล้ว",
         icon: "success",
         confirmButtonText: "ตกลง",
-        confirmButtonColor: "#3b82f6",
+        confirmButtonColor: "#0057B8",
       });
     } catch (error) {
       console.error(error);
@@ -1546,7 +1546,7 @@ export default function PaperReportPage() {
         text: "ไม่สามารถดาวน์โหลดไฟล์ Excel ได้",
         icon: "error",
         confirmButtonText: "ตกลง",
-        confirmButtonColor: "#ef4444",
+        confirmButtonColor: "#C8102E",
       });
     } finally {
       setIsExporting(false);
@@ -1557,23 +1557,23 @@ export default function PaperReportPage() {
   const getDepartmentStyle = (dept: string) => {
     if (dept === "ZT")
       return {
-        solid: "bg-emerald-600",
-        light: "bg-emerald-50",
-        text: "text-emerald-700",
-        accent: "border-emerald-500",
+        solid: "bg-[#00B398]",
+        light: "bg-[#E6F8F4]",
+        text: "text-[#008C78]",
+        accent: "border-[#00B398]",
       };
     if (dept === "13 ไร่")
       return {
-        solid: "bg-blue-600",
-        light: "bg-blue-50",
-        text: "text-blue-700",
-        accent: "border-blue-500",
+        solid: "bg-[#0057B8]",
+        light: "bg-[#EAF3FC]",
+        text: "text-[#0057B8]",
+        accent: "border-[#0057B8]",
       };
     return {
-      solid: "bg-slate-600",
-      light: "bg-slate-50",
-      text: "text-slate-600",
-      accent: "border-slate-400",
+      solid: "bg-[#5F6B70]",
+      light: "bg-[#F5F7F8]",
+      text: "text-[#5F6B70]",
+      accent: "border-[#B8C4C8]",
     };
   };
 
@@ -1583,16 +1583,16 @@ export default function PaperReportPage() {
 
   if (accessStatus === "checking") {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-screen flex items-center justify-center text-[#8A9498] text-sm">
         กำลังตรวจสอบสิทธิ์...
       </div>
     );
   }
   if (accessStatus === "denied") {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-sm w-full text-center">
-          <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+      <div className="min-h-screen bg-[#F5F7F8] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#D9E1E2] p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-[#FCEAEC] text-[#C8102E] rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
               className="w-8 h-8"
               fill="none"
@@ -1607,16 +1607,16 @@ export default function PaperReportPage() {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
+          <h2 className="text-xl font-bold text-[#101820] mb-2">
             Access Denied
           </h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-[#5F6B70] text-sm mb-6">
             เฉพาะ Moderator และ Assistant Moderator
             เท่านั้นที่สามารถเข้าถึงรายงานนี้ได้
           </p>
           <button
             onClick={() => router.push("/printer/dashboard")}
-            className="w-full bg-gray-900 text-white rounded-lg py-2.5 font-medium hover:bg-gray-800 transition-colors"
+            className="w-full bg-[#00263A] text-white rounded-lg py-2.5 font-medium hover:bg-[#004A9F] transition-colors"
           >
             กลับไปหน้าแรก
           </button>
@@ -1626,18 +1626,18 @@ export default function PaperReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-[#F5F7F8] pb-20">
       {/* ── Page header ── */}
-      <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sticky top-0 z-30">
+      <div className="bg-white/90 backdrop-blur-sm border-b border-[#D9E1E2] px-4 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sticky top-0 z-30">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-            <Layers className="w-5 h-5 text-blue-600" />
+          <div className="w-9 h-9 rounded-xl bg-[#EAF3FC] flex items-center justify-center shrink-0">
+            <Layers className="w-5 h-5 text-[#0057B8]" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[#0f1e3d] font-bold text-[16px] md:text-[18px] leading-tight tracking-wide truncate">
+            <h1 className="text-[#00263A] font-bold text-[16px] md:text-[18px] leading-tight tracking-wide truncate">
               สรุปการใช้กระดาษ A3 (เชิงลึก)
             </h1>
-            <p className="text-slate-400 text-[12px] md:text-[13px] hidden sm:block truncate">
+            <p className="text-[#8A9498] text-[12px] md:text-[13px] hidden sm:block truncate">
               วิเคราะห์ยอดการใช้กระดาษและของเสียรายแผนก / รายสัปดาห์
             </p>
           </div>
@@ -1645,25 +1645,25 @@ export default function PaperReportPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowManualModal(true)}
-            className="bg-rose-500 hover:bg-rose-400 text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
+            className="bg-[#C8102E] hover:bg-[#C8102E] text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
           >
             <MinusCircle className="w-3.5 h-3.5" /> ตัดสต็อค Manual
           </button>
           <button
             onClick={() => setShowReportModal(true)}
-            className="bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
+            className="bg-[#00AEC7] hover:bg-[#00AEC7] text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
           >
             <FileText className="w-3.5 h-3.5" /> ออกรายงาน
           </button>
           <button
             onClick={handleExportExcel}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
+            className="bg-[#00B398] hover:bg-[#00B398] text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
           >
             <Download className="w-3.5 h-3.5" /> Export Excel
           </button>
           <button
             onClick={handleResetWeekly}
-            className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
+            className="bg-[#F1C400] hover:bg-[#F1C400] text-white px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5" /> รีเซ็ตสัปดาห์
           </button>
@@ -1674,11 +1674,11 @@ export default function PaperReportPage() {
         {isLoadingOrders ? (
           <PaperReportSkeleton />
         ) : ordersError ? (
-          <div className="text-center py-16 text-rose-500 text-sm bg-rose-50 rounded-2xl border border-rose-100">
+          <div className="text-center py-16 text-[#C8102E] text-sm bg-[#FCEAEC] rounded-2xl border border-[#C8102E]/15">
             {ordersError}
           </div>
         ) : printOrders.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 text-sm bg-white rounded-2xl border border-gray-100">
+          <div className="text-center py-16 text-[#8A9498] text-sm bg-white rounded-2xl border border-[#D9E1E2]">
             ยังไม่มีข้อมูลผลผลิตที่บันทึกไว้ในสัปดาห์นี้
           </div>
         ) : (
@@ -1687,9 +1687,9 @@ export default function PaperReportPage() {
             <div className="mb-10">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-[18px]">📝</span>
-                <h2 className="text-[16px] font-black text-[#0f1e3d]">
+                <h2 className="text-[16px] font-black text-[#00263A]">
                   รายการสั่งพิมพ์วันนี้{" "}
-                  <span className="text-slate-400 font-normal text-[14px]">
+                  <span className="text-[#8A9498] font-normal text-[14px]">
                     (
                     {new Date().toLocaleDateString("th-TH", {
                       day: "numeric",
@@ -1702,34 +1702,34 @@ export default function PaperReportPage() {
               </div>
 
               {/* Total Today Card */}
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-6">
+              <div className="bg-white border border-[#D9E1E2] rounded-xl shadow-sm overflow-hidden mb-6">
                 <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-emerald-500" />
-                    <span className="font-bold text-[15px] text-slate-800">
+                    <BarChart3 className="w-5 h-5 text-[#00B398]" />
+                    <span className="font-bold text-[15px] text-[#101820]">
                       รวมทั้งหมดวันนี้
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 md:gap-6 text-[14px]">
-                    <div className="text-slate-500">
+                    <div className="text-[#5F6B70]">
                       เป้าหมาย{" "}
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-[#101820]">
                         {todayOrders.totalTarget.toLocaleString()}
                       </span>
                     </div>
-                    <div className="text-blue-500">
+                    <div className="text-[#0057B8]">
                       A3 ใช้{" "}
                       <span className="font-bold">
                         {dailySummary.totalSheets.toLocaleString()} ใบ
                       </span>
                     </div>
-                    <div className="text-rose-500">
+                    <div className="text-[#C8102E]">
                       A3 เสีย{" "}
                       <span className="font-bold">
                         {dailySummary.totalWaste.toLocaleString()} ใบ
                       </span>
                     </div>
-                    <div className="text-amber-500">
+                    <div className="text-[#A88700]">
                       ส่วนเกิน{" "}
                       <span className="font-bold">
                         {Object.values(todayOrders.byPaperType)
@@ -1741,15 +1741,15 @@ export default function PaperReportPage() {
                   </div>
                 </div>
                 {Object.keys(todayOrders.byPaperType).length > 0 && (
-                  <div className="bg-slate-50 border-t border-gray-100 p-4 flex flex-wrap gap-3">
+                  <div className="bg-[#F5F7F8] border-t border-[#D9E1E2] p-4 flex flex-wrap gap-3">
                     {Object.entries(dailySummary.byPaperType).map(([pt, d]) => (
                       <div
                         key={pt}
-                        className="bg-white border border-blue-200 text-blue-700 text-[12px] px-3 py-1.5 rounded-full flex items-center gap-2 font-medium shadow-sm"
+                        className="bg-white border border-[#0057B8]/20 text-[#0057B8] text-[12px] px-3 py-1.5 rounded-full flex items-center gap-2 font-medium shadow-sm"
                       >
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-[#0057B8]"></div>
                         {pt}{" "}
-                        <span className="font-bold text-blue-600">
+                        <span className="font-bold text-[#0057B8]">
                           {d.sheetsUsed} ใบ
                         </span>
                       </div>
@@ -1779,10 +1779,10 @@ export default function PaperReportPage() {
                       return (
                         <div
                           key={pt}
-                          className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden"
+                          className="bg-white border border-[#D9E1E2] rounded-xl shadow-sm overflow-hidden"
                         >
                           <div
-                            className="bg-[#0ea5e9] px-5 py-3 flex justify-between items-center text-white cursor-pointer hover:bg-sky-600 transition-colors"
+                            className="bg-[#00AEC7] px-5 py-3 flex justify-between items-center text-white cursor-pointer hover:bg-[#00AEC7] transition-colors"
                             onClick={() => toggleSection(pt)}
                           >
                             <div className="flex items-center gap-2">
@@ -1808,29 +1808,29 @@ export default function PaperReportPage() {
                               <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-left border-collapse min-w-[700px]">
                                   <thead>
-                                    <tr className="border-b border-gray-100 bg-gray-50/50">
-                                      <th className="p-4 text-[12px] font-bold text-slate-500">
+                                    <tr className="border-b border-[#D9E1E2] bg-[#F5F7F8]/50">
+                                      <th className="p-4 text-[12px] font-bold text-[#5F6B70]">
                                         หน่วยงาน
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-slate-500">
+                                      <th className="p-4 text-[12px] font-bold text-[#5F6B70]">
                                         LOT / สินค้า
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-slate-500 text-center">
+                                      <th className="p-4 text-[12px] font-bold text-[#5F6B70] text-center">
                                         เป้าหมาย
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-blue-600 text-center">
+                                      <th className="p-4 text-[12px] font-bold text-[#0057B8] text-center">
                                         A3 ใช้
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-rose-600 text-center">
+                                      <th className="p-4 text-[12px] font-bold text-[#C8102E] text-center">
                                         ชิ้นเสีย
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-rose-600 text-center">
+                                      <th className="p-4 text-[12px] font-bold text-[#C8102E] text-center">
                                         A3 เสีย
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-amber-600 text-center">
+                                      <th className="p-4 text-[12px] font-bold text-[#6E5B00] text-center">
                                         ส่วนเกิน
                                       </th>
-                                      <th className="p-4 text-[12px] font-bold text-slate-500 text-center">
+                                      <th className="p-4 text-[12px] font-bold text-[#5F6B70] text-center">
                                         หมายเหตุ
                                       </th>
                                     </tr>
@@ -1839,66 +1839,66 @@ export default function PaperReportPage() {
                                     {orders.map((order) => (
                                       <tr
                                         key={order.id}
-                                        className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors"
+                                        className="border-b border-[#F0F3F4] hover:bg-[#F5F7F8]/50 transition-colors"
                                       >
-                                        <td className="p-4 text-[14px] text-slate-600">
+                                        <td className="p-4 text-[14px] text-[#5F6B70]">
                                           {order.department}
                                         </td>
                                         <td className="p-4">
-                                          <div className="font-bold text-[14px] text-slate-800">
+                                          <div className="font-bold text-[14px] text-[#101820]">
                                             {order.lotName}
                                           </div>
-                                          <div className="text-[12px] text-slate-400 uppercase">
+                                          <div className="text-[12px] text-[#8A9498] uppercase">
                                             {order.productName}
                                           </div>
                                         </td>
-                                        <td className="p-4 text-center text-[14px] font-bold text-slate-700">
+                                        <td className="p-4 text-center text-[14px] font-bold text-[#5F6B70]">
                                           {order.targetQty.toLocaleString()}
                                         </td>
-                                        <td className="p-4 text-center text-[14px] font-bold text-blue-600">
+                                        <td className="p-4 text-center text-[14px] font-bold text-[#0057B8]">
                                           {order.sheetsNeeded.toLocaleString()}{" "}
                                           ใบ
                                         </td>
-                                        <td className="p-4 text-center text-[14px] font-bold text-slate-400">
+                                        <td className="p-4 text-center text-[14px] font-bold text-[#8A9498]">
                                           {order.wasteQty > 0 ? (
-                                            <span className="text-rose-500">
+                                            <span className="text-[#C8102E]">
                                               {order.wasteQty}
                                             </span>
                                           ) : (
                                             "-"
                                           )}
                                         </td>
-                                        <td className="p-4 text-center text-[14px] font-bold text-slate-400">
+                                        <td className="p-4 text-center text-[14px] font-bold text-[#8A9498]">
                                           {order.wasteA3 > 0 ? (
-                                            <span className="text-rose-500">
+                                            <span className="text-[#C8102E]">
                                               {order.wasteA3} ใบ
                                             </span>
                                           ) : (
                                             "-"
                                           )}
                                         </td>
-                                        <td className="p-4 text-center text-[14px] font-bold text-slate-400">
+                                        <td className="p-4 text-center text-[14px] font-bold text-[#8A9498]">
                                           {order.excessQty > 0 ? (
-                                            <span className="text-amber-500">
+                                            <span className="text-[#A88700]">
                                               {order.excessQty}
                                             </span>
                                           ) : (
                                             "-"
                                           )}
                                         </td>
-                                        <td className="p-4 text-[12px] text-slate-500 text-center">
+                                        <td className="p-4 text-[12px] text-[#5F6B70] text-center">
                                           <div className="flex flex-col items-center gap-1">
                                             {order.remarks.length > 0 ? (
                                               order.remarks.map((r, i) => (
                                                 <span
                                                   key={i}
-                                                  className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded"
+                                                  className="text-[10px] bg-[#F0F3F4] text-[#5F6B70] px-2 py-0.5 rounded"
                                                 >
                                                   {r}
                                                 </span>
                                               ))
                                             ) : (
-                                              <span className="text-slate-300">
+                                              <span className="text-[#B8C4C8]">
                                                 -
                                               </span>
                                             )}
@@ -1907,7 +1907,7 @@ export default function PaperReportPage() {
                                                 onClick={() =>
                                                   handleDeleteOrderGroup(order)
                                                 }
-                                                className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 px-2 py-1 rounded transition-colors font-medium border border-rose-200"
+                                                className="text-[10px] bg-[#FCEAEC] text-[#C8102E] hover:bg-[#FCEAEC] px-2 py-1 rounded transition-colors font-medium border border-[#C8102E]/20"
                                               >
                                                 ลบ
                                               </button>
@@ -1915,7 +1915,7 @@ export default function PaperReportPage() {
                                                 onClick={() =>
                                                   openEditManualModal(order)
                                                 }
-                                                className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded transition-colors font-medium border border-blue-200"
+                                                className="text-[10px] bg-[#EAF3FC] text-[#0057B8] hover:bg-[#EAF3FC] px-2 py-1 rounded transition-colors font-medium border border-[#0057B8]/20"
                                               >
                                                 แก้ไขข้อมูล
                                               </button>
@@ -1924,20 +1924,20 @@ export default function PaperReportPage() {
                                         </td>
                                       </tr>
                                     ))}
-                                    <tr className="bg-slate-50 border-t-2 border-gray-100">
+                                    <tr className="bg-[#F5F7F8] border-t-2 border-[#D9E1E2]">
                                       <td
                                         colSpan={2}
-                                        className="p-4 text-[13px] font-bold text-slate-700 text-right"
+                                        className="p-4 text-[13px] font-bold text-[#5F6B70] text-right"
                                       >
                                         รวม ({pt})
                                       </td>
-                                      <td className="p-4 text-center text-[14px] font-bold text-slate-700">
+                                      <td className="p-4 text-center text-[14px] font-bold text-[#5F6B70]">
                                         {totalTarget.toLocaleString()}
                                       </td>
-                                      <td className="p-4 text-center text-[14px] font-bold text-blue-600">
+                                      <td className="p-4 text-center text-[14px] font-bold text-[#0057B8]">
                                         {totalSheets.toLocaleString()} ใบ
                                       </td>
-                                      <td className="p-4 text-center text-[14px] font-bold text-rose-500">
+                                      <td className="p-4 text-center text-[14px] font-bold text-[#C8102E]">
                                         {orders.reduce(
                                           (s, o) => s + o.wasteQty,
                                           0,
@@ -1948,7 +1948,7 @@ export default function PaperReportPage() {
                                             )
                                           : "-"}
                                       </td>
-                                      <td className="p-4 text-center text-[14px] font-bold text-rose-500">
+                                      <td className="p-4 text-center text-[14px] font-bold text-[#C8102E]">
                                         {orders.reduce(
                                           (s, o) => s + o.wasteA3,
                                           0,
@@ -1956,7 +1956,7 @@ export default function PaperReportPage() {
                                           ? `${orders.reduce((s, o) => s + o.wasteA3, 0)} ใบ`
                                           : "-"}
                                       </td>
-                                      <td className="p-4 text-center text-[14px] font-bold text-amber-500">
+                                      <td className="p-4 text-center text-[14px] font-bold text-[#A88700]">
                                         {totalExcess > 0 ? totalExcess : "-"}
                                       </td>
                                       <td></td>
@@ -1970,46 +1970,46 @@ export default function PaperReportPage() {
                                 {orders.map((order) => (
                                   <div
                                     key={order.id}
-                                    className="p-4 bg-white hover:bg-slate-50 transition-colors"
+                                    className="p-4 bg-white hover:bg-[#F5F7F8] transition-colors"
                                   >
                                     <div className="flex justify-between items-start mb-3">
                                       <div>
-                                        <div className="font-bold text-[14px] text-slate-800">
+                                        <div className="font-bold text-[14px] text-[#101820]">
                                           {order.lotName}
                                         </div>
-                                        <div className="text-[12px] text-slate-500 uppercase mt-0.5 leading-tight">
+                                        <div className="text-[12px] text-[#5F6B70] uppercase mt-0.5 leading-tight">
                                           {order.productName}
                                         </div>
                                       </div>
                                       <div className="text-right ml-2 shrink-0">
-                                        <div className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
+                                        <div className="text-[11px] font-bold text-[#5F6B70] bg-[#F0F3F4] px-2.5 py-1 rounded-md">
                                           {order.department}
                                         </div>
                                       </div>
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-2 mt-3">
-                                      <div className="bg-slate-50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-slate-100">
-                                        <span className="text-[11px] text-slate-500 font-bold mb-0.5">
+                                      <div className="bg-[#F5F7F8] p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#D9E1E2]">
+                                        <span className="text-[11px] text-[#5F6B70] font-bold mb-0.5">
                                           เป้าหมาย
                                         </span>
-                                        <span className="text-[14px] font-black text-slate-700">
+                                        <span className="text-[14px] font-black text-[#5F6B70]">
                                           {order.targetQty.toLocaleString()}
                                         </span>
                                       </div>
-                                      <div className="bg-blue-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-blue-100/50">
-                                        <span className="text-[11px] text-blue-600 font-bold mb-0.5">
+                                      <div className="bg-[#EAF3FC]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#0057B8]/15/50">
+                                        <span className="text-[11px] text-[#0057B8] font-bold mb-0.5">
                                           A3 ใช้
                                         </span>
-                                        <span className="text-[14px] font-black text-blue-700">
+                                        <span className="text-[14px] font-black text-[#0057B8]">
                                           {order.sheetsNeeded.toLocaleString()}
                                         </span>
                                       </div>
-                                      <div className="bg-amber-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-amber-100/50">
-                                        <span className="text-[11px] text-amber-600 font-bold mb-0.5">
+                                      <div className="bg-[#FFF8D6]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#F1C400]/15/50">
+                                        <span className="text-[11px] text-[#6E5B00] font-bold mb-0.5">
                                           ส่วนเกิน
                                         </span>
-                                        <span className="text-[14px] font-black text-amber-600">
+                                        <span className="text-[14px] font-black text-[#6E5B00]">
                                           {order.excessQty > 0
                                             ? order.excessQty.toLocaleString()
                                             : "-"}
@@ -2017,21 +2017,21 @@ export default function PaperReportPage() {
                                       </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 mt-2">
-                                      <div className="bg-rose-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-rose-100/50">
-                                        <span className="text-[11px] text-rose-600 font-bold mb-0.5">
+                                      <div className="bg-[#FCEAEC]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#C8102E]/15/50">
+                                        <span className="text-[11px] text-[#C8102E] font-bold mb-0.5">
                                           ชิ้นเสีย
                                         </span>
-                                        <span className="text-[14px] font-black text-rose-700">
+                                        <span className="text-[14px] font-black text-[#9B0B23]">
                                           {order.wasteQty > 0
                                             ? order.wasteQty.toLocaleString()
                                             : "-"}
                                         </span>
                                       </div>
-                                      <div className="bg-rose-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-rose-100/50">
-                                        <span className="text-[11px] text-rose-600 font-bold mb-0.5">
+                                      <div className="bg-[#FCEAEC]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#C8102E]/15/50">
+                                        <span className="text-[11px] text-[#C8102E] font-bold mb-0.5">
                                           A3 เสีย
                                         </span>
-                                        <span className="text-[14px] font-black text-rose-700">
+                                        <span className="text-[14px] font-black text-[#9B0B23]">
                                           {order.wasteA3 > 0
                                             ? order.wasteA3.toLocaleString()
                                             : "-"}
@@ -2039,11 +2039,11 @@ export default function PaperReportPage() {
                                       </div>
                                     </div>
 
-                                    <div className="mt-3 pt-3 border-t border-gray-50 flex flex-wrap items-center gap-1.5">
+                                    <div className="mt-3 pt-3 border-t border-[#F0F3F4] flex flex-wrap items-center gap-1.5">
                                       {order.remarks.map((r, i) => (
                                         <span
                                           key={i}
-                                          className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200/60"
+                                          className="text-[10px] bg-[#F0F3F4] text-[#5F6B70] px-2 py-1 rounded-md font-medium border border-[#D9E1E2]/60"
                                         >
                                           {r}
                                         </span>
@@ -2053,7 +2053,7 @@ export default function PaperReportPage() {
                                           onClick={() =>
                                             handleDeleteOrderGroup(order)
                                           }
-                                          className="text-[10px] bg-rose-50 text-rose-600 hover:bg-rose-100 px-2 py-1 rounded-md font-medium border border-rose-200 transition-colors"
+                                          className="text-[10px] bg-[#FCEAEC] text-[#C8102E] hover:bg-[#FCEAEC] px-2 py-1 rounded-md font-medium border border-[#C8102E]/20 transition-colors"
                                         >
                                           ลบ
                                         </button>
@@ -2061,7 +2061,7 @@ export default function PaperReportPage() {
                                           onClick={() =>
                                             openEditManualModal(order)
                                           }
-                                          className="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md font-medium border border-blue-200 transition-colors"
+                                          className="text-[10px] bg-[#EAF3FC] text-[#0057B8] hover:bg-[#EAF3FC] px-2 py-1 rounded-md font-medium border border-[#0057B8]/20 transition-colors"
                                         >
                                           แก้ไขข้อมูล
                                         </button>
@@ -2069,32 +2069,32 @@ export default function PaperReportPage() {
                                     </div>
                                   </div>
                                 ))}
-                                <div className="bg-slate-50 p-4 border-t border-gray-200">
-                                  <div className="font-bold text-[13px] text-slate-700 mb-2">
+                                <div className="bg-[#F5F7F8] p-4 border-t border-[#D9E1E2]">
+                                  <div className="font-bold text-[13px] text-[#5F6B70] mb-2">
                                     รวมทั้งหมด ({pt})
                                   </div>
                                   <div className="grid grid-cols-2 gap-y-2 gap-x-4">
                                     <div className="flex justify-between items-center text-[12px]">
-                                      <span className="text-slate-500 font-medium">
+                                      <span className="text-[#5F6B70] font-medium">
                                         เป้าหมาย:
                                       </span>
-                                      <span className="font-bold text-slate-700">
+                                      <span className="font-bold text-[#5F6B70]">
                                         {totalTarget.toLocaleString()}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center text-[12px]">
-                                      <span className="text-slate-500 font-medium">
+                                      <span className="text-[#5F6B70] font-medium">
                                         A3 ใช้:
                                       </span>
-                                      <span className="font-bold text-blue-600">
+                                      <span className="font-bold text-[#0057B8]">
                                         {totalSheets.toLocaleString()} ใบ
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center text-[12px]">
-                                      <span className="text-slate-500 font-medium">
+                                      <span className="text-[#5F6B70] font-medium">
                                         ชิ้นเสีย:
                                       </span>
-                                      <span className="font-bold text-rose-500">
+                                      <span className="font-bold text-[#C8102E]">
                                         {orders.reduce(
                                           (s, o) => s + o.wasteQty,
                                           0,
@@ -2102,10 +2102,10 @@ export default function PaperReportPage() {
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center text-[12px]">
-                                      <span className="text-slate-500 font-medium">
+                                      <span className="text-[#5F6B70] font-medium">
                                         A3 เสีย:
                                       </span>
-                                      <span className="font-bold text-rose-500">
+                                      <span className="font-bold text-[#C8102E]">
                                         {orders.reduce(
                                           (s, o) => s + o.wasteA3,
                                           0,
@@ -2115,10 +2115,10 @@ export default function PaperReportPage() {
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center text-[12px] col-span-2">
-                                      <span className="text-slate-500 font-medium">
+                                      <span className="text-[#5F6B70] font-medium">
                                         ส่วนเกิน:
                                       </span>
-                                      <span className="font-bold text-amber-500">
+                                      <span className="font-bold text-[#A88700]">
                                         {totalExcess || "-"}
                                       </span>
                                     </div>
@@ -2132,7 +2132,7 @@ export default function PaperReportPage() {
                     },
                   )
                 ) : (
-                  <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-xl border border-gray-100">
+                  <div className="text-center py-8 text-[#8A9498] text-sm bg-white rounded-xl border border-[#D9E1E2]">
                     ไม่มีรายการสั่งพิมพ์ที่บันทึกแล้วในวันนี้
                   </div>
                 )}
@@ -2141,10 +2141,10 @@ export default function PaperReportPage() {
 
             {/* ── Weekly Summary (By Dept) ── */}
             <div className="mb-8">
-              <h2 className="text-[15px] font-black text-[#0f1e3d] mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-indigo-600" />{" "}
+              <h2 className="text-[15px] font-black text-[#00263A] mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-[#0057B8]" />{" "}
                 สรุปยอดรายสัปดาห์แยกหน่วยงาน{" "}
-                <span className="text-slate-400 font-normal text-[13px]">
+                <span className="text-[#8A9498] font-normal text-[13px]">
                   (สัปดาห์ปัจจุบัน)
                 </span>
               </h2>
@@ -2155,7 +2155,7 @@ export default function PaperReportPage() {
                   return (
                     <div
                       key={dept}
-                      className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-slate-50/50"
+                      className="rounded-xl overflow-hidden border border-[#D9E1E2] shadow-sm bg-[#F5F7F8]/50"
                     >
                       <div
                         className={`${style.solid} px-5 py-3 flex justify-between items-center text-white cursor-pointer`}
@@ -2176,10 +2176,10 @@ export default function PaperReportPage() {
                       {isExpanded && (
                         <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               ยอดสั่ง
                             </div>
-                            <div className="text-[16px] font-black text-[#0f1e3d]">
+                            <div className="text-[16px] font-black text-[#00263A]">
                               {d.targetQty.toLocaleString()}{" "}
                               <span className="text-[12px] font-bold">
                                 ชิ้น
@@ -2187,39 +2187,39 @@ export default function PaperReportPage() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               A3 ดี
                             </div>
-                            <div className="text-[16px] font-black text-emerald-600">
+                            <div className="text-[16px] font-black text-[#008C78]">
                               {d.sheetsGood.toLocaleString()}{" "}
                               <span className="text-[12px] font-bold">ใบ</span>
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               A3 เสีย
                             </div>
-                            <div className="text-[16px] font-black text-rose-600">
+                            <div className="text-[16px] font-black text-[#C8102E]">
                               {d.sheetsWaste > 0
                                 ? `${d.sheetsWaste.toLocaleString()} ใบ`
                                 : "-"}
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               ชิ้นเสีย
                             </div>
-                            <div className="text-[16px] font-black text-rose-600">
+                            <div className="text-[16px] font-black text-[#C8102E]">
                               {d.wasteQty > 0
                                 ? `${d.wasteQty.toLocaleString()}`
                                 : "-"}
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               ส่วนเกิน
                             </div>
-                            <div className="text-[16px] font-black text-amber-500">
+                            <div className="text-[16px] font-black text-[#A88700]">
                               {d.excessQty > 0
                                 ? d.excessQty.toLocaleString()
                                 : "0"}
@@ -2232,20 +2232,20 @@ export default function PaperReportPage() {
                 })}
 
                 {/* Total Card */}
-                <div className="rounded-xl border border-gray-200 shadow-sm bg-slate-50 p-5 flex flex-col md:flex-row items-center justify-between mt-2">
-                  <div className="font-bold text-[15px] text-[#0f1e3d] mb-4 md:mb-0">
+                <div className="rounded-xl border border-[#D9E1E2] shadow-sm bg-[#F5F7F8] p-5 flex flex-col md:flex-row items-center justify-between mt-2">
+                  <div className="font-bold text-[15px] text-[#00263A] mb-4 md:mb-0">
                     รวมทั้งหมด
                   </div>
                   <div className="flex flex-wrap items-center gap-4 md:gap-6">
-                    <div className="text-[14px] text-slate-500">
+                    <div className="text-[14px] text-[#5F6B70]">
                       ยอดสั่ง{" "}
-                      <span className="font-black text-[#0f1e3d]">
+                      <span className="font-black text-[#00263A]">
                         {Object.values(weeklySummary.byDept)
                           .reduce((s, d) => s + d.targetQty, 0)
                           .toLocaleString()}
                       </span>
                     </div>
-                    <div className="text-[14px] text-blue-500">
+                    <div className="text-[14px] text-[#0057B8]">
                       A3 ใช้รวม{" "}
                       <span className="font-black">
                         {Object.values(weeklySummary.byDept)
@@ -2254,7 +2254,7 @@ export default function PaperReportPage() {
                         ใบ
                       </span>
                     </div>
-                    <div className="text-[14px] text-emerald-600">
+                    <div className="text-[14px] text-[#008C78]">
                       A3 ดี{" "}
                       <span className="font-black">
                         {Object.values(weeklySummary.byDept)
@@ -2263,7 +2263,7 @@ export default function PaperReportPage() {
                         ใบ
                       </span>
                     </div>
-                    <div className="text-[14px] text-rose-600">
+                    <div className="text-[14px] text-[#C8102E]">
                       A3 เสีย{" "}
                       <span className="font-black">
                         {Object.values(weeklySummary.byDept)
@@ -2272,7 +2272,7 @@ export default function PaperReportPage() {
                         ใบ
                       </span>
                     </div>
-                    <div className="text-[14px] text-amber-500">
+                    <div className="text-[14px] text-[#A88700]">
                       ส่วนเกิน{" "}
                       <span className="font-black">
                         {Object.values(weeklySummary.byDept)
@@ -2287,10 +2287,10 @@ export default function PaperReportPage() {
 
             {/* ── Daily Summary (By Date) ── */}
             <div className="mb-8">
-              <h2 className="text-[15px] font-black text-[#0f1e3d] mb-4 flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-sky-600" />{" "}
+              <h2 className="text-[15px] font-black text-[#00263A] mb-4 flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-[#007E91]" />{" "}
                 สรุปยอดรวมรายวัน{" "}
-                <span className="text-slate-400 font-normal text-[13px]">
+                <span className="text-[#8A9498] font-normal text-[13px]">
                   (เรียงตามวันที่)
                 </span>
               </h2>
@@ -2300,17 +2300,17 @@ export default function PaperReportPage() {
                   return (
                     <div
                       key={date}
-                      className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white"
+                      className="rounded-xl overflow-hidden border border-[#D9E1E2] shadow-sm bg-white"
                     >
                       <div
-                        className="bg-sky-50 border-b border-sky-100 px-5 py-3 flex justify-between items-center text-sky-900 cursor-pointer"
+                        className="bg-[#E5F8FB] border-b border-[#00AEC7]/15 px-5 py-3 flex justify-between items-center text-[#00263A] cursor-pointer"
                         onClick={() => toggleSection(`daily-${date}`)}
                       >
                         <div className="flex items-center gap-2">
                           {isExpanded ? (
-                            <ChevronDown className="w-5 h-5 text-sky-700/70" />
+                            <ChevronDown className="w-5 h-5 text-[#007E91]/70" />
                           ) : (
-                            <ChevronRight className="w-5 h-5 text-sky-700/70" />
+                            <ChevronRight className="w-5 h-5 text-[#007E91]/70" />
                           )}
                           <h3 className="font-bold text-[15px]">
                             {new Date(date).toLocaleDateString("th-TH", {
@@ -2321,17 +2321,17 @@ export default function PaperReportPage() {
                             })}
                           </h3>
                         </div>
-                        <span className="bg-white text-sky-700 px-3 py-1 rounded-full text-[13px] font-bold shadow-sm border border-sky-200">
+                        <span className="bg-white text-[#007E91] px-3 py-1 rounded-full text-[13px] font-bold shadow-sm border border-[#00AEC7]/20">
                           ใช้รวม {d.sheetsUsed.toLocaleString()} ใบ
                         </span>
                       </div>
                       {isExpanded && (
                         <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-6">
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               ยอดสั่งรวม
                             </div>
-                            <div className="text-[16px] font-black text-[#0f1e3d]">
+                            <div className="text-[16px] font-black text-[#00263A]">
                               {d.targetQty.toLocaleString()}{" "}
                               <span className="text-[12px] font-bold">
                                 ชิ้น
@@ -2339,36 +2339,36 @@ export default function PaperReportPage() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               A3 ดี
                             </div>
-                            <div className="text-[16px] font-black text-emerald-600">
+                            <div className="text-[16px] font-black text-[#008C78]">
                               {d.sheetsGood.toLocaleString()}{" "}
                               <span className="text-[12px] font-bold">ใบ</span>
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               A3 เสีย
                             </div>
-                            <div className="text-[16px] font-black text-rose-600">
+                            <div className="text-[16px] font-black text-[#C8102E]">
                               {d.sheetsWaste > 0
                                 ? `${d.sheetsWaste.toLocaleString()} ใบ`
                                 : "-"}
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               ชิ้นเสีย
                             </div>
-                            <div className="text-[16px] font-black text-rose-600">
+                            <div className="text-[16px] font-black text-[#C8102E]">
                               {d.wasteQty > 0
                                 ? `${d.wasteQty.toLocaleString()}`
                                 : "-"}
                             </div>
                           </div>
                           <div className="col-span-2 md:col-span-1">
-                            <div className="text-[12px] font-bold text-slate-500 mb-2">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-2">
                               แยกตามกระดาษ
                             </div>
                             <div className="flex flex-col gap-1.5">
@@ -2376,10 +2376,10 @@ export default function PaperReportPage() {
                                 ([pt, qty]) => (
                                   <div
                                     key={pt}
-                                    className="text-[13px] flex justify-between items-center bg-slate-50 px-2 py-1 rounded"
+                                    className="text-[13px] flex justify-between items-center bg-[#F5F7F8] px-2 py-1 rounded"
                                   >
-                                    <span className="text-slate-600">{pt}</span>
-                                    <span className="font-bold text-slate-800">
+                                    <span className="text-[#5F6B70]">{pt}</span>
+                                    <span className="font-bold text-[#101820]">
                                       {qty.toLocaleString()} ใบ
                                     </span>
                                   </div>
@@ -2397,9 +2397,9 @@ export default function PaperReportPage() {
 
             {/* ── Weekly Summary (By Paper Type) ── */}
             <div className="mb-10">
-              <h2 className="text-[15px] font-black text-[#0f1e3d] mb-4 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-slate-400" /> แยกตามประเภทกระดาษ{" "}
-                <span className="text-slate-400 font-normal text-[13px]">
+              <h2 className="text-[15px] font-black text-[#00263A] mb-4 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-[#8A9498]" /> แยกตามประเภทกระดาษ{" "}
+                <span className="text-[#8A9498] font-normal text-[13px]">
                   (สัปดาห์ปัจจุบัน)
                 </span>
               </h2>
@@ -2409,10 +2409,10 @@ export default function PaperReportPage() {
                   return (
                     <div
                       key={pt}
-                      className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-slate-50/50"
+                      className="rounded-xl overflow-hidden border border-[#D9E1E2] shadow-sm bg-[#F5F7F8]/50"
                     >
                       <div
-                        className="bg-[#0ea5e9] px-5 py-3 flex justify-between items-center text-white cursor-pointer"
+                        className="bg-[#00AEC7] px-5 py-3 flex justify-between items-center text-white cursor-pointer"
                         onClick={() => toggleSection(`week-paper-${pt}`)}
                       >
                         <div className="flex items-center gap-2">
@@ -2430,19 +2430,19 @@ export default function PaperReportPage() {
                       {isExpanded && (
                         <div className="p-5 grid grid-cols-2 gap-6">
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               A3 ดี
                             </div>
-                            <div className="text-[16px] font-black text-emerald-600">
+                            <div className="text-[16px] font-black text-[#008C78]">
                               {d.sheetsGood.toLocaleString()}{" "}
                               <span className="text-[12px] font-bold">ใบ</span>
                             </div>
                           </div>
                           <div>
-                            <div className="text-[12px] font-bold text-slate-500 mb-1">
+                            <div className="text-[12px] font-bold text-[#5F6B70] mb-1">
                               A3 เสีย
                             </div>
-                            <div className="text-[16px] font-black text-rose-600">
+                            <div className="text-[16px] font-black text-[#C8102E]">
                               {d.sheetsWaste > 0
                                 ? `${d.sheetsWaste.toLocaleString()} ใบ`
                                 : "0 ใบ"}
@@ -2472,7 +2472,7 @@ export default function PaperReportPage() {
                 return (
                   <div
                     key={dept}
-                    className="mb-6 rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white"
+                    className="mb-6 rounded-xl overflow-hidden border border-[#D9E1E2] shadow-sm bg-white"
                   >
                     {/* Header */}
                     <div
@@ -2498,26 +2498,26 @@ export default function PaperReportPage() {
                         <div className="hidden md:block overflow-x-auto">
                           <table className="w-full text-left border-collapse min-w-[700px]">
                             <thead>
-                              <tr className="border-b border-gray-100 bg-gray-50/50">
-                                <th className="p-4 text-[11px] font-bold text-slate-500 uppercase">
+                              <tr className="border-b border-[#D9E1E2] bg-[#F5F7F8]/50">
+                                <th className="p-4 text-[11px] font-bold text-[#5F6B70] uppercase">
                                   LOT: สินค้า
                                 </th>
-                                <th className="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">
+                                <th className="p-4 text-[11px] font-bold text-[#5F6B70] uppercase text-center">
                                   เป้ารวม
                                 </th>
-                                <th className="p-4 text-[11px] font-bold text-blue-600 uppercase text-center">
+                                <th className="p-4 text-[11px] font-bold text-[#0057B8] uppercase text-center">
                                   A3 ใช้รวม
                                 </th>
-                                <th className="p-4 text-[11px] font-bold text-emerald-600 uppercase text-center">
+                                <th className="p-4 text-[11px] font-bold text-[#008C78] uppercase text-center">
                                   A3 ดีสะสม
                                 </th>
-                                <th className="p-4 text-[11px] font-bold text-amber-600 uppercase text-center">
+                                <th className="p-4 text-[11px] font-bold text-[#6E5B00] uppercase text-center">
                                   ส่วนเกิน
                                 </th>
-                                <th className="p-4 text-[11px] font-bold text-rose-600 uppercase text-center">
+                                <th className="p-4 text-[11px] font-bold text-[#C8102E] uppercase text-center">
                                   ของเสียสะสม
                                 </th>
-                                <th className="p-4 text-[11px] font-bold text-slate-500 uppercase text-center">
+                                <th className="p-4 text-[11px] font-bold text-[#5F6B70] uppercase text-center">
                                   หมายเหตุ
                                 </th>
                               </tr>
@@ -2526,37 +2526,37 @@ export default function PaperReportPage() {
                               {deptOrders.map((order) => (
                                 <tr
                                   key={order.id}
-                                  className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors"
+                                  className="border-b border-[#F0F3F4] hover:bg-[#F5F7F8]/50 transition-colors"
                                 >
                                   <td className="p-4">
                                     <div className="flex items-start gap-2">
-                                      <Play className="w-3 h-3 text-slate-300 fill-slate-300 mt-1 shrink-0" />
+                                      <Play className="w-3 h-3 text-[#B8C4C8] fill-slate-300 mt-1 shrink-0" />
                                       <div>
-                                        <div className="font-bold text-[13px] text-slate-800">
+                                        <div className="font-bold text-[13px] text-[#101820]">
                                           {order.lotName}
                                         </div>
-                                        <div className="text-[11px] text-slate-500 mt-0.5">
+                                        <div className="text-[11px] text-[#5F6B70] mt-0.5">
                                           {order.productName}
                                         </div>
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="p-4 text-center text-[13px] font-medium text-slate-700">
+                                  <td className="p-4 text-center text-[13px] font-medium text-[#5F6B70]">
                                     {order.targetQty.toLocaleString()}
                                   </td>
-                                  <td className="p-4 text-center text-[13px] font-bold text-blue-500">
+                                  <td className="p-4 text-center text-[13px] font-bold text-[#0057B8]">
                                     {order.sheetsNeeded.toLocaleString()} ใบ
                                   </td>
-                                  <td className="p-4 text-center text-[13px] font-bold text-emerald-500">
+                                  <td className="p-4 text-center text-[13px] font-bold text-[#00B398]">
                                     {(
                                       order.sheetsNeeded - order.wasteA3
                                     ).toLocaleString()}{" "}
                                     ใบ
                                   </td>
-                                  <td className="p-4 text-center text-[13px] font-bold text-amber-500">
+                                  <td className="p-4 text-center text-[13px] font-bold text-[#A88700]">
                                     {order.excessQty.toLocaleString()} ชิ้น
                                   </td>
-                                  <td className="p-4 text-center text-[13px] font-bold text-rose-500">
+                                  <td className="p-4 text-center text-[13px] font-bold text-[#C8102E]">
                                     {order.wasteQty > 0 || order.wasteA3 > 0 ? (
                                       <div className="flex flex-col items-center gap-0.5">
                                         {order.wasteQty > 0 && (
@@ -2567,25 +2567,25 @@ export default function PaperReportPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <span className="text-slate-300 font-normal">
+                                      <span className="text-[#B8C4C8] font-normal">
                                         -
                                       </span>
                                     )}
                                   </td>
-                                  <td className="p-4 text-center text-[12px] text-slate-500">
+                                  <td className="p-4 text-center text-[12px] text-[#5F6B70]">
                                     {order.remarks.length > 0 ? (
                                       <div className="flex flex-col items-center gap-1">
                                         {order.remarks.map((r, i) => (
                                           <span
                                             key={i}
-                                            className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded"
+                                            className="text-[10px] bg-[#F0F3F4] text-[#5F6B70] px-2 py-0.5 rounded"
                                           >
                                             {r}
                                           </span>
                                         ))}
                                       </div>
                                     ) : (
-                                      <span className="text-slate-300">-</span>
+                                      <span className="text-[#B8C4C8]">-</span>
                                     )}
                                   </td>
                                 </tr>
@@ -2599,16 +2599,16 @@ export default function PaperReportPage() {
                           {deptOrders.map((order) => (
                             <div
                               key={order.id}
-                              className="p-4 bg-white hover:bg-slate-50 transition-colors"
+                              className="p-4 bg-white hover:bg-[#F5F7F8] transition-colors"
                             >
                               <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-start gap-2">
-                                  <Play className="w-3 h-3 text-slate-300 fill-slate-300 mt-1 shrink-0" />
+                                  <Play className="w-3 h-3 text-[#B8C4C8] fill-slate-300 mt-1 shrink-0" />
                                   <div>
-                                    <div className="font-bold text-[14px] text-slate-800">
+                                    <div className="font-bold text-[14px] text-[#101820]">
                                       {order.lotName}
                                     </div>
-                                    <div className="text-[12px] text-slate-500 uppercase mt-0.5 leading-tight">
+                                    <div className="text-[12px] text-[#5F6B70] uppercase mt-0.5 leading-tight">
                                       {order.productName}
                                     </div>
                                   </div>
@@ -2616,48 +2616,48 @@ export default function PaperReportPage() {
                               </div>
 
                               <div className="grid grid-cols-2 gap-2 mt-3">
-                                <div className="bg-slate-50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-slate-100">
-                                  <span className="text-[11px] text-slate-500 font-bold mb-0.5">
+                                <div className="bg-[#F5F7F8] p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#D9E1E2]">
+                                  <span className="text-[11px] text-[#5F6B70] font-bold mb-0.5">
                                     เป้ารวม
                                   </span>
-                                  <span className="text-[14px] font-black text-slate-700">
+                                  <span className="text-[14px] font-black text-[#5F6B70]">
                                     {order.targetQty.toLocaleString()}
                                   </span>
                                 </div>
-                                <div className="bg-blue-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-blue-100/50">
-                                  <span className="text-[11px] text-blue-600 font-bold mb-0.5">
+                                <div className="bg-[#EAF3FC]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#0057B8]/15/50">
+                                  <span className="text-[11px] text-[#0057B8] font-bold mb-0.5">
                                     A3 ใช้รวม
                                   </span>
-                                  <span className="text-[14px] font-black text-blue-700">
+                                  <span className="text-[14px] font-black text-[#0057B8]">
                                     {order.sheetsNeeded.toLocaleString()} ใบ
                                   </span>
                                 </div>
-                                <div className="bg-emerald-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-emerald-100/50">
-                                  <span className="text-[11px] text-emerald-600 font-bold mb-0.5">
+                                <div className="bg-[#E6F8F4]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#00B398]/15/50">
+                                  <span className="text-[11px] text-[#008C78] font-bold mb-0.5">
                                     A3 ดีสะสม
                                   </span>
-                                  <span className="text-[14px] font-black text-emerald-700">
+                                  <span className="text-[14px] font-black text-[#008C78]">
                                     {(
                                       order.sheetsNeeded - order.wasteA3
                                     ).toLocaleString()}{" "}
                                     ใบ
                                   </span>
                                 </div>
-                                <div className="bg-amber-50/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-amber-100/50">
-                                  <span className="text-[11px] text-amber-600 font-bold mb-0.5">
+                                <div className="bg-[#FFF8D6]/50 p-2.5 rounded-lg flex flex-col justify-center items-center border border-[#F1C400]/15/50">
+                                  <span className="text-[11px] text-[#6E5B00] font-bold mb-0.5">
                                     ส่วนเกิน
                                   </span>
-                                  <span className="text-[14px] font-black text-amber-600">
+                                  <span className="text-[14px] font-black text-[#6E5B00]">
                                     {order.excessQty > 0
                                       ? order.excessQty.toLocaleString()
                                       : "-"}
                                   </span>
                                 </div>
-                                <div className="col-span-2 bg-rose-50/50 p-2.5 rounded-lg flex justify-between items-center border border-rose-100/50">
-                                  <span className="text-[11px] text-rose-600 font-bold">
+                                <div className="col-span-2 bg-[#FCEAEC]/50 p-2.5 rounded-lg flex justify-between items-center border border-[#C8102E]/15/50">
+                                  <span className="text-[11px] text-[#C8102E] font-bold">
                                     ของเสียสะสม
                                   </span>
-                                  <span className="text-[13px] font-black text-rose-700">
+                                  <span className="text-[13px] font-black text-[#9B0B23]">
                                     {order.wasteQty > 0 || order.wasteA3 > 0 ? (
                                       <>
                                         {order.wasteQty > 0
@@ -2678,11 +2678,11 @@ export default function PaperReportPage() {
                               </div>
 
                               {order.remarks.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-50 flex flex-wrap gap-1.5">
+                                <div className="mt-3 pt-3 border-t border-[#F0F3F4] flex flex-wrap gap-1.5">
                                   {order.remarks.map((r, i) => (
                                     <span
                                       key={i}
-                                      className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200/60"
+                                      className="text-[10px] bg-[#F0F3F4] text-[#5F6B70] px-2 py-1 rounded-md font-medium border border-[#D9E1E2]/60"
                                     >
                                       {r}
                                     </span>
@@ -2698,7 +2698,7 @@ export default function PaperReportPage() {
                 );
               })
             ) : (
-              <div className="text-center py-8 text-slate-400 text-sm">
+              <div className="text-center py-8 text-[#8A9498] text-sm">
                 ไม่มีประวัติคำสั่งพิมพ์ที่บันทึกผลผลิตแล้ว
               </div>
             )}
@@ -2708,15 +2708,15 @@ export default function PaperReportPage() {
 
       {/* Manual Deduct Modal */}
       {showManualModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#00263A]/35 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-[16px] font-bold text-slate-800">
+            <div className="px-6 py-4 border-b border-[#D9E1E2] flex justify-between items-center bg-[#F5F7F8] shrink-0">
+              <h3 className="text-[16px] font-bold text-[#101820]">
                 ตัดสต็อคกระดาษ Manual
               </h3>
               <button
                 onClick={() => setShowManualModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-[#8A9498] hover:text-[#5F6B70] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2728,25 +2728,25 @@ export default function PaperReportPage() {
               <div className="p-6 space-y-4 overflow-y-auto">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
-                      เลขลอต (Lot) <span className="text-red-500">*</span>
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
+                      เลขลอต (Lot) <span className="text-[#C8102E]">*</span>
                     </label>
                     <input
                       type="text"
                       value={mdLot}
                       onChange={(e) => setMdLot(e.target.value)}
-                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdLot ? "bg-emerald-50 border-emerald-200 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500" : "border-rose-200 text-rose-900 bg-rose-50 focus:ring-rose-500/20 focus:border-rose-500"}`}
+                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdLot ? "bg-[#E6F8F4] border-[#00B398]/20 text-[#003B32] focus:ring-emerald-500/20 focus:border-[#00B398]" : "border-[#C8102E]/20 text-[#9B0B23] bg-[#FCEAEC] focus:ring-rose-500/20 focus:border-[#C8102E]"}`}
                       placeholder="เช่น 123456"
                     />
                   </div>
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
-                      หน่วยงาน <span className="text-red-500">*</span>
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
+                      หน่วยงาน <span className="text-[#C8102E]">*</span>
                     </label>
                     <select
                       value={mdDept}
                       onChange={(e) => setMdDept(e.target.value)}
-                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdDept ? "bg-emerald-50 border-emerald-200 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500" : "border-rose-200 text-rose-900 bg-rose-50 focus:ring-rose-500/20 focus:border-rose-500"}`}
+                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdDept ? "bg-[#E6F8F4] border-[#00B398]/20 text-[#003B32] focus:ring-emerald-500/20 focus:border-[#00B398]" : "border-[#C8102E]/20 text-[#9B0B23] bg-[#FCEAEC] focus:ring-rose-500/20 focus:border-[#C8102E]"}`}
                     >
                       <option value="">-- เลือกหน่วยงาน --</option>
                       <option value="QA ประกันคุณภาพ">QA — ประกันคุณภาพ</option>
@@ -2759,8 +2759,8 @@ export default function PaperReportPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
-                    รหัส/ชื่อสินค้า <span className="text-red-500">*</span>
+                  <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
+                    รหัส/ชื่อสินค้า <span className="text-[#C8102E]">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -2773,7 +2773,7 @@ export default function PaperReportPage() {
                       }}
                       onFocus={() => setShowMdDropdown(true)}
                       placeholder="ค้นหาสินค้า..."
-                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 pr-10 ${mdProductSearch ? "bg-emerald-50 border-emerald-200 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500" : "border-rose-200 text-rose-900 bg-rose-50 focus:ring-rose-500/20 focus:border-rose-500"}`}
+                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 pr-10 ${mdProductSearch ? "bg-[#E6F8F4] border-[#00B398]/20 text-[#003B32] focus:ring-emerald-500/20 focus:border-[#00B398]" : "border-[#C8102E]/20 text-[#9B0B23] bg-[#FCEAEC] focus:ring-rose-500/20 focus:border-[#C8102E]"}`}
                     />
                     {mdProductSearch && (
                       <div className="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -2785,7 +2785,7 @@ export default function PaperReportPage() {
                             setShowMdDropdown(false);
                             setMdProduct("");
                           }}
-                          className="text-gray-400 hover:text-red-500 p-1"
+                          className="text-[#8A9498] hover:text-[#C8102E] p-1"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -2793,7 +2793,7 @@ export default function PaperReportPage() {
                     )}
                     {showMdDropdown && mdProductSearch.length > 0 && (
                       <div
-                        className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"
+                        className="absolute z-50 w-full mt-1 bg-white border border-[#D9E1E2] rounded-lg shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100"
                         onMouseDown={(e) => e.preventDefault()}
                       >
                         {productsList
@@ -2822,7 +2822,7 @@ export default function PaperReportPage() {
                                     text: "สินค้านี้ยังไม่มีข้อมูลจำนวนชิ้นต่อ A3 กรุณาไปเพิ่มข้อมูลที่หน้าข้อมูลสินค้าคงคลังก่อนทำรายการครับ",
                                     icon: "warning",
                                     confirmButtonText: "รับทราบ",
-                                    confirmButtonColor: "#3b82f6",
+                                    confirmButtonColor: "#0057B8",
                                   });
                                   return;
                                 }
@@ -2834,12 +2834,12 @@ export default function PaperReportPage() {
                                 if (product.default_paper_type)
                                   setMdPaperType(product.default_paper_type);
                               }}
-                              className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors"
+                              className="w-full text-left px-3 py-2 hover:bg-[#F5F7F8] transition-colors"
                             >
-                              <div className="font-bold text-blue-600 text-[12px]">
+                              <div className="font-bold text-[#0057B8] text-[12px]">
                                 {product.id}
                               </div>
-                              <div className="text-slate-800 text-[12px] truncate">
+                              <div className="text-[#101820] text-[12px] truncate">
                                 {product.name}
                               </div>
                             </button>
@@ -2855,13 +2855,13 @@ export default function PaperReportPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
-                    ประเภทกระดาษ <span className="text-red-500">*</span>
+                  <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
+                    ประเภทกระดาษ <span className="text-[#C8102E]">*</span>
                   </label>
                   <select
                     value={mdPaperType}
                     onChange={(e) => setMdPaperType(e.target.value)}
-                    className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdPaperType ? "bg-emerald-50 border-emerald-200 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500" : "border-rose-200 text-rose-900 bg-rose-50 focus:ring-rose-500/20 focus:border-rose-500"}`}
+                    className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdPaperType ? "bg-[#E6F8F4] border-[#00B398]/20 text-[#003B32] focus:ring-emerald-500/20 focus:border-[#00B398]" : "border-[#C8102E]/20 text-[#9B0B23] bg-[#FCEAEC] focus:ring-rose-500/20 focus:border-[#C8102E]"}`}
                   >
                     {PAPER_TYPES.map((pt) => (
                       <option key={pt} value={pt}>
@@ -2872,9 +2872,9 @@ export default function PaperReportPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
                       จำนวนชิ้นที่สั่ง{" "}
-                      <span className="text-slate-400 font-normal">
+                      <span className="text-[#8A9498] font-normal">
                         (ถ้ามี)
                       </span>
                     </label>
@@ -2888,12 +2888,12 @@ export default function PaperReportPage() {
                         if (Number(val) < 0) val = "0";
                         setMdTargetQty(val);
                       }}
-                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdTargetQty ? "bg-emerald-50 border-emerald-200 text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500" : "border-gray-200 text-slate-900 bg-white focus:ring-rose-500/20 focus:border-rose-500"}`}
+                      className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdTargetQty ? "bg-[#E6F8F4] border-[#00B398]/20 text-[#003B32] focus:ring-emerald-500/20 focus:border-[#00B398]" : "border-[#D9E1E2] text-[#101820] bg-white focus:ring-rose-500/20 focus:border-[#C8102E]"}`}
                       placeholder="ระบุจำนวนชิ้น..."
                     />
                   </div>
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
                       เป้าหมาย (ใบ A3)
                     </label>
                     <input
@@ -2910,16 +2910,16 @@ export default function PaperReportPage() {
                         if (Number(val) < 0) val = "0";
                         setMdQty(val);
                       }}
-                      className={`w-full border border-gray-200 rounded-lg p-2.5 text-[13px] text-slate-900 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 ${(productsList.find((p) => p.id === mdProduct)?.qty_per_a3 || 0) > 0 ? "bg-slate-100 cursor-not-allowed text-slate-500" : "bg-white"}`}
+                      className={`w-full border border-[#D9E1E2] rounded-lg p-2.5 text-[13px] text-[#101820] focus:ring-2 focus:ring-rose-500/20 focus:border-[#C8102E] ${(productsList.find((p) => p.id === mdProduct)?.qty_per_a3 || 0) > 0 ? "bg-[#F0F3F4] cursor-not-allowed text-[#5F6B70]" : "bg-white"}`}
                       placeholder="คำนวณอัตโนมัติ"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
                       A3 ดีเพิ่มเติม{" "}
-                      <span className="text-slate-400 font-normal">
+                      <span className="text-[#8A9498] font-normal">
                         (ถ้ามี)
                       </span>
                     </label>
@@ -2933,14 +2933,14 @@ export default function PaperReportPage() {
                         if (Number(val) < 0) val = "0";
                         setMdGoodA3(val);
                       }}
-                      className="w-full border border-gray-200 rounded-lg p-2.5 text-[13px] text-slate-900 bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                      className="w-full border border-[#D9E1E2] rounded-lg p-2.5 text-[13px] text-[#101820] bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-[#C8102E]"
                       placeholder="จำนวน A3 ดี"
                     />
                   </div>
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
                       A3 เสีย{" "}
-                      <span className="text-slate-400 font-normal">
+                      <span className="text-[#8A9498] font-normal">
                         (ถ้ามี)
                       </span>
                     </label>
@@ -2954,16 +2954,16 @@ export default function PaperReportPage() {
                         if (Number(val) < 0) val = "0";
                         setMdWasteA3(val);
                       }}
-                      className="w-full border border-gray-200 rounded-lg p-2.5 text-[13px] text-slate-900 bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                      className="w-full border border-[#D9E1E2] rounded-lg p-2.5 text-[13px] text-[#101820] bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-[#C8102E]"
                       placeholder="จำนวน A3 เสีย"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
                       ชิ้นเสีย{" "}
-                      <span className="text-slate-400 font-normal">
+                      <span className="text-[#8A9498] font-normal">
                         (ถ้ามี)
                       </span>
                     </label>
@@ -2977,14 +2977,14 @@ export default function PaperReportPage() {
                         if (Number(val) < 0) val = "0";
                         setMdWasteQty(val);
                       }}
-                      className="w-full border border-gray-200 rounded-lg p-2.5 text-[13px] text-slate-900 bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                      className="w-full border border-[#D9E1E2] rounded-lg p-2.5 text-[13px] text-[#101820] bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-[#C8102E]"
                       placeholder="จำนวนชิ้นเสีย"
                     />
                   </div>
                   <div>
-                    <label className="block text-[13px] font-bold text-slate-700 mb-1.5">
+                    <label className="block text-[13px] font-bold text-[#5F6B70] mb-1.5">
                       หมายเหตุทั่วไป{" "}
-                      <span className="text-slate-400 font-normal">
+                      <span className="text-[#8A9498] font-normal">
                         (ถ้ามี)
                       </span>
                     </label>
@@ -2992,7 +2992,7 @@ export default function PaperReportPage() {
                       type="text"
                       value={mdRemarks}
                       onChange={(e) => setMdRemarks(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg p-2.5 text-[13px] text-slate-900 bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                      className="w-full border border-[#D9E1E2] rounded-lg p-2.5 text-[13px] text-[#101820] bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-[#C8102E]"
                       placeholder="ระบุหมายเหตุ (ถ้ามี)"
                     />
                   </div>
@@ -3000,7 +3000,7 @@ export default function PaperReportPage() {
                 {(Number(mdWasteQty) || 0) > 0 && (
                   <div>
                     <label
-                      className={`block text-[13px] font-bold uppercase tracking-wider mb-1.5 ${!mdWasteQtyRemark.trim() ? "text-red-600" : "text-slate-500"}`}
+                      className={`block text-[13px] font-bold uppercase tracking-wider mb-1.5 ${!mdWasteQtyRemark.trim() ? "text-[#C8102E]" : "text-[#5F6B70]"}`}
                     >
                       หมายเหตุชิ้นเสีย{" "}
                       {!mdWasteQtyRemark.trim() && (
@@ -3011,15 +3011,15 @@ export default function PaperReportPage() {
                       type="text"
                       value={mdWasteQtyRemark}
                       onChange={(e) => setMdWasteQtyRemark(e.target.value)}
-                      className={`w-full px-3 py-2.5 rounded-lg text-[13px] text-slate-900 font-medium focus:outline-none transition-colors ${
+                      className={`w-full px-3 py-2.5 rounded-lg text-[13px] text-[#101820] font-medium focus:outline-none transition-colors ${
                         !mdWasteQtyRemark.trim()
-                          ? "bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
-                          : "bg-white border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                          ? "bg-[#FCEAEC] border-2 border-[#C8102E]/30 focus:border-[#C8102E] focus:ring-2 focus:ring-red-500/20"
+                          : "bg-white border border-[#D9E1E2] focus:bg-white focus:border-[#0057B8] focus:ring-2 focus:ring-blue-500/10"
                       }`}
                       placeholder="เช่น สีเพี้ยน"
                     />
                     {!mdWasteQtyRemark.trim() && (
-                      <p className="mt-1 text-[11px] text-red-500 font-medium">
+                      <p className="mt-1 text-[11px] text-[#C8102E] font-medium">
                         มีชิ้นเสีย — กรุณาระบุหมายเหตุ
                       </p>
                     )}
@@ -3028,7 +3028,7 @@ export default function PaperReportPage() {
                 {(Number(mdWasteA3) || 0) > 0 && (
                   <div>
                     <label
-                      className={`block text-[13px] font-bold uppercase tracking-wider mb-1.5 ${!mdWasteA3Remark.trim() ? "text-red-600" : "text-slate-500"}`}
+                      className={`block text-[13px] font-bold uppercase tracking-wider mb-1.5 ${!mdWasteA3Remark.trim() ? "text-[#C8102E]" : "text-[#5F6B70]"}`}
                     >
                       หมายเหตุกระดาษเสีย{" "}
                       {!mdWasteA3Remark.trim() && (
@@ -3039,15 +3039,15 @@ export default function PaperReportPage() {
                       type="text"
                       value={mdWasteA3Remark}
                       onChange={(e) => setMdWasteA3Remark(e.target.value)}
-                      className={`w-full px-3 py-2.5 rounded-lg text-[13px] text-slate-900 font-medium focus:outline-none transition-colors ${
+                      className={`w-full px-3 py-2.5 rounded-lg text-[13px] text-[#101820] font-medium focus:outline-none transition-colors ${
                         !mdWasteA3Remark.trim()
-                          ? "bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
-                          : "bg-white border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                          ? "bg-[#FCEAEC] border-2 border-[#C8102E]/30 focus:border-[#C8102E] focus:ring-2 focus:ring-red-500/20"
+                          : "bg-white border border-[#D9E1E2] focus:bg-white focus:border-[#0057B8] focus:ring-2 focus:ring-blue-500/10"
                       }`}
                       placeholder="เช่น กระดาษยับตอนป้อนเครื่อง"
                     />
                     {!mdWasteA3Remark.trim() && (
-                      <p className="mt-1 text-[11px] text-red-500 font-medium">
+                      <p className="mt-1 text-[11px] text-[#C8102E] font-medium">
                         มีกระดาษเสีย — กรุณาระบุหมายเหตุ
                       </p>
                     )}
@@ -3057,20 +3057,20 @@ export default function PaperReportPage() {
                 {(manualDeductCalc.totalA3 > 0 ||
                   manualDeductCalc.target > 0 ||
                   Number(mdQty) > 0) && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
+                  <div className="bg-[#E6F8F4] border border-[#00B398]/20 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
                     <div className="flex justify-between">
-                      <span className="text-slate-600">
+                      <span className="text-[#5F6B70]">
                         อัตราส่วน (ชิ้น/A3)
                       </span>
-                      <span className="font-bold text-slate-700">
+                      <span className="font-bold text-[#5F6B70]">
                         {manualDeductCalc.qtyPerA3} ชิ้น
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-600">
+                      <span className="text-[#5F6B70]">
                         จำนวนที่พิมพ์ได้จริง (ชิ้น)
                       </span>
-                      <span className="font-bold text-slate-700">
+                      <span className="font-bold text-[#5F6B70]">
                         {manualDeductCalc.totalPrinted.toLocaleString()} ชิ้น
                       </span>
                     </div>
@@ -3079,14 +3079,14 @@ export default function PaperReportPage() {
                       <span
                         className={
                           manualDeductCalc.excessQty > 0
-                            ? "text-yellow-600"
-                            : "text-slate-600"
+                            ? "text-[#6E5B00]"
+                            : "text-[#5F6B70]"
                         }
                       >
                         ส่วนเกิน (ชิ้น)
                       </span>
                       <span
-                        className={`font-black ${manualDeductCalc.excessQty > 0 ? "text-yellow-600" : "text-slate-700"}`}
+                        className={`font-black ${manualDeductCalc.excessQty > 0 ? "text-[#6E5B00]" : "text-[#5F6B70]"}`}
                       >
                         {manualDeductCalc.excessQty.toLocaleString()} ชิ้น
                       </span>
@@ -3094,34 +3094,34 @@ export default function PaperReportPage() {
 
                     {manualDeductCalc.wasteQty > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-rose-600">
+                        <span className="text-[#C8102E]">
                           ชิ้นเสีย (Waste Qty)
                         </span>
-                        <span className="font-black text-rose-600">
+                        <span className="font-black text-[#C8102E]">
                           {manualDeductCalc.wasteQty.toLocaleString()} ชิ้น
                         </span>
                       </div>
                     )}
 
-                    <div className="border-t border-emerald-200/60 my-1"></div>
+                    <div className="border-t border-[#00B398]/20/60 my-1"></div>
 
                     {/* A3 Breakdown */}
                     <div className="flex flex-col gap-1">
                       <div className="flex justify-between">
-                        <span className="text-blue-600 font-medium">
+                        <span className="text-[#0057B8] font-medium">
                           A3 ตั้งต้น (เป้าหมาย)
                         </span>
-                        <span className="font-bold text-blue-700">
+                        <span className="font-bold text-[#0057B8]">
                           {manualDeductCalc.baseA3.toLocaleString()} ใบ
                         </span>
                       </div>
                       {manualDeductCalc.extraA3FromWasteQty > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-rose-500 font-medium">
+                          <span className="text-[#C8102E] font-medium">
                             + A3 เพิ่มจากชิ้นเสีย ({manualDeductCalc.wasteQty}{" "}
                             ชิ้น)
                           </span>
-                          <span className="font-bold text-rose-500">
+                          <span className="font-bold text-[#C8102E]">
                             +
                             {manualDeductCalc.extraA3FromWasteQty.toLocaleString()}{" "}
                             ใบ
@@ -3130,51 +3130,51 @@ export default function PaperReportPage() {
                       )}
                       {Number(mdGoodA3) > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-sky-500 font-medium">
+                          <span className="text-[#00AEC7] font-medium">
                             + A3 ดีเพิ่มเติม
                           </span>
-                          <span className="font-bold text-sky-500">
+                          <span className="font-bold text-[#00AEC7]">
                             +{Number(mdGoodA3).toLocaleString()} ใบ
                           </span>
                         </div>
                       )}
                       {manualDeductCalc.wasteA3 > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-rose-600 font-medium">
+                          <span className="text-[#C8102E] font-medium">
                             + A3 เสีย (กระดาษเสีย)
                           </span>
-                          <span className="font-bold text-rose-600">
+                          <span className="font-bold text-[#C8102E]">
                             +{manualDeductCalc.wasteA3.toLocaleString()} ใบ
                           </span>
                         </div>
                       )}
                     </div>
 
-                    <div className="border-t border-emerald-300/60 my-0.5"></div>
+                    <div className="border-t border-[#00B398]/30 my-0.5"></div>
 
                     <div className="flex justify-between items-center pt-1">
-                      <span className="text-emerald-700 font-bold">
+                      <span className="text-[#008C78] font-bold">
                         รวมตัดสต็อคกระดาษ (ใบ A3)
                       </span>
-                      <span className="text-lg font-black text-emerald-600">
+                      <span className="text-lg font-black text-[#008C78]">
                         {manualDeductCalc.totalA3.toLocaleString()} ใบ
                       </span>
                     </div>
                   </div>
                 )}
               </div>
-              <div className="px-6 py-4 border-t border-gray-100 bg-white shrink-0 flex gap-3">
+              <div className="px-6 py-4 border-t border-[#D9E1E2] bg-white shrink-0 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowManualModal(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 text-slate-600 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 border border-[#D9E1E2] text-[#5F6B70] rounded-xl text-[13px] font-bold hover:bg-[#F5F7F8] transition-colors"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingManual}
-                  className="flex-1 px-4 py-2.5 bg-rose-500 text-white rounded-xl text-[13px] font-bold hover:bg-rose-600 transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 bg-[#C8102E] text-white rounded-xl text-[13px] font-bold hover:bg-[#C8102E] transition-colors disabled:opacity-50"
                 >
                   {isSubmittingManual ? "กำลังบันทึก..." : "บันทึกตัดสต็อค"}
                 </button>
@@ -3185,21 +3185,21 @@ export default function PaperReportPage() {
       )}
       {/* ── Report Generation Modal ── */}
       {showReportModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#00263A]/35 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-slide-up relative">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+            <div className="px-6 py-4 border-b border-[#D9E1E2] flex justify-between items-center bg-[#F5F7F8] shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                  <FileText className="w-4 h-4 text-blue-600" />
+                <div className="w-8 h-8 rounded-lg bg-[#EAF3FC] flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-[#0057B8]" />
                 </div>
-                <h3 className="text-[16px] font-bold text-slate-800">
+                <h3 className="text-[16px] font-bold text-[#101820]">
                   ออกรายงานทำความสะอาดเครื่องพิมพ์
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setShowReportModal(false)}
-                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 p-1.5 rounded-lg transition-colors"
+                className="text-[#8A9498] hover:text-[#5F6B70] hover:bg-slate-200/50 p-1.5 rounded-lg transition-colors"
                 disabled={isReportLoading}
               >
                 <X className="w-5 h-5" />
@@ -3207,11 +3207,11 @@ export default function PaperReportPage() {
             </div>
 
             <div className="p-6 overflow-y-auto max-h-[70vh]">
-              <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 mb-5">
-                <p className="text-slate-600 text-[13px] leading-relaxed">
+              <div className="bg-[#EAF3FC]/50 border border-[#0057B8]/15 rounded-xl p-4 mb-5">
+                <p className="text-[#5F6B70] text-[13px] leading-relaxed">
                   ดาวน์โหลดรายงานการทำความสะอาดประจำสัปดาห์เป็นไฟล์ Word (.docx)
                   ระบบจะแนบลายเซ็นของคุณลงในไฟล์อัตโนมัติ (หากตั้งค่าไว้) <br />
-                  <span className="text-blue-600/80 font-medium">
+                  <span className="text-[#0057B8]/80 font-medium">
                     *(หากเลือกวันที่มากกว่า 1 วัน จะดาวน์โหลดเป็นไฟล์ .zip
                     อัตโนมัติ)
                   </span>
@@ -3220,42 +3220,42 @@ export default function PaperReportPage() {
 
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <div className="flex-1 w-full flex flex-col gap-1.5">
-                  <label className="text-[13px] font-bold text-slate-700">
+                  <label className="text-[13px] font-bold text-[#5F6B70]">
                     วันที่เริ่มต้น (จาก)
                   </label>
                   <input
                     type="date"
                     value={reportStartDate}
                     onChange={(e) => setReportStartDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-all shadow-sm"
+                    className="w-full px-3 py-2 bg-white border border-[#D9E1E2] rounded-lg text-[13px] text-[#5F6B70] focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-all shadow-sm"
                   />
                 </div>
                 <div className="flex-1 w-full flex flex-col gap-1.5">
-                  <label className="text-[13px] font-bold text-slate-700">
+                  <label className="text-[13px] font-bold text-[#5F6B70]">
                     วันที่สิ้นสุด (ถึง)
                   </label>
                   <input
                     type="date"
                     value={reportEndDate}
                     onChange={(e) => setReportEndDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-all shadow-sm"
+                    className="w-full px-3 py-2 bg-white border border-[#D9E1E2] rounded-lg text-[13px] text-[#5F6B70] focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-all shadow-sm"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-50 border-t border-slate-100 p-4 shrink-0 flex justify-end gap-3 sticky bottom-0">
+            <div className="bg-[#F5F7F8] border-t border-[#D9E1E2] p-4 shrink-0 flex justify-end gap-3 sticky bottom-0">
               <button
                 type="button"
                 onClick={() => setShowReportModal(false)}
-                className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-[13px] font-semibold hover:bg-slate-50 hover:text-slate-800 transition-colors shadow-sm"
+                className="px-4 py-2 bg-white border border-[#D9E1E2] text-[#5F6B70] rounded-lg text-[13px] font-semibold hover:bg-[#F5F7F8] hover:text-[#101820] transition-colors shadow-sm"
                 disabled={isReportLoading}
               >
                 ยกเลิก
               </button>
               <button
                 onClick={handleDownloadReport}
-                className="px-5 py-2 bg-[#0f1e3d] hover:bg-slate-800 text-white rounded-lg text-[13px] font-semibold transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-5 py-2 bg-[#00263A] hover:bg-[#00263A] text-white rounded-lg text-[13px] font-semibold transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isReportLoading}
               >
                 {isReportLoading ? (

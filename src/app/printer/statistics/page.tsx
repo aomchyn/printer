@@ -264,7 +264,7 @@ export default function StatisticsPage() {
     const cancelRate = orders.length > 0 ? ((totalCancelled / orders.length) * 100).toFixed(1) : '0';
 
     const chartData = getChartData();
-    const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#22d3ee', '#fb923c'];
+    const COLORS = ['#0057B8', '#00B398', '#F1C400', '#C8102E', '#00AEC7', '#00AEC7', '#FF6A13'];
 
     const ALL_MONTHS = [
         "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -419,17 +419,17 @@ export default function StatisticsPage() {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-            ctx.fillStyle = '#1f2937';
+            ctx.fillStyle = '#101820';
             ctx.font = 'bold 20px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(title, CANVAS_W / 2, 44);
 
-            ctx.fillStyle = '#6b7280';
+            ctx.fillStyle = '#5F6B70';
             ctx.font = '13px Arial';
             ctx.fillText(subtitle, CANVAS_W / 2, 66);
 
             const maxVal = Math.max(...data.map(d => d.value), 1);
-            const COLORS_HEX = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#F97316'];
+            const COLORS_HEX = ['#0057B8', '#00B398', '#F1C400', '#C8102E', '#00AEC7', '#00AEC7', '#C8102E', '#FF6A13'];
             const barSlotW = data.length > 0 ? chartW / data.length : chartW;
             const barW = Math.min(60, barSlotW * 0.55);
 
@@ -437,13 +437,13 @@ export default function StatisticsPage() {
             for (let i = 0; i <= 5; i++) {
                 const y = PAD.top + chartH - (i / 5) * chartH;
                 const val = Math.round((i / 5) * maxVal);
-                ctx.strokeStyle = '#e5e7eb';
+                ctx.strokeStyle = '#D9E1E2';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(PAD.left, y);
                 ctx.lineTo(PAD.left + chartW, y);
                 ctx.stroke();
-                ctx.fillStyle = '#6b7280';
+                ctx.fillStyle = '#5F6B70';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'right';
                 ctx.fillText(val.toLocaleString(), PAD.left - 10, y + 4);
@@ -475,13 +475,13 @@ export default function StatisticsPage() {
 
                 // % สัดส่วน
                 const pct = totalValue > 0 ? ((item.value / totalValue) * 100).toFixed(1) + '%' : '0%';
-                ctx.fillStyle = '#6b7280';
+                ctx.fillStyle = '#5F6B70';
                 ctx.font = '11px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(pct, x + barW / 2, y - 22);
 
                 // ค่าบนแท่ง
-                ctx.fillStyle = '#1f2937';
+                ctx.fillStyle = '#101820';
                 ctx.font = 'bold 13px Arial';
                 ctx.fillText(item.value.toLocaleString(), x + barW / 2, y - 8);
 
@@ -489,7 +489,7 @@ export default function StatisticsPage() {
                 ctx.save();
                 ctx.translate(x + barW / 2, PAD.top + chartH + 12);
                 ctx.rotate(-Math.PI / 4.5);
-                ctx.fillStyle = '#374151';
+                ctx.fillStyle = '#5F6B70';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'right';
                 ctx.fillText(item.name, 0, 0);
@@ -497,7 +497,7 @@ export default function StatisticsPage() {
             });
 
             // เส้นแกน
-            ctx.strokeStyle = '#9ca3af';
+            ctx.strokeStyle = '#8A9498';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(PAD.left, PAD.top);
@@ -615,72 +615,72 @@ export default function StatisticsPage() {
 
     // ── Shared Recharts dark tooltip style ──────────────────────────────────
     const darkTooltipStyle = {
-        backgroundColor: '#0f1e3d',
-        border: '1px solid rgba(255,255,255,0.1)',
+        backgroundColor: '#FFFFFF',
+        border: '1px solid rgba(0,38,58,0.12)',
         borderRadius: '10px',
-        color: '#e2e8f0',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        color: '#101820',
+        boxShadow: '0 8px 32px rgba(0,38,58,0.12)',
     };
 
-    const axisTickStyle = { fill: '#94a3b8', fontSize: 12 };
+    const axisTickStyle = { fill: '#5F6B70', fontSize: 12 };
 
     return (
-        <div className="text-white min-h-full">
+        <div className="text-[#101820] min-h-full">
             {/* ── Main card ───────────────────────────────────────────────── */}
-            <div className="bg-gradient-to-b from-[#0f1e3d]/80 to-[#0a1628]/80 backdrop-blur-xl rounded-2xl shadow-2xl p-6 md:p-8 mb-8 border border-white/8 relative overflow-hidden">
+            <div className="bg-white backdrop-blur-xl rounded-2xl shadow-2xl p-6 md:p-8 mb-8 border border-[#D9E1E2] relative overflow-hidden">
 
                 {/* Background glow orbs — decorative only */}
-                <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-blue-500/8 rounded-full blur-3xl" />
-                <div className="pointer-events-none absolute -bottom-16 -left-16 w-48 h-48 bg-indigo-500/8 rounded-full blur-3xl" />
+                <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 bg-[#EAF3FC] rounded-full blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-16 -left-16 w-48 h-48 bg-[#E5F8FB] rounded-full blur-3xl" />
 
                 {/* ── Header row ───────────────────────────────────────────── */}
                 <div className="flex flex-col gap-5 mb-8 relative">
 
                     {/* Title block */}
                     <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 bg-white/10 border border-white/15 rounded-xl flex items-center justify-center shadow-inner shrink-0 mt-0.5">
+                        <div className="w-9 h-9 bg-white border border-[#D9E1E2] rounded-xl flex items-center justify-center shadow-inner shrink-0 mt-0.5">
                             <span className="text-lg">📈</span>
                         </div>
                         <div>
-                            <h1 className="text-xl md:text-3xl font-black text-white tracking-tight leading-tight">
+                            <h1 className="text-xl md:text-3xl font-black text-[#101820] tracking-tight leading-tight">
                                 ประวัติสถิติย้อนหลัง
                             </h1>
-                            <p className="text-blue-300/70 text-xs md:text-sm font-medium mt-0.5">
+                            <p className="text-[#5F6B70] text-xs md:text-sm font-medium mt-0.5">
                                 ดูข้อมูลสรุปยอดการสั่งพิมพ์ฉลากย้อนหลังแบบรายเดือน
                             </p>
                         </div>
                     </div>
 
                     {/* Month / Year / Export controls — full-width stacked on mobile */}
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center bg-white/5 border border-white/10 rounded-xl p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center bg-white border border-[#D9E1E2] rounded-xl p-3">
                         {/* Selects row */}
                         <div className="flex gap-2 flex-1">
                             <div className="relative flex-1">
                                 <select
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                                    className="w-full appearance-none bg-white/10 border border-white/15 text-white text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 transition-all"
+                                    className="w-full appearance-none bg-white border border-[#D9E1E2] text-[#101820] text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0057B8]/20 focus:border-[#0057B8] transition-all"
                                 >
                                     {months.map((m) => (
-                                        <option key={m} value={m} className="bg-[#0f1e3d] text-white">{ALL_MONTHS[m]}</option>
+                                        <option key={m} value={m} className="bg-white text-[#00263A]">{ALL_MONTHS[m]}</option>
                                     ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
-                                    <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                    <svg className="w-3.5 h-3.5 text-[#8A9498]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                 </div>
                             </div>
                             <div className="relative w-24 shrink-0">
                                 <select
                                     value={selectedYear}
                                     onChange={(e) => setSelectedYear(Number(e.target.value))}
-                                    className="w-full appearance-none bg-white/10 border border-white/15 text-white text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 transition-all"
+                                    className="w-full appearance-none bg-white border border-[#D9E1E2] text-[#101820] text-sm rounded-lg px-3 py-2.5 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0057B8]/20 focus:border-[#0057B8] transition-all"
                                 >
                                     {years.map(y => (
-                                        <option key={y} value={y} className="bg-[#0f1e3d] text-white">{y}</option>
+                                        <option key={y} value={y} className="bg-white text-[#00263A]">{y}</option>
                                     ))}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
-                                    <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                    <svg className="w-3.5 h-3.5 text-[#8A9498]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                 </div>
                             </div>
                         </div>
@@ -691,8 +691,8 @@ export default function StatisticsPage() {
                             disabled={orders.length === 0}
                             className={`flex justify-center items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 w-full sm:w-auto shrink-0
                                ${orders.length === 0
-                                    ? 'bg-white/5 text-white/25 cursor-not-allowed border border-white/8'
-                                    : 'bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white border border-emerald-400/30 shadow-lg shadow-emerald-900/30 active:scale-95'
+                                    ? 'bg-[#F0F3F4] text-[#8A9498] cursor-not-allowed border border-[#D9E1E2]'
+                                    : 'bg-[#00B398] hover:bg-[#008C78] text-white border border-emerald-400/30 shadow-lg shadow-emerald-900/30 active:scale-95'
                                 }`}
                         >
                             <Download size={15} />
@@ -711,46 +711,46 @@ export default function StatisticsPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
 
                             {/* Card: Total orders */}
-                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300">
-                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-blue-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
-                                <p className="text-[10px] md:text-[11px] font-bold text-blue-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">คำสั่งทั้งหมด</p>
-                                <p className="text-4xl md:text-5xl font-black text-blue-300 relative z-10 tabular-nums">{orders.length}</p>
+                            <div className="relative bg-white border border-[#D9E1E2] rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-[#F0F3F4] transition-all duration-300">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-[#EAF3FC] rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-[#5F6B70] uppercase tracking-widest mb-2 relative z-10 leading-snug">คำสั่งทั้งหมด</p>
+                                <p className="text-4xl md:text-5xl font-black text-[#0057B8] relative z-10 tabular-nums">{orders.length}</p>
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
                             </div>
 
                             {/* Card: Departments */}
-                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300">
-                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-emerald-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                            <div className="relative bg-white border border-[#D9E1E2] rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-[#F0F3F4] transition-all duration-300">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-[#E6F8F4] rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
                                 <p className="text-[10px] md:text-[11px] font-bold text-emerald-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">จำนวนหน่วยงาน</p>
                                 <p className="text-4xl md:text-5xl font-black text-emerald-300 relative z-10 tabular-nums">{chartData.length}</p>
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
                             </div>
 
                             {/* Card: Top department — full width on 2-col mobile */}
-                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300 col-span-2 md:col-span-1">
-                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-amber-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
-                                <p className="text-[10px] md:text-[11px] font-bold text-amber-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">หน่วยงานสั่งพิมพ์มากที่สุด</p>
-                                <p className="text-2xl md:text-2xl font-black text-amber-300 truncate relative z-10 leading-tight">{chartData.length > 0 ? chartData[0]?.name : '—'}</p>
-                                <p className="text-xs font-medium text-amber-300/60 mt-1 relative z-10">
+                            <div className="relative bg-white border border-[#D9E1E2] rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-[#F0F3F4] transition-all duration-300 col-span-2 md:col-span-1">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-[#FFF8D6] rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-[#A88700]/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">หน่วยงานสั่งพิมพ์มากที่สุด</p>
+                                <p className="text-2xl md:text-2xl font-black text-[#A88700] truncate relative z-10 leading-tight">{chartData.length > 0 ? chartData[0]?.name : '—'}</p>
+                                <p className="text-xs font-medium text-[#A88700]/60 mt-1 relative z-10">
                                     {chartData.length > 0 ? `${chartData[0]?.count || 0} คำสั่ง` : 'ไม่มีข้อมูล'}
                                 </p>
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
                             </div>
 
                             {/* Card: Total pieces */}
-                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300 col-span-2 md:col-span-1">
-                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-violet-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
-                                <p className="text-[10px] md:text-[11px] font-bold text-violet-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">ชิ้นงานรวมทั้งหมด</p>
-                                <p className="text-4xl md:text-5xl font-black text-violet-300 relative z-10 tabular-nums">{totalQuantity.toLocaleString()}</p>
+                            <div className="relative bg-white border border-[#D9E1E2] rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-[#F0F3F4] transition-all duration-300 col-span-2 md:col-span-1">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-[#EAF3FC] rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-[#0057B8]/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">ชิ้นงานรวมทั้งหมด</p>
+                                <p className="text-4xl md:text-5xl font-black text-[#0057B8] relative z-10 tabular-nums">{totalQuantity.toLocaleString()}</p>
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
                             </div>
 
                             {/* Card: Cancelled */}
-                            <div className="relative bg-white/5 border border-white/10 rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-white/8 transition-all duration-300 col-span-2 md:col-span-1">
-                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-rose-500/15 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
-                                <p className="text-[10px] md:text-[11px] font-bold text-rose-300/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">คำสั่งพิมพ์ที่ยกเลิก</p>
-                                <p className="text-4xl md:text-5xl font-black text-rose-300 relative z-10 tabular-nums">{totalCancelled}</p>
-                                <p className="text-xs font-medium text-rose-300/60 mt-1 relative z-10">คิดเป็น {cancelRate}% ของทั้งหมด</p>
+                            <div className="relative bg-white border border-[#D9E1E2] rounded-2xl p-4 md:p-5 overflow-hidden group hover:bg-[#F0F3F4] transition-all duration-300 col-span-2 md:col-span-1">
+                                <div className="absolute -right-3 -top-3 w-20 h-20 bg-[#FCEAEC] rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                                <p className="text-[10px] md:text-[11px] font-bold text-[#C8102E]/70 uppercase tracking-widest mb-2 relative z-10 leading-snug">คำสั่งพิมพ์ที่ยกเลิก</p>
+                                <p className="text-4xl md:text-5xl font-black text-[#C8102E] relative z-10 tabular-nums">{totalCancelled}</p>
+                                <p className="text-xs font-medium text-[#C8102E]/60 mt-1 relative z-10">คิดเป็น {cancelRate}% ของทั้งหมด</p>
                                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-rose-500/40 to-transparent" />
                             </div>
                         </div>
@@ -760,68 +760,68 @@ export default function StatisticsPage() {
                             <div className="flex items-center gap-3">
                                 <span className="h-6 w-2 rounded-full bg-cyan-400" />
                                 <div>
-                                    <h2 className="text-base font-black text-white/90">ช่วงเวลาการสั่งพิมพ์</h2>
-                                    <p className="text-xs text-blue-200/60">ไม่นับคำสั่งที่ยกเลิก · เวลาไทย (Asia/Bangkok)</p>
+                                    <h2 className="text-base font-black text-[#00263A]">ช่วงเวลาการสั่งพิมพ์</h2>
+                                    <p className="text-xs text-[#5F6B70]">ไม่นับคำสั่งที่ยกเลิก · เวลาไทย (Asia/Bangkok)</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                                <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/5 p-4">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-200/70">เฉลี่ยต่อวัน</p>
-                                    <p className="mt-2 text-3xl font-black tabular-nums text-cyan-300">{averageOrdersPerDay.toFixed(1)}</p>
-                                    <p className="text-xs text-cyan-200/60">คำสั่ง/วันที่มีข้อมูล</p>
+                                <div className="rounded-2xl border border-[#00AEC7]/20 bg-[#E5F8FB] p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#5F6B70]">เฉลี่ยต่อวัน</p>
+                                    <p className="mt-2 text-3xl font-black tabular-nums text-[#00AEC7]">{averageOrdersPerDay.toFixed(1)}</p>
+                                    <p className="text-xs text-[#5F6B70]">คำสั่ง/วันที่มีข้อมูล</p>
                                 </div>
-                                <div className="rounded-2xl border border-sky-400/15 bg-sky-400/5 p-4">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-sky-200/70">เฉลี่ยต่อชั่วโมง</p>
-                                    <p className="mt-2 text-3xl font-black tabular-nums text-sky-300">{averageOrdersPerActiveHour.toFixed(1)}</p>
-                                    <p className="text-xs text-sky-200/60">เฉพาะชั่วโมงที่มีคำสั่ง</p>
+                                <div className="rounded-2xl border border-[#0057B8]/20 bg-[#EAF3FC] p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#5F6B70]">เฉลี่ยต่อชั่วโมง</p>
+                                    <p className="mt-2 text-3xl font-black tabular-nums text-[#0057B8]">{averageOrdersPerActiveHour.toFixed(1)}</p>
+                                    <p className="text-xs text-[#5F6B70]">เฉพาะชั่วโมงที่มีคำสั่ง</p>
                                 </div>
-                                <div className="rounded-2xl border border-amber-400/15 bg-amber-400/5 p-4">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-amber-200/70">วันที่สั่งมากที่สุด</p>
-                                    <p className="mt-2 truncate text-xl font-black text-amber-300">{busiestDay?.date || '—'}</p>
-                                    <p className="text-xs text-amber-200/60">{busiestDay ? `${busiestDay.orders} คำสั่ง` : 'ไม่มีข้อมูล'}</p>
+                                <div className="rounded-2xl border border-[#F1C400]/30 bg-[#FFF8D6] p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#6E5B00]">วันที่สั่งมากที่สุด</p>
+                                    <p className="mt-2 truncate text-xl font-black text-[#A88700]">{busiestDay?.date || '—'}</p>
+                                    <p className="text-xs text-[#6E5B00]">{busiestDay ? `${busiestDay.orders} คำสั่ง` : 'ไม่มีข้อมูล'}</p>
                                 </div>
-                                <div className="rounded-2xl border border-violet-400/15 bg-violet-400/5 p-4">
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-violet-200/70">ช่วงเวลาที่พีค</p>
-                                    <p className="mt-2 text-xl font-black text-violet-300">{busiestHour?.label || '—'}</p>
-                                    <p className="text-xs text-violet-200/60">{busiestHour?.orders || 0} คำสั่ง</p>
+                                <div className="rounded-2xl border border-[#0057B8]/20 bg-[#EAF3FC] p-4">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#5F6B70]">ช่วงเวลาที่พีค</p>
+                                    <p className="mt-2 text-xl font-black text-[#0057B8]">{busiestHour?.label || '—'}</p>
+                                    <p className="text-xs text-[#5F6B70]">{busiestHour?.orders || 0} คำสั่ง</p>
                                 </div>
                             </div>
 
                             {activeOrders.length > 0 && (
                                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                                    <div className="rounded-2xl border border-white/8 bg-white/5 p-4 sm:p-6">
-                                        <h3 className="mb-5 text-sm font-black text-white/90">จำนวนคำสั่งแยกตามวัน</h3>
+                                    <div className="rounded-2xl border border-[#D9E1E2] bg-white p-4 sm:p-6">
+                                        <h3 className="mb-5 text-sm font-black text-[#00263A]">จำนวนคำสั่งแยกตามวัน</h3>
                                         <ResponsiveContainer width="100%" height={280}>
                                             <BarChart data={dailyOrderData} margin={{ bottom: 8 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E1E2" />
                                                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={axisTickStyle} interval="preserveStartEnd" />
                                                 <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
-                                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} formatter={(value, name) => [Number(value).toLocaleString(), name === 'orders' ? 'คำสั่ง' : 'ชิ้นงาน']} />
-                                                <Bar dataKey="orders" name="คำสั่ง" fill="#22d3ee" radius={[6, 6, 0, 0]} barSize={28} />
+                                                <Tooltip cursor={{ fill: '#EAF3FC' }} contentStyle={darkTooltipStyle} formatter={(value, name) => [Number(value).toLocaleString(), name === 'orders' ? 'คำสั่ง' : 'ชิ้นงาน']} />
+                                                <Bar dataKey="orders" name="คำสั่ง" fill="#00AEC7" radius={[6, 6, 0, 0]} barSize={28} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
 
-                                    <div className="rounded-2xl border border-white/8 bg-white/5 p-4 sm:p-6">
-                                        <h3 className="mb-5 text-sm font-black text-white/90">จำนวนคำสั่งแยกตามช่วงเวลา</h3>
+                                    <div className="rounded-2xl border border-[#D9E1E2] bg-white p-4 sm:p-6">
+                                        <h3 className="mb-5 text-sm font-black text-[#00263A]">จำนวนคำสั่งแยกตามช่วงเวลา</h3>
                                         <ResponsiveContainer width="100%" height={280}>
                                             <BarChart data={hourlyOrderData}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E1E2" />
                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTickStyle} interval="preserveStartEnd" />
                                                 <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
-                                                <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} formatter={(value) => [Number(value).toLocaleString(), 'คำสั่ง']} />
-                                                <Bar dataKey="orders" name="คำสั่ง" fill="#a78bfa" radius={[5, 5, 0, 0]} barSize={18} />
+                                                <Tooltip cursor={{ fill: '#EAF3FC' }} contentStyle={darkTooltipStyle} formatter={(value) => [Number(value).toLocaleString(), 'คำสั่ง']} />
+                                                <Bar dataKey="orders" name="คำสั่ง" fill="#00AEC7" radius={[5, 5, 0, 0]} barSize={18} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
                             )}
 
-                                               <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/5">
+                                               <div className="overflow-hidden rounded-2xl border border-[#D9E1E2] bg-white">
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full min-w-[620px] text-left text-sm">
-                                        <thead className="border-b border-white/10 bg-white/5 text-xs text-blue-200/70">
+                                        <thead className="border-b border-[#D9E1E2] bg-white text-xs text-blue-200/70">
                                             <tr>
                                                 <th className="px-4 py-3 font-bold">วันที่</th>
                                                 <th className="px-4 py-3 text-right font-bold">คำสั่ง</th>
@@ -832,16 +832,16 @@ export default function StatisticsPage() {
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
                                             {dailyOrderData.map(row => (
-                                                <tr key={row.key} className="text-white/80 transition-colors hover:bg-white/5">
+                                                <tr key={row.key} className="text-[#5F6B70] transition-colors hover:bg-white">
                                                     <td className="px-4 py-3 font-semibold">{row.date}</td>
-                                                    <td className="px-4 py-3 text-right font-black text-cyan-300">{row.orders.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-right font-black text-[#00AEC7]">{row.orders.toLocaleString()}</td>
                                                     <td className="px-4 py-3 text-right">{row.quantity.toLocaleString()}</td>
-                                                    <td className="px-4 py-3 text-right text-violet-300">{row.peakHour}</td>
+                                                    <td className="px-4 py-3 text-right text-[#0057B8]">{row.peakHour}</td>
                                                     <td className="px-4 py-3 text-right font-bold">{row.peakOrders.toLocaleString()}</td>
                                                 </tr>
                                             ))}
                                             {dailyOrderData.length === 0 && (
-                                                <tr><td colSpan={5} className="px-4 py-8 text-center text-white/40">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</td></tr>
+                                                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#8A9498]">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -850,17 +850,17 @@ export default function StatisticsPage() {
                                     {dailyOrderData.map(row => (
                                         <div key={row.key} className="p-4 flex flex-col gap-2">
                                             <div className="flex items-center justify-between">
-                                                <span className="font-semibold text-white/90">{row.date}</span>
-                                                <span className="font-black text-cyan-300 text-lg tabular-nums">{row.orders.toLocaleString()} คำสั่ง</span>
+                                                <span className="font-semibold text-[#00263A]">{row.date}</span>
+                                                <span className="font-black text-[#00AEC7] text-lg tabular-nums">{row.orders.toLocaleString()} คำสั่ง</span>
                                             </div>
-                                            <div className="flex items-center justify-between text-xs text-white/60">
-                                                <span>ชิ้นงาน <span className="text-white/80 font-semibold">{row.quantity.toLocaleString()}</span></span>
-                                                <span>ช่วงพีค <span className="text-violet-300 font-semibold">{row.peakHour}</span> ({row.peakOrders.toLocaleString()} คำสั่ง)</span>
+                                            <div className="flex items-center justify-between text-xs text-[#5F6B70]">
+                                                <span>ชิ้นงาน <span className="text-[#5F6B70] font-semibold">{row.quantity.toLocaleString()}</span></span>
+                                                <span>ช่วงพีค <span className="text-[#0057B8] font-semibold">{row.peakHour}</span> ({row.peakOrders.toLocaleString()} คำสั่ง)</span>
                                             </div>
                                         </div>
                                     ))}
                                     {dailyOrderData.length === 0 && (
-                                        <div className="px-4 py-8 text-center text-white/40 text-sm">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</div>
+                                        <div className="px-4 py-8 text-center text-[#8A9498] text-sm">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</div>
                                     )}
                                 </div>
                             </div>
@@ -874,29 +874,29 @@ export default function StatisticsPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
                                 {/* Bar chart */}
-                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
-                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                <div className="bg-white border border-[#D9E1E2] rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-[#00263A] mb-5 flex items-center gap-2 uppercase tracking-wider">
                                         <span className="w-2 h-5 bg-blue-400 rounded-full inline-block shrink-0" />
                                         จำนวนคำสั่งพิมพ์แบ่งตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
+                                        <span className="text-[#5F6B70] font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={chartData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E1E2" />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickStyle} />
                                             <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} />
-                                            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={darkTooltipStyle} />
-                                            <Bar dataKey="count" fill="#60a5fa" radius={[6, 6, 0, 0]} barSize={40} />
+                                            <Tooltip cursor={{ fill: '#EAF3FC' }} contentStyle={darkTooltipStyle} />
+                                            <Bar dataKey="count" fill="#0057B8" radius={[6, 6, 0, 0]} barSize={40} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
 
                                 {/* Pie chart */}
-                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
-                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
-                                        <span className="w-2 h-5 bg-violet-400 rounded-full inline-block shrink-0" />
+                                <div className="bg-white border border-[#D9E1E2] rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-[#00263A] mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-5 bg-[#0057B8] rounded-full inline-block shrink-0" />
                                         สัดส่วนการสั่งพิมพ์ตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
+                                        <span className="text-[#5F6B70] font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
@@ -914,16 +914,16 @@ export default function StatisticsPage() {
                                                 ))}
                                             </Pie>
                                             <Tooltip contentStyle={darkTooltipStyle} />
-                                            <Legend iconType="circle" wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
+                                            <Legend iconType="circle" wrapperStyle={{ color: '#5F6B70', fontSize: 12 }} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
                         ) : (
                             /* Empty state */
-                            <div className="bg-white/3 border border-white/8 border-dashed rounded-2xl p-16 text-center mb-6">
+                            <div className="bg-white border border-[#D9E1E2] border-dashed rounded-2xl p-16 text-center mb-6">
                                 <div className="text-5xl mb-4 opacity-20">📁</div>
-                                <h2 className="text-lg font-semibold text-white/40">
+                                <h2 className="text-lg font-semibold text-[#8A9498]">
                                     ไม่มีข้อมูลคำสั่งพิมพ์ฉลากในเดือน {selectedMonthName} {selectedYear}
                                 </h2>
                             </div>
@@ -933,32 +933,32 @@ export default function StatisticsPage() {
                         {quantityChartData.length > 0 && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
-                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
-                                        <span className="w-2 h-5 bg-violet-400 rounded-full inline-block shrink-0" />
+                                <div className="bg-white border border-[#D9E1E2] rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-[#00263A] mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-5 bg-[#0057B8] rounded-full inline-block shrink-0" />
                                         จำนวนชิ้นงานที่สั่งตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
+                                        <span className="text-[#5F6B70] font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={quantityChartData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E1E2" />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickStyle} />
                                             <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} />
                                             <Tooltip
-                                                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                                cursor={{ fill: '#EAF3FC' }}
                                                 contentStyle={darkTooltipStyle}
                                                 formatter={(value) => [Number(value).toLocaleString(), 'จำนวนชิ้นงาน']}
                                             />
-                                            <Bar dataKey="total" fill="#a78bfa" radius={[6, 6, 0, 0]} barSize={40} />
+                                            <Bar dataKey="total" fill="#00AEC7" radius={[6, 6, 0, 0]} barSize={40} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
 
-                                <div className="bg-white/5 border border-white/8 rounded-2xl p-6">
-                                    <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                <div className="bg-white border border-[#D9E1E2] rounded-2xl p-6">
+                                    <h3 className="text-sm font-black text-[#00263A] mb-5 flex items-center gap-2 uppercase tracking-wider">
                                         <span className="w-2 h-5 bg-cyan-400 rounded-full inline-block shrink-0" />
                                         สัดส่วนชิ้นงานที่สั่งตามหน่วยงาน
-                                        <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
+                                        <span className="text-[#5F6B70] font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
@@ -979,7 +979,7 @@ export default function StatisticsPage() {
                                                 contentStyle={darkTooltipStyle}
                                                 formatter={(value) => [Number(value).toLocaleString(), 'ชิ้นงาน']}
                                             />
-                                            <Legend iconType="circle" wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
+                                            <Legend iconType="circle" wrapperStyle={{ color: '#5F6B70', fontSize: 12 }} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -991,38 +991,38 @@ export default function StatisticsPage() {
                             <div className="mt-2">
                                 <div className="flex items-center gap-3 mb-5">
                                     <span className="w-2 h-6 bg-rose-500 rounded-full inline-block" />
-                                    <h2 className="text-base font-black text-white/90 uppercase tracking-wider">
+                                    <h2 className="text-base font-black text-[#00263A] uppercase tracking-wider">
                                         สถิติการยกเลิกคำสั่งพิมพ์แยกตามหน่วยงาน
                                     </h2>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                                    <div className="bg-white/5 border border-rose-500/15 rounded-2xl p-6">
-                                        <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                    <div className="bg-white border border-rose-500/15 rounded-2xl p-6">
+                                        <h3 className="text-sm font-black text-[#00263A] mb-5 flex items-center gap-2 uppercase tracking-wider">
                                             <span className="w-2 h-5 bg-rose-400 rounded-full inline-block shrink-0" />
                                             จำนวนที่ยกเลิกต่อหน่วยงาน
-                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
+                                            <span className="text-[#5F6B70] font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                         </h3>
                                         <ResponsiveContainer width="100%" height={300}>
                                             <BarChart data={cancelChartData}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#D9E1E2" />
                                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={axisTickStyle} />
                                                 <YAxis axisLine={false} tickLine={false} tick={axisTickStyle} allowDecimals={false} />
                                                 <Tooltip
-                                                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                                    cursor={{ fill: '#EAF3FC' }}
                                                     contentStyle={darkTooltipStyle}
                                                     formatter={(value) => [String(value), 'คำสั่งยกเลิก']}
                                                 />
-                                                <Bar dataKey="count" fill="#f87171" radius={[6, 6, 0, 0]} barSize={40} />
+                                                <Bar dataKey="count" fill="#C8102E" radius={[6, 6, 0, 0]} barSize={40} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
 
-                                    <div className="bg-white/5 border border-rose-500/15 rounded-2xl p-6">
-                                        <h3 className="text-sm font-black text-white/90 mb-5 flex items-center gap-2 uppercase tracking-wider">
+                                    <div className="bg-white border border-rose-500/15 rounded-2xl p-6">
+                                        <h3 className="text-sm font-black text-[#00263A] mb-5 flex items-center gap-2 uppercase tracking-wider">
                                             <span className="w-2 h-5 bg-orange-400 rounded-full inline-block shrink-0" />
                                             สัดส่วนการยกเลิกต่อหน่วยงาน
-                                            <span className="text-blue-300/50 font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
+                                            <span className="text-[#5F6B70] font-medium normal-case tracking-normal text-xs ml-1">({selectedMonthName} {selectedYear})</span>
                                         </h3>
                                         <ResponsiveContainer width="100%" height={300}>
                                             <PieChart>
@@ -1040,7 +1040,7 @@ export default function StatisticsPage() {
                                                     {cancelChartData.map((_, index) => (
                                                         <Cell
                                                             key={`cancel-cell-${index}`}
-                                                            fill={['#f87171', '#fb923c', '#fbbf24', '#ef4444', '#dc2626', '#b91c1c'][index % 6]}
+                                                            fill={['#C8102E', '#FF6A13', '#F1C400', '#C8102E', '#9B0B23', '#9B0B23'][index % 6]}
                                                         />
                                                     ))}
                                                 </Pie>
@@ -1048,24 +1048,24 @@ export default function StatisticsPage() {
                                                     contentStyle={darkTooltipStyle}
                                                     formatter={(value) => [String(value), 'คำสั่งยกเลิก']}
                                                 />
-                                                <Legend iconType="circle" wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
+                                                <Legend iconType="circle" wrapperStyle={{ color: '#5F6B70', fontSize: 12 }} />
                                             </PieChart>
                                         </ResponsiveContainer>
 
                                         {/* Mini breakdown table */}
-                                        <div className="mt-4 border-t border-white/8 pt-4 space-y-2.5">
+                                        <div className="mt-4 border-t border-[#D9E1E2] pt-4 space-y-2.5">
                                             {cancelChartData.map((item, index) => (
                                                 <div key={index} className="flex items-center justify-between text-sm">
-                                                    <span className="text-white/70 font-medium">{item.name}</span>
+                                                    <span className="text-[#5F6B70] font-medium">{item.name}</span>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-24 bg-white/8 rounded-full h-1.5">
+                                                        <div className="w-24 bg-[#F0F3F4] rounded-full h-1.5">
                                                             <div
                                                                 className="bg-rose-400 h-1.5 rounded-full transition-all duration-500"
                                                                 style={{ width: `${(item.count / totalCancelled) * 100}%` }}
                                                             />
                                                         </div>
-                                                        <span className="text-rose-300 font-black w-5 text-right tabular-nums">{item.count}</span>
-                                                        <span className="text-white/30 text-xs w-10 text-right tabular-nums">
+                                                        <span className="text-[#C8102E] font-black w-5 text-right tabular-nums">{item.count}</span>
+                                                        <span className="text-[#8A9498] text-xs w-10 text-right tabular-nums">
                                                             {((item.count / totalCancelled) * 100).toFixed(0)}%
                                                         </span>
                                                     </div>

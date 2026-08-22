@@ -60,32 +60,32 @@ const ROLE_CONFIG: Record<
   { badge: string; avatar: string; border: string; cardCls: string }
 > = {
   moderator: {
-    badge: "bg-violet-500/20 text-violet-300 border border-violet-500/30",
-    avatar: "bg-gradient-to-br from-violet-600 to-purple-700",
-    border: "border-l-violet-500",
+    badge: "bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20",
+    avatar: "bg-gradient-to-br from-[#0057B8] to-[#00263A]",
+    border: "border-l-[#0057B8]",
     cardCls:
-      "bg-gradient-to-br from-violet-50/90 to-purple-50/30 border-violet-200/80 shadow-md shadow-violet-900/5",
+      "bg-gradient-to-br from-white to-[#EAF3FC] border-[#0057B8]/20 shadow-md shadow-[#0057B8]/5",
   },
   assistant_moderator: {
-    badge: "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30",
-    avatar: "bg-gradient-to-br from-indigo-500 to-blue-700",
-    border: "border-l-indigo-400",
+    badge: "bg-[#E5F8FB] text-[#007E91] border border-[#00AEC7]/25",
+    avatar: "bg-gradient-to-br from-[#00AEC7] to-[#0057B8]",
+    border: "border-l-[#00AEC7]",
     cardCls:
-      "bg-gradient-to-br from-indigo-50/90 to-blue-50/30 border-indigo-200/80 shadow-md shadow-indigo-900/5",
+      "bg-gradient-to-br from-white to-[#E5F8FB] border-[#00AEC7]/25 shadow-md shadow-[#00AEC7]/5",
   },
   operator: {
-    badge: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
-    avatar: "bg-gradient-to-br from-emerald-600 to-teal-700",
-    border: "border-l-emerald-500",
+    badge: "bg-[#E6F8F4] text-[#008C78] border border-[#00B398]/25",
+    avatar: "bg-gradient-to-br from-[#00B398] to-[#008C78]",
+    border: "border-l-[#00B398]",
     cardCls:
-      "bg-gradient-to-br from-emerald-50/90 to-teal-50/30 border-emerald-200/80 shadow-md shadow-emerald-900/5",
+      "bg-gradient-to-br from-white to-[#E6F8F4] border-[#00B398]/25 shadow-md shadow-[#00B398]/5",
   },
   user: {
-    badge: "bg-sky-500/20 text-sky-300 border border-sky-500/30",
-    avatar: "bg-gradient-to-br from-sky-600 to-blue-700",
-    border: "border-l-sky-400",
+    badge: "bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20",
+    avatar: "bg-gradient-to-br from-[#0057B8] to-[#004A9F]",
+    border: "border-l-[#0057B8]",
     cardCls:
-      "bg-gradient-to-br from-sky-50/90 to-blue-50/30 border-sky-200/80 shadow-md shadow-sky-900/5",
+      "bg-gradient-to-br from-white to-[#EAF3FC] border-[#0057B8]/20 shadow-md shadow-[#0057B8]/5",
   },
 };
 
@@ -101,21 +101,21 @@ const SECTION_GROUPS: {
     roles: ["moderator", "assistant_moderator"],
     label: "ผู้ดูแลระบบ",
     icon: Shield,
-    colorClass: "text-violet-400",
+    colorClass: "text-[#0057B8]",
   },
   {
     key: "operator",
     roles: ["operator"],
     label: "Operator",
     icon: Briefcase,
-    colorClass: "text-emerald-400",
+    colorClass: "text-[#00B398]",
   },
   {
     key: "user",
     roles: ["user"],
     label: "พนักงานทั่วไป",
     icon: Users,
-    colorClass: "text-sky-400",
+    colorClass: "text-[#00AEC7]",
   },
 ];
 
@@ -136,7 +136,7 @@ function MetaChip({
   const isEmpty = !value;
   return (
     <div
-      className={`flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md ${isEmpty ? "text-slate-300" : "text-slate-500 bg-[#f0f5ff]"}`}
+      className={`flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md ${isEmpty ? "text-slate-300" : "text-slate-500 bg-[#EAF3FC]"}`}
     >
       <Icon
         className={`w-3 h-3 flex-shrink-0 ${isEmpty ? "text-slate-300" : "text-slate-400"}`}
@@ -174,7 +174,7 @@ function UserCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span
-              className="text-[13.5px] font-bold text-[#0f1e3d] truncate"
+              className="text-[13.5px] font-bold text-[#00263A] truncate"
               title={user.name}
             >
               {user.name}
@@ -211,10 +211,10 @@ function UserCard({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 pt-3 mt-3 border-t border-[#eef3fb] justify-end">
+      <div className="flex items-center gap-1.5 pt-3 mt-3 border-t border-[#EAF3FC] justify-end">
         <button
           onClick={() => onEdit(user)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 text-slate-700 hover:text-blue-600 text-[11.5px] font-bold transition-all active:scale-95"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-[#0057B8]/30 hover:bg-[#EAF3FC] text-slate-700 hover:text-[#0057B8] text-[11.5px] font-bold transition-all active:scale-95"
         >
           <Edit2 className="w-3 h-3" /> แก้ไข
         </button>
@@ -238,7 +238,7 @@ function UserCard({
   );
 }
 
-const inputCls = `w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-lg text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all`;
+const inputCls = `w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#D9E1E2] rounded-lg text-[#00263A] placeholder:text-slate-400 focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10 transition-all`;
 const labelCls =
   "block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider";
 
@@ -767,12 +767,12 @@ export default function UserManagement() {
 
   if (!isAdmin)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f7fc] p-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F7F8] p-4">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
             <Shield className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-black text-[#0f1e3d] mb-2 tracking-wide">
+          <h2 className="text-xl font-black text-[#00263A] mb-2 tracking-wide">
             Access Denied
           </h2>
           <p className="text-slate-500 text-sm font-medium">
@@ -801,56 +801,56 @@ export default function UserManagement() {
       label: "ผู้ใช้ทั้งหมด",
       value: users.length,
       icon: Users,
-      gradient: "from-white to-blue-50",
-      border: "border-blue-200",
-      text: "text-blue-700",
-      iconBg: "bg-blue-100",
+      gradient: "from-white to-[#EAF3FC]",
+      border: "border-[#0057B8]/20",
+      text: "text-[#0057B8]",
+      iconBg: "bg-[#EAF3FC]",
     },
     {
       label: "Moderator",
       value: countRole(["moderator", "assistant_moderator"]),
       icon: Shield,
-      gradient: "from-white to-violet-50",
-      border: "border-violet-200",
-      text: "text-violet-700",
-      iconBg: "bg-violet-100",
+      gradient: "from-white to-[#E5F8FB]",
+      border: "border-[#00AEC7]/25",
+      text: "text-[#007E91]",
+      iconBg: "bg-[#E5F8FB]",
     },
     {
       label: "Operator",
       value: countRole(["operator"]),
       icon: Briefcase,
-      gradient: "from-white to-emerald-50",
-      border: "border-emerald-200",
-      text: "text-emerald-700",
-      iconBg: "bg-emerald-100",
+      gradient: "from-white to-[#E6F8F4]",
+      border: "border-[#00B398]/25",
+      text: "text-[#008C78]",
+      iconBg: "bg-[#E6F8F4]",
     },
     {
       label: "User",
       value: countRole(["user"]),
       icon: Users,
-      gradient: "from-white to-sky-50",
-      border: "border-sky-200",
-      text: "text-sky-700",
-      iconBg: "bg-sky-100",
+      gradient: "from-white to-[#EAF3FC]",
+      border: "border-[#0057B8]/20",
+      text: "text-[#0057B8]",
+      iconBg: "bg-[#EAF3FC]",
     },
   ];
 
   return (
     <div
-      className="min-h-screen bg-[#f4f7fc]"
+      className="min-h-screen bg-[#F5F7F8]"
       style={{
         backgroundImage:
           "radial-gradient(ellipse at 0% 0%, rgba(59,102,199,0.07) 0%, transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(107,56,202,0.05) 0%, transparent 60%)",
       }}
     >
       {/* ── Page header: light, blends with content bg ── */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-[#dde8f5] px-4 py-3.5 flex items-center justify-between gap-3 sticky top-0 z-30">
+      <div className="bg-white/80 backdrop-blur-md border-b border-[#D9E1E2] px-4 py-3.5 flex items-center justify-between gap-3 sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#0f1e3d] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/10 border border-blue-900/20">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0057B8] to-[#00263A] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#0057B8]/10 border border-[#0057B8]/20">
             <Users className="w-4.5 h-4.5 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[#0f1e3d] font-black text-[18px] sm:text-[20px] md:text-[22px] leading-none tracking-wide truncate">
+            <h1 className="text-[#00263A] font-black text-[18px] sm:text-[20px] md:text-[22px] leading-none tracking-wide truncate">
               จัดการผู้ใช้งาน
             </h1>
             <p className="text-slate-400 text-[11px] sm:text-[12px] font-medium hidden sm:block truncate mt-1">
@@ -866,7 +866,7 @@ export default function UserManagement() {
         </div>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1.5 bg-[#0f1e3d] hover:bg-[#152a54] text-white text-[12px] font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm border border-[#0f1e3d]/10 active:scale-95 shrink-0"
+          className="flex items-center gap-1.5 bg-[#00263A] hover:bg-[#004A9F] text-white text-[12px] font-bold px-3.5 py-2 rounded-xl transition-all shadow-sm border border-[#00263A]/10 active:scale-95 shrink-0"
         >
           <UserPlus className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">สร้างบัญชีใหม่</span>
@@ -911,7 +911,7 @@ export default function UserManagement() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อ, อีเมล, รหัสพนักงาน, หน่วยงาน..."
-            className="w-full pl-11 pr-4 py-3 text-[13.5px] bg-white border border-[#dde8f5] rounded-2xl text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm hover:border-[#cbdbe5]"
+            className="w-full pl-11 pr-4 py-3 text-[13.5px] bg-white border border-[#D9E1E2] rounded-2xl text-[#00263A] placeholder:text-slate-400 focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm hover:border-[#B8C4C8]"
           />
         </div>
 
@@ -934,8 +934,8 @@ export default function UserManagement() {
                   >
                     {group.label}
                   </span>
-                  <div className="flex-1 h-px bg-[#dde8f5]" />
-                  <span className="text-[10px] font-semibold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-[#dde8f5]">
+                  <div className="flex-1 h-px bg-[#D9E1E2]" />
+                  <span className="text-[10px] font-semibold text-slate-400 bg-white px-2 py-0.5 rounded-full border border-[#D9E1E2]">
                     {groupUsers.length} คน
                   </span>
                 </div>
@@ -957,7 +957,7 @@ export default function UserManagement() {
 
         {filtered.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-12 h-12 bg-white border border-[#dde8f5] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+            <div className="w-12 h-12 bg-white border border-[#D9E1E2] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
               <Search className="w-5 h-5 text-slate-300" />
             </div>
             <p className="text-slate-400 text-sm">
@@ -975,7 +975,7 @@ export default function UserManagement() {
           onClose={resetForm}
           size="md"
         >
-          <div className="bg-[#f5f8ff] -mx-6 -mb-6 px-6 pb-6 rounded-b-2xl">
+          <div className="bg-[#F5F7F8] -mx-6 -mb-6 px-6 pb-6 rounded-b-2xl">
             <form onSubmit={handleSubmit} className="pt-4 space-y-4">
               <div>
                 <label className={labelCls}>Email</label>
@@ -1057,7 +1057,7 @@ export default function UserManagement() {
                     );
                     return found ? (
                       <div className="mt-1.5 flex items-center gap-2">
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 tracking-wider">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#EAF3FC] text-[#0057B8] tracking-wider">
                           {found.short}
                         </span>
                         <span className="text-[12px] text-slate-500">
@@ -1125,7 +1125,7 @@ export default function UserManagement() {
                   <label className={labelCls}>ลายเซ็น</label>
                   <div className="mt-2">
                     {signaturePreview ? (
-                      <div className="flex flex-col items-center gap-3 border border-[#dde8f5] bg-white p-3 rounded-xl shadow-sm">
+                      <div className="flex flex-col items-center gap-3 border border-[#D9E1E2] bg-white p-3 rounded-xl shadow-sm">
                         <img
                           src={signaturePreview}
                           alt="Signature Preview"
@@ -1144,7 +1144,7 @@ export default function UserManagement() {
                       </div>
                     ) : (
                       <div className="flex items-center justify-center w-full">
-                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-[#dde8f5] border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+                        <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-[#D9E1E2] border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
                           <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-400">
                             <svg
                               className="w-6 h-6 mb-2"
@@ -1181,17 +1181,17 @@ export default function UserManagement() {
                   </div>
                 </div>
               )}
-              <div className="border-t border-[#e8eef8] pt-4 flex justify-end gap-3">
+              <div className="border-t border-[#D9E1E2] pt-4 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#d0daf0] text-slate-600 font-semibold rounded-lg text-[13px] transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#D9E1E2] text-slate-600 font-semibold rounded-lg text-[13px] transition-all"
                 >
                   <X className="w-4 h-4" /> ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-lg text-[13px] shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#0057B8] to-[#0057B8] hover:from-[#0057B8] hover:to-[#004A9F] text-white font-semibold rounded-lg text-[13px] shadow-lg shadow-[#0057B8]/15 transition-all active:scale-95"
                 >
                   <Check className="w-4 h-4" /> บันทึก
                 </button>
