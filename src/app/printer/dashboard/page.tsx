@@ -340,8 +340,11 @@ export default function DashboardPage() {
           allData.map((p) => [
             p.id,
             {
-              qtyPerA3: p.qty_per_a3 || 1,
-              paperType: p.default_paper_type || "",
+              qtyPerA3:
+                typeof p.qty_per_a3 === "number" && p.qty_per_a3 > 0
+                  ? p.qty_per_a3
+                  : 0,
+              paperType: p.default_paper_type?.trim() || "",
             },
           ]),
         ),
@@ -380,21 +383,45 @@ export default function DashboardPage() {
     setFocusedOrderId(order.id);
   };
 
-  const getCurrentUserIdentifier = () =>
-    employeeId ? `${userName} (${employeeId})` : userName;
+ const getCurrentUserIdentifier = () =>
+  employeeId ? `${userName} (${employeeId})` : userName;
 
-  const deleteOrder = async (id: number) => {
-    if (!isAdmin) {
-      AppSwal.fire({
-        icon: "error",
-        title: "ไม่มีสิทธิ์",
-        text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
-        confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#0057B8",
-      });
-      return;
-    }
-    const result = await AppSwal.fire({
+const hasStockReconciliation = (order?: OrderInterface | null) =>
+  Boolean(
+    order &&
+      (order.reconciled_at ||
+        order.paper_type ||
+        typeof order.good_a3 === "number" ||
+        (order.waste_qty ?? 0) > 0 ||
+        (order.waste_a3 ?? 0) > 0),
+  );
+
+ const deleteOrder = async (id: number) => {
+  if (!isAdmin) {
+    AppSwal.fire({
+      icon: "error",
+      title: "ไม่มีสิทธิ์",
+      text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
+
+  const orderToDelete = orders.find((order) => order.id === id);
+
+  if (hasStockReconciliation(orderToDelete)) {
+    await AppSwal.fire({
+      icon: "warning",
+      title: "ยังลบคำสั่งไม่ได้",
+      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนลบคำสั่ง",
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
+
+  const result = await AppSwal.fire({
       title: "ยืนยันการลบ?",
       text: "คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?",
       icon: "warning",
@@ -594,25 +621,38 @@ export default function DashboardPage() {
     }
   };
 
-  const startEdit = (order: OrderInterface) => {
-    // ✅ ตรวจสอบสิทธิ์การแก้ไข
-    if (!isAdmin && order.created_by_user_id !== currentUserId) {
-      AppSwal.fire({
-        icon: "error",
-        title: "ไม่มีสิทธิ์แก้ไข",
-        html: `
-                    <div class="text-sm text-gray-600 space-y-1 text-left">
-                        <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
-                        <p class="mt-2 text-[#C8102E] font-medium">คุณสามารถแก้ไขได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
-                    </div>
-                `,
-        confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#0057B8",
-      });
-      return;
-    }
-    setEditingOrder({ ...order });
-  };
+ const startEdit = (order: OrderInterface) => {
+  if (!isAdmin && order.created_by_user_id !== currentUserId) {
+    AppSwal.fire({
+      icon: "error",
+      title: "ไม่มีสิทธิ์แก้ไข",
+      html: `
+        <div class="text-sm text-gray-600 space-y-1 text-left">
+          <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
+          <p class="mt-2 text-[#C8102E] font-medium">
+            คุณสามารถแก้ไขได้เฉพาะคำสั่งของตนเองเท่านั้น
+          </p>
+        </div>
+      `,
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
+
+  if (hasStockReconciliation(order)) {
+    AppSwal.fire({
+      icon: "warning",
+      title: "ยังแก้ไขคำสั่งไม่ได้",
+      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนแก้ไขคำสั่ง",
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
+
+  setEditingOrder({ ...order });
+};
 
   // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
   const startReconcile = (order: OrderInterface) => {
@@ -626,21 +666,56 @@ export default function DashboardPage() {
       });
       return;
     }
-    if (!productMetaMap[order.product_id]?.paperType) {
+
+    const meta = productMetaMap[order.product_id];
+
+    const hasPaperType = Boolean(meta?.paperType?.trim());
+    const hasQtyPerA3 =
+      typeof meta?.qtyPerA3 === "number" &&
+      Number.isFinite(meta.qtyPerA3) &&
+      meta.qtyPerA3 > 0;
+
+    if (!meta || !hasPaperType || !hasQtyPerA3) {
+      const missingFields: string[] = [];
+
+      if (!hasPaperType) {
+        missingFields.push("ประเภทกระดาษ");
+      }
+
+      if (!hasQtyPerA3) {
+        missingFields.push("จำนวนชิ้นต่อ A3");
+      }
+
       AppSwal.fire({
         icon: "warning",
-        title: "ยังไม่ได้ตั้งค่าประเภทกระดาษ",
-        text: `สินค้ารหัส ${order.product_id} ยังไม่ได้ตั้งค่าประเภทกระดาษเริ่มต้น กรุณาไปตั้งค่าที่หน้า Product ก่อน`,
+        title: "ข้อมูลสินค้าไม่ครบ",
+        html: `
+        <div style="text-align:left; font-size:13px;">
+          <p>
+            สินค้ารหัส <b>${order.product_id}</b>
+            ยังไม่สามารถตัดสต็อคกระดาษได้
+          </p>
+
+          <p style="margin-top:8px; color:#C8102E; font-weight:700;">
+            ขาดข้อมูล: ${missingFields.join(" และ ")}
+          </p>
+
+          <p style="margin-top:8px; color:#5F6B70;">
+            กรุณาไปตั้งค่าให้ครบที่หน้า Product ก่อนบันทึกผลผลิต
+          </p>
+        </div>
+      `,
         confirmButtonText: "รับทราบ",
         confirmButtonColor: "#0057B8",
       });
+
       return;
     }
+
     setReconcileErrors({});
     setReconcilingOrder(order);
 
-    const meta = productMetaMap[order.product_id];
-    const qtyPerA3 = meta?.qtyPerA3 || 1;
+    const qtyPerA3 = meta.qtyPerA3;
     const target = order.quantity || 0;
     const wasteQty = order.waste_qty || 0;
 
@@ -673,22 +748,34 @@ export default function DashboardPage() {
 
   const reconcileCalculation = useMemo(() => {
     if (!reconcilingOrder) return null;
+
     const meta = productMetaMap[reconcilingOrder.product_id];
-    if (!meta) return null;
+
+    if (
+      !meta ||
+      !meta.paperType?.trim() ||
+      !Number.isFinite(meta.qtyPerA3) ||
+      meta.qtyPerA3 <= 0
+    ) {
+      return null;
+    }
 
     const qtyPerA3 = meta.qtyPerA3;
     const target = reconcilingOrder.quantity || 0;
-    const wasteQty = parseInt(reconcileForm.wasteQty) || 0;
-    const wasteA3 = parseInt(reconcileForm.wasteA3) || 0;
-    const goodA3Extra = parseInt(reconcileForm.goodA3Extra) || 0;
+    const wasteQty = parseInt(reconcileForm.wasteQty, 10) || 0;
+    const wasteA3 = parseInt(reconcileForm.wasteA3, 10) || 0;
+    const goodA3Extra = parseInt(reconcileForm.goodA3Extra, 10) || 0;
 
     const baseSheetsForTarget = target > 0 ? Math.ceil(target / qtyPerA3) : 0;
+
     const naturalTotal = baseSheetsForTarget * qtyPerA3;
     const naturalExcess = target > 0 ? naturalTotal - target : 0;
+
     const extraSheetsForWaste =
       wasteQty > naturalExcess
         ? Math.ceil((wasteQty - naturalExcess) / qtyPerA3)
         : 0;
+
     const autoGoodA3 = baseSheetsForTarget + extraSheetsForWaste;
     const goodA3 = autoGoodA3 + goodA3Extra;
     const sheetsNeeded = goodA3 + wasteA3;
@@ -789,28 +876,47 @@ export default function DashboardPage() {
       (acc, t) => acc + (t.transaction_type === "IN" ? t.qty : -t.qty),
       0,
     );
-    const oldSheetsUsed =
-      (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
-    const netChange = reconcileCalculation.sheetsNeeded - oldSheetsUsed;
+const oldSheetsUsed =
+  (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
 
-    if (netChange > currentBalance) {
-      await AppSwal.fire({
-        icon: "error",
-        title: "สต็อคกระดาษไม่พอ",
-        html: `
-                    <div style="text-align:left; font-size:13px;">
-                        <p>ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
-                        <p>สต็อคคงเหลือ: <b>${currentBalance}</b> ใบ</p>
-                        <p>ต้องการตัดเพิ่ม: <b>${netChange}</b> ใบ</p>
-                        <p style="margin-top:6px; color:#C8102E;">กรุณารับกระดาษเข้าสต็อคที่หน้า Paper Stock ก่อน</p>
-                    </div>
-                `,
-        confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#0057B8",
-        returnFocus: false,
-      });
-      return;
-    }
+const previousPaperType = reconcilingOrder.paper_type?.trim() || "";
+const currentPaperType = reconcileCalculation.paperType.trim();
+const isSamePaperType = previousPaperType === currentPaperType;
+
+const requiredFromCurrentStock = isSamePaperType
+  ? Math.max(0, reconcileCalculation.sheetsNeeded - oldSheetsUsed)
+  : reconcileCalculation.sheetsNeeded;
+
+if (requiredFromCurrentStock > currentBalance) {
+  await AppSwal.fire({
+    icon: "error",
+    title: "สต็อคกระดาษไม่พอ",
+    html: `
+      <div style="text-align:left; font-size:13px;">
+        <p>ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
+        <p>สต็อคคงเหลือ: <b>${currentBalance}</b> ใบ</p>
+        <p>
+          ต้องการใช้จากสต็อคประเภทนี้:
+          <b>${requiredFromCurrentStock}</b> ใบ
+        </p>
+        ${
+          !isSamePaperType && previousPaperType
+            ? `<p style="margin-top:6px; color:#5F6B70;">
+                 ประเภทกระดาษเดิม: <b>${previousPaperType}</b>
+               </p>`
+            : ""
+        }
+        <p style="margin-top:6px; color:#C8102E;">
+          กรุณารับกระดาษเข้าสต็อคที่หน้า Paper Stock ก่อน
+        </p>
+      </div>
+    `,
+    confirmButtonText: "รับทราบ",
+    confirmButtonColor: "#0057B8",
+    returnFocus: false,
+  });
+  return;
+}
 
     const confirmResult = await AppSwal.fire({
       icon: "question",
@@ -960,49 +1066,71 @@ export default function DashboardPage() {
       }
 
       // อัปเดตตาราง paper_reports
-      const { data: existingReport } = await supabase
-        .from("paper_reports")
-        .select("id")
-        .eq("order_id", entryId)
-        .maybeSingle();
-      if (existingReport) {
-        await supabase
-          .from("paper_reports")
-          .update({
-            target_qty: reconcilingOrder.quantity || 0,
-            target_a3: (reconcilingOrder as any).target_a3 || 0,
-            good_a3: reconcileCalculation.goodA3,
-            waste_a3: reconcileCalculation.wasteA3,
-            waste_qty: reconcileCalculation.wasteQty,
-            waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
-            waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
-            paper_type: reconcileCalculation.paperType,
-            product_id: reconcilingOrder.product_id,
-            department: reconcilingOrder.created_by_department,
-            lot_number: reconcilingOrder.lot_number,
-            qty_per_a3_used: reconcileCalculation.qtyPerA3,
-          })
-          .eq("id", existingReport.id);
-      } else {
-        await supabase.from("paper_reports").insert({
-          order_id: entryId,
-          report_type: "ORDER",
-          lot_number: reconcilingOrder.lot_number,
-          product_id: reconcilingOrder.product_id,
-          department: reconcilingOrder.created_by_department,
-          paper_type: reconcileCalculation.paperType,
-          target_qty: reconcilingOrder.quantity || 0,
-          target_a3: (reconcilingOrder as any).target_a3 || 0,
-          good_a3: reconcileCalculation.goodA3,
-          waste_a3: reconcileCalculation.wasteA3,
-          waste_qty: reconcileCalculation.wasteQty,
-          waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
-          waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
-          created_by: editorName,
-          created_at: new Date().toISOString(),
-          qty_per_a3_used: reconcileCalculation.qtyPerA3,
-        });
-      }
+// อัปเดตตาราง paper_reports
+const { data: existingReport, error: reportLookupErr } = await supabase
+  .from("paper_reports")
+  .select("id")
+  .eq("order_id", entryId)
+  .maybeSingle();
+
+if (reportLookupErr) {
+  throw new Error(
+    `ตรวจสอบรายงานกระดาษไม่สำเร็จ: ${reportLookupErr.message}`,
+  );
+}
+
+if (existingReport) {
+  const { error: reportUpdateErr } = await supabase
+    .from("paper_reports")
+    .update({
+      target_qty: reconcilingOrder.quantity || 0,
+      target_a3: (reconcilingOrder as any).target_a3 || 0,
+      good_a3: reconcileCalculation.goodA3,
+      waste_a3: reconcileCalculation.wasteA3,
+      waste_qty: reconcileCalculation.wasteQty,
+      waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
+      waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
+      paper_type: reconcileCalculation.paperType,
+      product_id: reconcilingOrder.product_id,
+      department: reconcilingOrder.created_by_department,
+      lot_number: reconcilingOrder.lot_number,
+      qty_per_a3_used: reconcileCalculation.qtyPerA3,
+    })
+    .eq("id", existingReport.id);
+
+  if (reportUpdateErr) {
+    throw new Error(
+      `อัปเดตรายงานกระดาษไม่สำเร็จ: ${reportUpdateErr.message}`,
+    );
+  }
+} else {
+  const { error: reportInsertErr } = await supabase
+    .from("paper_reports")
+    .insert({
+      order_id: entryId,
+      report_type: "ORDER",
+      lot_number: reconcilingOrder.lot_number,
+      product_id: reconcilingOrder.product_id,
+      department: reconcilingOrder.created_by_department,
+      paper_type: reconcileCalculation.paperType,
+      target_qty: reconcilingOrder.quantity || 0,
+      target_a3: (reconcilingOrder as any).target_a3 || 0,
+      good_a3: reconcileCalculation.goodA3,
+      waste_a3: reconcileCalculation.wasteA3,
+      waste_qty: reconcileCalculation.wasteQty,
+      waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
+      waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
+      created_by: editorName,
+      created_at: new Date().toISOString(),
+      qty_per_a3_used: reconcileCalculation.qtyPerA3,
+    });
+
+  if (reportInsertErr) {
+    throw new Error(
+      `สร้างรายงานกระดาษไม่สำเร็จ: ${reportInsertErr.message}`,
+    );
+  }
+}
 
       // อัปเดต Orders ใน State หลังฉาก
       setOrders((prev) =>
@@ -1240,6 +1368,7 @@ export default function DashboardPage() {
           .update({
             is_verified: true,
             verified_by: verifierName,
+            verified_by_user_id: currentUserId,
             verified_at: now,
           })
           .eq("id", order.id);
@@ -1380,10 +1509,21 @@ export default function DashboardPage() {
   };
 
   // ✅ unmarkPrinted — เปรียบเทียบ UUID จาก DB กับ session โดยตรง
-  const unmarkPrinted = async (order: OrderInterface) => {
-    if (!isAdmin) return;
+ const unmarkPrinted = async (order: OrderInterface) => {
+  if (!isAdmin) return;
 
-    const [
+  if (hasStockReconciliation(order)) {
+    await AppSwal.fire({
+      icon: "warning",
+      title: "ยังยกเลิกการพิมพ์ไม่ได้",
+      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนยกเลิกสถานะพิมพ์",
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
+
+  const [
       { data: freshOrder, error: fetchError },
       {
         data: { session },
@@ -1524,11 +1664,12 @@ export default function DashboardPage() {
       try {
         const { error } = await supabase
           .from("orders")
-          .update({
-            is_verified: false,
-            verified_by: null,
-            verified_at: null,
-          })
+        .update({
+  is_verified: false,
+  verified_by: null,
+  verified_by_user_id: null,
+  verified_at: null,
+})
           .eq("id", order.id);
         if (error) throw error;
         setOrders((prev) =>
@@ -1562,25 +1703,38 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCancelOrder = async (order: OrderInterface) => {
-    // ✅ ตรวจสอบสิทธิ์การยกเลิก
-    if (!isAdmin && order.created_by_user_id !== currentUserId) {
-      AppSwal.fire({
-        icon: "error",
-        title: "ไม่มีสิทธิ์ยกเลิก",
-        html: `
-                    <div class="text-sm text-gray-600 space-y-1 text-left">
-                        <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
-                        <p class="mt-2 text-[#C8102E] font-medium">คุณสามารถยกเลิกได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
-                    </div>
-                `,
-        confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#0057B8",
-      });
-      return;
-    }
+const handleCancelOrder = async (order: OrderInterface) => {
+  // ✅ ตรวจสอบสิทธิ์การยกเลิก
+  if (!isAdmin && order.created_by_user_id !== currentUserId) {
+    AppSwal.fire({
+      icon: "error",
+      title: "ไม่มีสิทธิ์ยกเลิก",
+      html: `
+        <div class="text-sm text-gray-600 space-y-1 text-left">
+          <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
+          <p class="mt-2 text-[#C8102E] font-medium">
+            คุณสามารถยกเลิกได้เฉพาะคำสั่งของตนเองเท่านั้น
+          </p>
+        </div>
+      `,
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
 
-    const result = await AppSwal.fire({
+  if (hasStockReconciliation(order)) {
+    await AppSwal.fire({
+      icon: "warning",
+      title: "ยังยกเลิกคำสั่งไม่ได้",
+      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนยกเลิกคำสั่ง",
+      confirmButtonText: "รับทราบ",
+      confirmButtonColor: "#0057B8",
+    });
+    return;
+  }
+
+  const result = await AppSwal.fire({
       title: "ยืนยันการยกเลิกสั่งพิมพ์?",
       text: "กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้",
       icon: "warning",
@@ -1600,14 +1754,22 @@ export default function DashboardPage() {
         const now = new Date().toISOString();
         const editorName = getCurrentUserIdentifier();
         const summary = `ยกเลิกเพราะ: ${result.value}`;
-        const updateData = {
-          is_printed: false,
-          is_verified: false,
-          is_cancelled: true,
-          updated_at: now,
-          updated_by: editorName,
-          edit_summary: summary,
-        };
+   const updateData = {
+  is_printed: false,
+  printed_by: null,
+  printed_by_user_id: null,
+  printed_at: null,
+
+  is_verified: false,
+  verified_by: null,
+  verified_by_user_id: null,
+  verified_at: null,
+
+  is_cancelled: true,
+  updated_at: now,
+  updated_by: editorName,
+  edit_summary: summary,
+};
         const { error } = await supabase
           .from("orders")
           .update(updateData)
@@ -1725,14 +1887,23 @@ export default function DashboardPage() {
       try {
         const now = new Date().toISOString();
         const editorName = getCurrentUserIdentifier();
-        const updateData = {
-          is_cancelled: false,
-          is_printed: false,
-          is_verified: false,
-          updated_at: now,
-          updated_by: editorName,
-          edit_summary: "กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)",
-        };
+  const updateData = {
+  is_cancelled: false,
+
+  is_printed: false,
+  printed_by: null,
+  printed_by_user_id: null,
+  printed_at: null,
+
+  is_verified: false,
+  verified_by: null,
+  verified_by_user_id: null,
+  verified_at: null,
+
+  updated_at: now,
+  updated_by: editorName,
+  edit_summary: "กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)",
+};
         const { error } = await supabase
           .from("orders")
           .update(updateData)
@@ -2174,8 +2345,15 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredOrders.slice(0, visibleCount).map((order) => {
-            // Status classes
+         {filteredOrders.slice(0, visibleCount).map((order) => {
+  const stockMeta = productMetaMap[order.product_id];
+
+  const canReconcileStock =
+    Boolean(stockMeta?.paperType?.trim()) &&
+    Number.isFinite(stockMeta?.qtyPerA3) &&
+    (stockMeta?.qtyPerA3 ?? 0) > 0;
+
+  // Status classes
             let borderLeftCls = "border-l-4 border-l-[#0057B8]";
             let headerBgCls =
               "bg-[#F8FBFD] border-b border-[#D9E1E2] px-5 py-4.5 flex flex-col gap-3.5";
@@ -2207,11 +2385,7 @@ export default function DashboardPage() {
                                 ${focusedOrderId === order.id ? "ring-4 ring-[#F1C400] ring-offset-2 shadow-xl" : ""}
                             `}
               >
-                {isAdmin &&
-                  (order.paper_type ||
-                    typeof order.good_a3 === "number" ||
-                    order.waste_qty ||
-                    order.waste_a3) && (
+                {isAdmin && hasStockReconciliation(order) && (
                     <button
                       type="button"
                       onClick={() => setStockDetailOrder(order)}
@@ -2383,12 +2557,9 @@ export default function DashboardPage() {
                           <Edit2 className="w-4 h-4" />
                         </button>
                       )}
-                    {isAdmin &&
-                      !order.is_cancelled &&
-                      (order.paper_type ||
-                      typeof order.good_a3 === "number" ||
-                      order.waste_qty ||
-                      order.waste_a3 ? (
+                  {isAdmin &&
+  !order.is_cancelled &&
+  (hasStockReconciliation(order) ? (
                         <button
                           type="button"
                           onClick={() => undoReconcile(order)}
@@ -2398,14 +2569,23 @@ export default function DashboardPage() {
                           <Undo className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => startReconcile(order)}
-                          className="w-8 h-8 rounded-lg bg-transparent text-[#A88700] hover:bg-[#FFF8D6] border border-transparent hover:border-[#F1C400]/35 flex items-center justify-center transition-all duration-200"
-                          title="บันทึกผลผลิต / ตัดสต็อคกระดาษ"
-                        >
-                          <Layers className="w-4 h-4" />
-                        </button>
+                     <button
+  type="button"
+  onClick={() => startReconcile(order)}
+  disabled={!canReconcileStock}
+  className={`w-8 h-8 rounded-lg border border-transparent flex items-center justify-center transition-all duration-200 ${
+    canReconcileStock
+      ? "bg-transparent text-[#A88700] hover:bg-[#FFF8D6] hover:border-[#F1C400]/35"
+      : "bg-[#F0F3F4] text-[#B8C4C8] cursor-not-allowed"
+  }`}
+  title={
+    canReconcileStock
+      ? "บันทึกผลผลิต / ตัดสต็อคกระดาษ"
+      : "ต้องตั้งค่าประเภทกระดาษและจำนวนชิ้นต่อ A3 ที่หน้า Product ก่อน"
+  }
+>
+  <Layers className="w-4 h-4" />
+</button>
                       ))}
 
                     {!order.is_cancelled &&
