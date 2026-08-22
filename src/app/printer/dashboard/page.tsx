@@ -24,6 +24,12 @@ import {
 import EditHistory from "../components/EditHistory";
 import { DashboardSkeleton } from "./loading-skeleton";
 import Modal from "../components/Modal";
+
+const AppSwal = Swal.mixin({
+  confirmButtonColor: "#0057B8",
+  cancelButtonColor: "#75787B",
+  confirmButtonText: "รับทราบ",
+});
 export interface OrderInterface {
   id: number;
   order_date: string;
@@ -107,6 +113,7 @@ export default function DashboardPage() {
     wasteA3: "",
     wasteQtyRemark: "",
     wasteA3Remark: "",
+    goodA3Extra: "",
   });
   const [isSubmittingReconcile, setIsSubmittingReconcile] = useState(false);
   const [reconcileErrors, setReconcileErrors] = useState<{
@@ -182,10 +189,12 @@ export default function DashboardPage() {
       setIsLoading(false);
     } catch {
       setIsLoading(false);
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "โหลดข้อมูลไม่สำเร็จ",
         text: "กรุณาลองใหม่อีกครั้ง",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
     }
   };
@@ -244,7 +253,7 @@ export default function DashboardPage() {
             const newData = payload.new as Record<string, unknown>;
             if (newData) {
               playNotificationSound();
-              Swal.fire({
+              AppSwal.fire({
                 toast: true,
                 position: "top-end",
                 icon: "info",
@@ -252,8 +261,8 @@ export default function DashboardPage() {
                 showConfirmButton: false,
                 timer: 4000,
                 timerProgressBar: true,
-                background: "#eff6ff",
-                color: "#1e3a8a",
+                background: "#EAF3FC",
+                color: "#0057B8",
               });
               loadOrders();
             }
@@ -264,7 +273,7 @@ export default function DashboardPage() {
               if (nowTS - updateTS < 10000) {
                 playNotificationSound();
                 const isCancelled = newData.is_cancelled;
-                Swal.fire({
+                AppSwal.fire({
                   toast: true,
                   position: "top-end",
                   icon: isCancelled ? "warning" : "info",
@@ -277,8 +286,8 @@ export default function DashboardPage() {
                   showConfirmButton: false,
                   timer: 4000,
                   timerProgressBar: true,
-                  background: isCancelled ? "#fef2f2" : "#eff6ff",
-                  color: isCancelled ? "#991b1b" : "#1e3a8a",
+                  background: isCancelled ? "#FCEAEC" : "#EAF3FC",
+                  color: isCancelled ? "#9B0B23" : "#0057B8",
                 });
               }
             }
@@ -376,20 +385,22 @@ export default function DashboardPage() {
 
   const deleteOrder = async (id: number) => {
     if (!isAdmin) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์",
         text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการลบ?",
       text: "คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ใช่, ลบเลย!",
       cancelButtonText: "ยกเลิก",
     });
@@ -406,14 +417,14 @@ export default function DashboardPage() {
         if (error) throw error;
 
         setOrders((prev) => prev.filter((order) => order.id !== id));
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ลบสำเร็จ!",
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ลบไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -478,24 +489,24 @@ export default function DashboardPage() {
       }
 
       if (!editingOrder.quantity || editingOrder.quantity <= 0) {
-        Swal.fire({
+        AppSwal.fire({
           icon: "warning",
           title: "จำนวนไม่ถูกต้อง",
           text: "จำนวนสั่งทำต้องมากกว่า 0",
           confirmButtonText: "รับทราบ",
-          confirmButtonColor: "#6b7280",
+          confirmButtonColor: "#0057B8",
         });
         setIsSaving(false);
         return;
       }
 
       if (changeDetails.length === 0) {
-        Swal.fire({
+        AppSwal.fire({
           icon: "info",
           title: "ไม่มีการเปลี่ยนแปลง",
           text: "คุณยังไม่ได้แก้ไขข้อมูลใดๆ ของคำสั่งพิมพ์นี้",
           confirmButtonText: "รับทราบ",
-          confirmButtonColor: "#6b7280",
+          confirmButtonColor: "#0057B8",
         });
         setIsSaving(false);
         return;
@@ -504,12 +515,12 @@ export default function DashboardPage() {
       const summary = `แก้ไข: ${changeDetails.join(" | ")}`;
       const editorName = getCurrentUserIdentifier();
 
-      const confirmResult = await Swal.fire({
+      const confirmResult = await AppSwal.fire({
         icon: "question",
         title: "ยืนยันการแก้ไข?",
         html: `
         <div style="text-align:left; font-size:13px;">
-            <p style="color:#6b7280; margin-bottom:8px;">รายการที่แก้ไข:</p>
+            <p style="color:#5F6B70; margin-bottom:8px;">รายการที่แก้ไข:</p>
             <table style="width:100%; border-collapse:collapse;">
                 ${changeDetails
                   .map((detail) => {
@@ -517,10 +528,10 @@ export default function DashboardPage() {
                     const [oldVal, newVal] = (rest || "").split(" ➡️ ");
                     return `
                         <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:6px 8px; color:#6b7280; font-weight:600; white-space:nowrap;">${label}</td>
-                            <td style="padding:6px 8px; color:#ef4444; text-decoration:line-through; font-size:12px;">${oldVal || ""}</td>
-                            <td style="padding:6px 4px; color:#6b7280;">→</td>
-                            <td style="padding:6px 8px; color:#10b981; font-weight:700;">${newVal || ""}</td>
+                            <td style="padding:6px 8px; color:#5F6B70; font-weight:600; white-space:nowrap;">${label}</td>
+                            <td style="padding:6px 8px; color:#C8102E; text-decoration:line-through; font-size:12px;">${oldVal || ""}</td>
+                            <td style="padding:6px 4px; color:#5F6B70;">→</td>
+                            <td style="padding:6px 8px; color:#008C78; font-weight:700;">${newVal || ""}</td>
                         </tr>
                     `;
                   })
@@ -531,8 +542,8 @@ export default function DashboardPage() {
         showCancelButton: true,
         confirmButtonText: "✓ ยืนยันบันทึก",
         cancelButtonText: "กลับไปแก้ไข",
-        confirmButtonColor: "#0f1e3d",
-        cancelButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
+        cancelButtonColor: "#75787B",
         customClass: { popup: "rounded-xl text-sm" },
         width: "clamp(320px, 90vw, 480px)",
       });
@@ -566,14 +577,14 @@ export default function DashboardPage() {
         ),
       );
       setEditingOrder(null);
-      Swal.fire({
+      AppSwal.fire({
         icon: "success",
         title: "บันทึกสำเร็จ",
         timer: 1500,
         showConfirmButton: false,
       });
     } catch {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "แก้ไขไม่สำเร็จ",
         text: "กรุณาลองใหม่อีกครั้ง",
@@ -586,17 +597,17 @@ export default function DashboardPage() {
   const startEdit = (order: OrderInterface) => {
     // ✅ ตรวจสอบสิทธิ์การแก้ไข
     if (!isAdmin && order.created_by_user_id !== currentUserId) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์แก้ไข",
         html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
-                        <p class="mt-2 text-red-500 font-medium">คุณสามารถแก้ไขได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
+                        <p class="mt-2 text-[#C8102E] font-medium">คุณสามารถแก้ไขได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -606,30 +617,57 @@ export default function DashboardPage() {
   // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
   const startReconcile = (order: OrderInterface) => {
     if (!isAdmin) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์",
         text: "เฉพาะ Moderator และ Assistant Moderator เท่านั้น",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
     if (!productMetaMap[order.product_id]?.paperType) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "warning",
         title: "ยังไม่ได้ตั้งค่าประเภทกระดาษ",
         text: `สินค้ารหัส ${order.product_id} ยังไม่ได้ตั้งค่าประเภทกระดาษเริ่มต้น กรุณาไปตั้งค่าที่หน้า Product ก่อน`,
         confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
+    setReconcileErrors({});
     setReconcilingOrder(order);
+
+    const meta = productMetaMap[order.product_id];
+    const qtyPerA3 = meta?.qtyPerA3 || 1;
+    const target = order.quantity || 0;
+    const wasteQty = order.waste_qty || 0;
+
+    const baseSheetsForTarget = target > 0 ? Math.ceil(target / qtyPerA3) : 0;
+
+    const naturalTotal = baseSheetsForTarget * qtyPerA3;
+    const naturalExcess = target > 0 ? naturalTotal - target : 0;
+
+    const extraSheetsForWaste =
+      wasteQty > naturalExcess
+        ? Math.ceil((wasteQty - naturalExcess) / qtyPerA3)
+        : 0;
+
+    const autoGoodA3 = baseSheetsForTarget + extraSheetsForWaste;
+
+    const existingGoodA3Extra =
+      order.good_a3 != null ? Math.max(0, order.good_a3 - autoGoodA3) : 0;
+
     const initial = {
       wasteQty: order.waste_qty ? String(order.waste_qty) : "",
       wasteA3: order.waste_a3 ? String(order.waste_a3) : "",
       wasteQtyRemark: order.waste_qty_remark || "",
       wasteA3Remark: order.waste_a3_remark || "",
+      goodA3Extra: existingGoodA3Extra > 0 ? String(existingGoodA3Extra) : "",
     };
-    setReconcileForm({ ...initial, goodA3Extra: "" });
+
+    setReconcileForm(initial);
     setInitialReconcileForm(initial);
   };
 
@@ -680,25 +718,31 @@ export default function DashboardPage() {
 
     if (!reconcilingOrder || !reconcileCalculation || !isAdmin) return;
 
-    // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงไหม (เฉพาะกรณีเคยบันทึกผลผลิตไปแล้ว)
+    // ✅ เช็คว่ารายการนี้เคยบันทึกผลผลิตแล้วหรือยัง
     const wasAlreadyReconciled = reconcilingOrder.good_a3 != null;
-    const goodA3ExtraEmpty =
-      !reconcileForm.goodA3Extra || parseInt(reconcileForm.goodA3Extra) === 0;
+
+    // ✅ เช็คว่ามีการเปลี่ยนแปลงจริงไหม
     const noChange =
       wasAlreadyReconciled &&
-      goodA3ExtraEmpty &&
-      reconcileForm.wasteQty === initialReconcileForm.wasteQty &&
-      reconcileForm.wasteA3 === initialReconcileForm.wasteA3 &&
-      reconcileForm.wasteQtyRemark === initialReconcileForm.wasteQtyRemark &&
-      reconcileForm.wasteA3Remark === initialReconcileForm.wasteA3Remark;
+      (parseInt(reconcileForm.wasteQty) || 0) ===
+        (parseInt(initialReconcileForm.wasteQty) || 0) &&
+      (parseInt(reconcileForm.wasteA3) || 0) ===
+        (parseInt(initialReconcileForm.wasteA3) || 0) &&
+      reconcileForm.wasteQtyRemark.trim() ===
+        initialReconcileForm.wasteQtyRemark.trim() &&
+      reconcileForm.wasteA3Remark.trim() ===
+        initialReconcileForm.wasteA3Remark.trim() &&
+      (parseInt(reconcileForm.goodA3Extra) || 0) ===
+        (parseInt(initialReconcileForm.goodA3Extra) || 0);
 
     if (noChange) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "info",
         title: "ไม่มีการเปลี่ยนแปลง",
         text: "คุณยังไม่ได้แก้ไขข้อมูลใดๆ",
         confirmButtonText: "รับทราบ",
-        returnFocus: false, // 🟢 เพิ่มสิ่งนี้เพื่อป้องกัน Modal ปิดตัวเอง
+        confirmButtonColor: "#0057B8",
+        returnFocus: false,
       });
       return;
     }
@@ -730,10 +774,12 @@ export default function DashboardPage() {
       .eq("paper_type", reconcileCalculation.paperType);
 
     if (txErr) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "error",
         title: "เช็คสต็อคไม่สำเร็จ",
         text: "กรุณาลองใหม่อีกครั้ง",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
         returnFocus: false,
       });
       return;
@@ -748,7 +794,7 @@ export default function DashboardPage() {
     const netChange = reconcileCalculation.sheetsNeeded - oldSheetsUsed;
 
     if (netChange > currentBalance) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "error",
         title: "สต็อคกระดาษไม่พอ",
         html: `
@@ -756,16 +802,17 @@ export default function DashboardPage() {
                         <p>ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
                         <p>สต็อคคงเหลือ: <b>${currentBalance}</b> ใบ</p>
                         <p>ต้องการตัดเพิ่ม: <b>${netChange}</b> ใบ</p>
-                        <p style="margin-top:6px; color:#dc2626;">กรุณารับกระดาษเข้าสต็อคที่หน้า Paper Stock ก่อน</p>
+                        <p style="margin-top:6px; color:#C8102E;">กรุณารับกระดาษเข้าสต็อคที่หน้า Paper Stock ก่อน</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
         returnFocus: false,
       });
       return;
     }
 
-    const confirmResult = await Swal.fire({
+    const confirmResult = await AppSwal.fire({
       icon: "question",
       title: "ยืนยันบันทึกผลผลิต?",
       html: `
@@ -782,8 +829,8 @@ export default function DashboardPage() {
       showCancelButton: true,
       confirmButtonText: "✓ ยืนยันบันทึก",
       cancelButtonText: "กลับไปแก้ไข",
-      confirmButtonColor: "#0f1e3d",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#0057B8",
+      cancelButtonColor: "#75787B",
       returnFocus: false,
     });
 
@@ -927,8 +974,8 @@ export default function DashboardPage() {
             good_a3: reconcileCalculation.goodA3,
             waste_a3: reconcileCalculation.wasteA3,
             waste_qty: reconcileCalculation.wasteQty,
-            waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
-            waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+            waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
+            waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
             paper_type: reconcileCalculation.paperType,
             product_id: reconcilingOrder.product_id,
             department: reconcilingOrder.created_by_department,
@@ -949,8 +996,8 @@ export default function DashboardPage() {
           good_a3: reconcileCalculation.goodA3,
           waste_a3: reconcileCalculation.wasteA3,
           waste_qty: reconcileCalculation.wasteQty,
-          waste_a3_remark: reconcileForm.wasteA3Remark || undefined,
-          waste_qty_remark: reconcileForm.wasteQtyRemark || undefined,
+          waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
+          waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
           created_by: editorName,
           created_at: new Date().toISOString(),
           qty_per_a3_used: reconcileCalculation.qtyPerA3,
@@ -1012,9 +1059,9 @@ export default function DashboardPage() {
         wasteA3: reconcileForm.wasteA3,
         wasteQtyRemark: reconcileForm.wasteQtyRemark,
         wasteA3Remark: reconcileForm.wasteA3Remark,
+        goodA3Extra: reconcileForm.goodA3Extra,
       });
-
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "success",
         title: "บันทึกสำเร็จ",
         text: "ตัดสต็อคกระดาษเรียบร้อยแล้ว",
@@ -1024,7 +1071,7 @@ export default function DashboardPage() {
       });
       setReconcilingOrder(null);
     } catch (error) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "error",
         title: "บันทึกไม่สำเร็จ",
         text: (error as Error).message || "กรุณาลองใหม่อีกครั้ง",
@@ -1037,10 +1084,12 @@ export default function DashboardPage() {
 
   const undoReconcile = async (order: OrderInterface) => {
     if (!isAdmin) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์",
         text: "เฉพาะ Moderator และ Assistant Moderator เท่านั้น",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -1052,12 +1101,12 @@ export default function DashboardPage() {
     const currentQtyPerA3 = productMetaMap[order.product_id]?.qtyPerA3;
     let ratioWarningHtml = "";
     if (order.qty_per_a3_used == null) {
-      ratioWarningHtml = `<p style="margin-top:6px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:6px 8px;">⚠️ ไม่สามารถตรวจสอบอัตราส่วนของรายการนี้ได้ (บันทึกไว้ก่อนระบบอัปเดต) กรุณาตรวจสอบยอดด้วยตนเอง</p>`;
+      ratioWarningHtml = `<p style="margin-top:6px; color:#6E5B00; background:#FFF8D6; border:1px solid rgba(241,196,0,0.35); border-radius:8px; padding:6px 8px;">⚠️ ไม่สามารถตรวจสอบอัตราส่วนของรายการนี้ได้ (บันทึกไว้ก่อนระบบอัปเดต) กรุณาตรวจสอบยอดด้วยตนเอง</p>`;
     } else if (currentQtyPerA3 && order.qty_per_a3_used !== currentQtyPerA3) {
-      ratioWarningHtml = `<p style="margin-top:6px; color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:6px 8px;">⚠️ อัตราส่วนชิ้น/A3 ของสินค้านี้เปลี่ยนไปหลังตัดสต็อคครั้งนี้ (ตอนตัด: <b>${order.qty_per_a3_used}</b> ชิ้น/A3 ตอนนี้: <b>${currentQtyPerA3}</b> ชิ้น/A3) กรุณาตรวจสอบยอดให้แน่ใจก่อนยกเลิก</p>`;
+      ratioWarningHtml = `<p style="margin-top:6px; color:#C8102E; background:#FCEAEC; border:1px solid rgba(200,16,46,0.20); border-radius:8px; padding:6px 8px;">⚠️ อัตราส่วนชิ้น/A3 ของสินค้านี้เปลี่ยนไปหลังตัดสต็อคครั้งนี้ (ตอนตัด: <b>${order.qty_per_a3_used}</b> ชิ้น/A3 ตอนนี้: <b>${currentQtyPerA3}</b> ชิ้น/A3) กรุณาตรวจสอบยอดให้แน่ใจก่อนยกเลิก</p>`;
     }
 
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       icon: "warning",
       title: "ยกเลิกการตัดสต็อค?",
       html: `
@@ -1068,14 +1117,14 @@ export default function DashboardPage() {
                         กระดาษ <b>${totalSheets}</b> ใบ (ประเภท <b>${order.paper_type || "-"}</b>) จะถูกคืนเข้าสต็อค
                     </p>
                                         ${ratioWarningHtml}
-                    <p style="margin-top:4px; color:#dc2626;">รายการตัดสต็อคเดิมของคำสั่งนี้จะถูกลบทั้งหมด</p>
+                    <p style="margin-top:4px; color:#C8102E;">รายการตัดสต็อคเดิมของคำสั่งนี้จะถูกลบทั้งหมด</p>
                 </div>
             `,
       showCancelButton: true,
       confirmButtonText: "ยืนยันยกเลิกตัดสต็อค",
       cancelButtonText: "ปิด",
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       returnFocus: false,
     });
     if (!result.isConfirmed) return;
@@ -1129,14 +1178,14 @@ export default function DashboardPage() {
         ),
       );
 
-      Swal.fire({
+      AppSwal.fire({
         icon: "success",
         title: "ยกเลิกตัดสต็อคสำเร็จ",
         timer: 1500,
         showConfirmButton: false,
       });
     } catch (error) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ยกเลิกไม่สำเร็จ",
         text: (error as Error).message || "กรุณาลองใหม่อีกครั้ง",
@@ -1146,15 +1195,17 @@ export default function DashboardPage() {
 
   const verifyOrder = async (order: OrderInterface) => {
     if (!isAdmin) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์",
         text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
     if (order.is_verified) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "warning",
         title: "ตรวจสอบไปแล้ว",
         html: `
@@ -1162,21 +1213,21 @@ export default function DashboardPage() {
                         <p>คำสั่งรายการนี้ได้รับการตรวจสอบและตัดชิ้นงานเสร็จแล้ว</p>
                         <p class="mt-2">✅ <b>ผู้ตรวจสอบ:</b> ${order.verified_by || "ไม่ระบุ"}</p>
                         <p>🕐 <b>เวลา:</b> ${formatThaiDateTimeFromISO(order.verified_at)}</p>
-                        <p class="mt-2 text-orange-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
+                        <p class="mt-2 text-[#FF6A13] font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการตรวจสอบ",
       text: "คุณต้องการยืนยันว่าได้ตรวจสอบคำสั่งพิมพ์ฉลากนี้แล้วหรือไม่?",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#00B398",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "✓ ยืนยันการตรวจสอบ",
       cancelButtonText: "ยกเลิก",
     });
@@ -1208,7 +1259,7 @@ export default function DashboardPage() {
           ),
         );
 
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ตรวจสอบสำเร็จ!",
           html: `ผู้ตรวจสอบ: <strong>${verifierName}</strong>`,
@@ -1216,7 +1267,7 @@ export default function DashboardPage() {
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ตรวจสอบไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1241,39 +1292,41 @@ export default function DashboardPage() {
       .single();
 
     if (fetchError || !freshOrder) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "โหลดข้อมูลไม่สำเร็จ",
         text: "กรุณาลองใหม่",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
 
     // ✅ ดักซ้ำด้วย UUID
     if (freshOrder.is_printed) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "warning",
         title: "พิมพ์ฉลากไปแล้ว!",
         html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ได้รับการยืนยันพิมพ์ฉลากแล้ว</p>
                         <p class="mt-2">🖨️ <b>ผู้พิมพ์:</b> ${freshOrder.printed_by || "ไม่ระบุ"}</p>
-                        <p class="mt-2 text-orange-500 font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
+                        <p class="mt-2 text-[#FF6A13] font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
 
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันพิมพ์ฉลากแล้ว?",
       text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} เสร็จแล้วหรือไม่?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#3b82f6",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#00AEC7",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "✓ ยืนยันพิมพ์แล้ว",
       cancelButtonText: "ยกเลิก",
     });
@@ -1310,14 +1363,14 @@ export default function DashboardPage() {
               : o,
           ),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: 'อัปเดตสถานะเป็น "พิมพ์แล้ว"',
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "เปลี่ยนสถานะไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1345,10 +1398,12 @@ export default function DashboardPage() {
     ]);
 
     if (fetchError || !freshOrder || !session) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "โหลดข้อมูลไม่สำเร็จ",
         text: "กรุณาลองใหม่",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -1358,28 +1413,28 @@ export default function DashboardPage() {
       freshOrder.printed_by_user_id &&
       freshOrder.printed_by_user_id !== session.user.id
     ) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์ยกเลิก",
         html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกยืนยันพิมพ์โดย <b>${freshOrder.printed_by || "ไม่ระบุ"}</b></p>
-                        <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
+                        <p class="mt-2 text-[#C8102E] font-medium">เฉพาะผู้ที่พิมพ์เท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
 
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยกเลิกการพิมพ์?",
       text: 'คุณต้องการยกเลิกสถานะ "พิมพ์ฉลากแล้ว" ใช่หรือไม่?',
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ใช่, ยกเลิกการพิมพ์",
       cancelButtonText: "ปิด",
     });
@@ -1410,14 +1465,14 @@ export default function DashboardPage() {
               : o,
           ),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ยกเลิกการพิมพ์สำเร็จ",
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "เปลี่ยนสถานะไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1428,10 +1483,12 @@ export default function DashboardPage() {
 
   const unverifyOrder = async (order: OrderInterface) => {
     if (!isAdmin) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์",
         text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -1439,27 +1496,27 @@ export default function DashboardPage() {
       order.verified_by_user_id &&
       order.verified_by_user_id !== currentUserId
     ) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์ยกเลิก",
         html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกตรวจสอบโดย <b>${order.verified_by}</b> แล้ว</p>
-                        <p class="mt-2 text-red-500 font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
+                        <p class="mt-2 text-[#C8102E] font-medium">เฉพาะผู้ที่ตรวจสอบเท่านั้นที่สามารถยกเลิกได้</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยกเลิกการตรวจสอบ?",
       text: "คุณต้องการยกเลิกการตรวจสอบคำสั่งพิมพ์ฉลากนี้หรือไม่?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ใช่, ยกเลิก",
       cancelButtonText: "ปิด",
     });
@@ -1487,17 +1544,19 @@ export default function DashboardPage() {
               : o,
           ),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ยกเลิกสำเร็จ!",
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ยกเลิกไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
+          confirmButtonText: "รับทราบ",
+          confirmButtonColor: "#0057B8",
         });
       }
     }
@@ -1506,30 +1565,30 @@ export default function DashboardPage() {
   const handleCancelOrder = async (order: OrderInterface) => {
     // ✅ ตรวจสอบสิทธิ์การยกเลิก
     if (!isAdmin && order.created_by_user_id !== currentUserId) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์ยกเลิก",
         html: `
                     <div class="text-sm text-gray-600 space-y-1 text-left">
                         <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
-                        <p class="mt-2 text-red-500 font-medium">คุณสามารถยกเลิกได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
+                        <p class="mt-2 text-[#C8102E] font-medium">คุณสามารถยกเลิกได้เฉพาะคำสั่งของตนเองเท่านั้น</p>
                     </div>
                 `,
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
 
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการยกเลิกสั่งพิมพ์?",
       text: "กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้",
       icon: "warning",
       input: "text",
       inputPlaceholder: "ใส่เหตุผลการยกเลิกที่นี่...",
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ยืนยันยกเลิก",
       cancelButtonText: "ไม่ยกเลิก",
       inputValidator: (value) => {
@@ -1557,14 +1616,15 @@ export default function DashboardPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === order.id ? { ...o, ...updateData } : o)),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ยกเลิกสำเร็จ",
           text: "รายการถูกยกเลิกและบันทึกเหตุผลเรียบร้อยแล้ว",
           timer: 1500,
+          showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ยกเลิกไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1574,13 +1634,13 @@ export default function DashboardPage() {
   };
 
   const markNoFile = async (order: OrderInterface) => {
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "แจ้งเตือนไม่มีไฟล์?",
       text: 'ระบบจะแจ้งสถานะว่า "ไม่มีไฟล์" ให้ทราบ (คำสั่งนี้จะไม่ถูกยกเลิก)',
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#eab308",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#FF6A13",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ยืนยัน",
       cancelButtonText: "ยกเลิก",
     });
@@ -1594,14 +1654,14 @@ export default function DashboardPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === order.id ? { ...o, is_no_file: true } : o)),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ทำเครื่องหมายสำเร็จ",
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ดำเนินการไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1611,13 +1671,13 @@ export default function DashboardPage() {
   };
 
   const unmarkNoFile = async (order: OrderInterface) => {
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยกเลิกการแจ้งเตือนไม่มีไฟล์?",
       text: 'สถานะ "ไม่มีไฟล์" จะถูกยกเลิก และคำสั่งจะกลับสู่ปกติ',
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#00B398",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ใช่, ยกเลิก",
       cancelButtonText: "ปิด",
     });
@@ -1634,14 +1694,14 @@ export default function DashboardPage() {
             o.id === order.id ? { ...o, is_no_file: false } : o,
           ),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ยกเลิกการแจ้งเตือนสำเร็จ",
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ดำเนินการไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1651,13 +1711,13 @@ export default function DashboardPage() {
   };
 
   const restoreOrder = async (order: OrderInterface) => {
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "กู้คืนคำสั่งผลิต?",
       text: "รายการนี้จะถูกดึงกลับมาเป็นรายการใหม่เพื่อให้ดำเนินการต่อได้",
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#10b981",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#00B398",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ยืนยันกู้คืน",
       cancelButtonText: "ยกเลิก",
     });
@@ -1681,14 +1741,15 @@ export default function DashboardPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === order.id ? { ...o, ...updateData } : o)),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "กู้คืนสำเร็จ",
           text: "รายการกลับมาเป็นปกติแล้ว",
           timer: 1500,
+          showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "กู้คืนไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1699,13 +1760,13 @@ export default function DashboardPage() {
 
   const deleteImage = async (order: OrderInterface) => {
     if (!isAdmin || !order.image_url) return;
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการลบรูปภาพ?",
       text: "รูปภาพนี้จะถูกลบออกจากระบบเป็นการถาวร",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ใช่, ลบเลย!",
       cancelButtonText: "ยกเลิก",
     });
@@ -1737,14 +1798,14 @@ export default function DashboardPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === order.id ? { ...o, image_url: null } : o)),
         );
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ลบรูปภาพสำเร็จ!",
           timer: 1500,
           showConfirmButton: false,
         });
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ลบรูปภาพไม่สำเร็จ",
           text: "กรุณาลองใหม่อีกครั้ง",
@@ -1903,7 +1964,7 @@ export default function DashboardPage() {
   }, [focusedOrderId, visibleCount, searchTerm]);
 
   useEffect(() => {
-    // รีเฟรชทุก 2 นาที
+    // รีเฟรชทุก 4 นาที
     const refreshInterval = setInterval(() => {
       loadOrders();
       setLastRefreshed(new Date());
@@ -1935,27 +1996,27 @@ export default function DashboardPage() {
   if (isLoading) return <DashboardSkeleton />;
 
   return (
-    <div className="text-gray-800">
+    <div className="text-[#101820]">
       {/* Header Block */}
-      <div className="bg-gradient-to-br from-[#0f1e3d] via-[#152a54] to-[#1e3a8a] rounded-3xl shadow-xl p-6 md:p-8 mb-8 border border-blue-900/10 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#00263A] via-[#003B56] to-[#0057B8] rounded-3xl shadow-lg p-5 md:p-6 mb-7 border border-[#00AEC7]/15 relative overflow-hidden">
         {/* Background decorative glowing circles */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
-        <div className="absolute bottom-0 left-0 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -ml-12 -mb-12" />
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[#00AEC7]/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 bg-[#00AEC7]/8 rounded-full blur-3xl pointer-events-none -ml-12 -mb-12" />
 
-        <div className="relative flex flex-col gap-6">
+        <div className="relative flex flex-col gap-4">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             {/* Title */}
             <div className="min-w-0">
               <div className="flex items-center gap-3 mb-1.5">
-                <div className="w-2 h-7 bg-gradient-to-b from-blue-400 to-indigo-500 rounded-full" />
+                <div className="w-2 h-7 bg-gradient-to-b from-[#00AEC7] to-[#0057B8] rounded-full" />
                 <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
                   Dashboard
-                  <span className="text-blue-200/80 ml-3 font-medium text-lg md:text-xl">
+                  <span className="text-[#BFEFF5] ml-3 font-medium text-lg md:text-xl">
                     คำสั่งพิมพ์ชิ้นงาน
                   </span>
                 </h1>
               </div>
-              <p className="text-[12.5px] text-slate-300/90 font-bold uppercase tracking-wider ml-5">
+              <p className="text-[12.5px] text-white/80 font-bold uppercase tracking-wider ml-5">
                 Label & Bag Stamp Production Control Center
               </p>
             </div>
@@ -1963,33 +2024,33 @@ export default function DashboardPage() {
             <div className="w-full min-w-0 space-y-3 md:max-w-[440px]">
               {/* Search */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="ค้นหาเลขลอต หรือชื่อสินค้า..."
-                  className="w-full pl-9 pr-4 py-3 bg-white/10 hover:bg-white/15 focus:bg-white border border-white/15 focus:border-white rounded-2xl text-white focus:text-[#0f1e3d] placeholder-blue-200/50 focus:placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold transition-all duration-300 shadow-inner"
+                  className="w-full pl-9 pr-4 py-3 bg-white/10 hover:bg-white/15 focus:bg-white border border-white/15 focus:border-[#00AEC7] rounded-2xl text-white focus:text-[#101820] placeholder-white/65 focus:placeholder-[#8A9498] focus:outline-none focus:ring-4 focus:ring-[#00AEC7]/15 text-sm font-semibold transition-all duration-300 shadow-inner"
                 />
               </div>
               {searchTerm && (
-                <div className="mt-2 text-xs text-blue-200 flex justify-between items-center px-1">
+                <div className="mt-2 text-xs text-[#BFEFF5] flex justify-between items-center px-1">
                   <span className="font-medium">
                     พบ {filteredOrders.length} รายการ
                   </span>
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
-                    className="text-rose-300 hover:text-rose-400 font-bold underline transition-colors"
+                    className="text-[#BFEFF5] hover:text-white font-bold underline transition-colors"
                   >
                     ล้างการค้นหา
                   </button>
                 </div>
               )}
               {/* Auto-refresh status bar */}
-              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-white/10 pt-3">
-                <span className="text-[11px] text-slate-300/80 font-medium flex items-center gap-1.5">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-white/10 pt-2.5">
+                <span className="text-[11px] text-white/75 font-medium flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00B398] animate-pulse" />
                   รีเฟรชล่าสุด:{" "}
                   <span className="text-white font-bold">
                     {formatLastRefreshed(lastRefreshed)}
@@ -2000,11 +2061,11 @@ export default function DashboardPage() {
                   {/* Progress bar */}
                   <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full transition-all duration-1000"
+                      className="h-full bg-gradient-to-r from-[#00AEC7] to-[#0057B8] rounded-full transition-all duration-1000"
                       style={{ width: `${(countdown / 240) * 100}%` }}
                     />
                   </div>
-                  <span className="text-[11px] font-bold text-blue-200/90 tabular-nums whitespace-nowrap">
+                  <span className="text-[11px] font-bold text-[#BFEFF5] tabular-nums whitespace-nowrap">
                     รีเฟรชในอีก {Math.floor(countdown / 60)}:
                     {String(countdown % 60).padStart(2, "0")}
                   </span>
@@ -2027,7 +2088,7 @@ export default function DashboardPage() {
           </div>
 
           {isAdmin && (
-            <div className="w-full rounded-2xl border border-amber-300/40 bg-slate-950/20 text-left shadow-inner">
+            <div className="w-full rounded-2xl border border-white/10 bg-[#00263A]/20 text-left">
               <button
                 type="button"
                 onClick={() =>
@@ -2036,23 +2097,23 @@ export default function DashboardPage() {
                 className="flex w-full flex-wrap items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-white/5 md:px-4"
                 aria-expanded={isPendingFilePanelOpen}
               >
-                <div className="flex items-center gap-2 text-amber-100">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/20">
+                <div className="flex items-center gap-2 text-[#FFF0E7]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FF6A13]/20">
                     <FileQuestion className="h-4 w-4" />
                   </span>
                   <div>
                     <h2 className="text-sm font-black">คำสั่งรอไฟล์</h2>
-                    <p className="text-[10px] text-amber-100/65">
+                    <p className="text-[10px] text-[#FFF0E7]/65">
                       กดเพื่อดูรายละเอียดและไปยังคำสั่ง
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-amber-400 px-3 py-1 text-base font-black text-amber-950">
+                  <span className="rounded-full bg-[#FF6A13] px-3 py-1 text-base font-black text-white">
                     {pendingFileOrders.length} คำสั่ง
                   </span>
                   <ChevronDown
-                    className={`h-4 w-4 text-amber-200 transition-transform ${isPendingFilePanelOpen ? "rotate-180" : ""}`}
+                    className={`h-4 w-4 text-[#FFF0E7] transition-transform ${isPendingFilePanelOpen ? "rotate-180" : ""}`}
                   />
                 </div>
               </button>
@@ -2065,25 +2126,25 @@ export default function DashboardPage() {
                           key={order.id}
                           type="button"
                           onClick={() => focusOrder(order)}
-                          className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-amber-50 transition-colors hover:border-amber-300/60 hover:bg-white/10"
+                          className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-[#FFF0E7] transition-colors hover:border-[#FF6A13]/60 hover:bg-white/10"
                           title={`ไปยังคำสั่งล็อต ${order.lot_number}`}
                         >
                           <div className="flex min-w-0 items-start justify-between gap-3">
                             <span className="shrink-0 text-xs font-black">
                               ล็อต {order.lot_number}
                             </span>
-                            <span className="min-w-0 truncate text-right text-[11px] font-semibold text-amber-100/90">
+                            <span className="min-w-0 truncate text-right text-[11px] font-semibold text-[#FFF0E7]/90">
                               {order.product_name}
                             </span>
                           </div>
-                          <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-amber-100/65">
+                          <div className="mt-2 grid grid-cols-1 gap-1 text-[10px] text-[#FFF0E7]/65">
                             <span className="truncate">
                               ผู้สั่ง: {order.created_by || "ไม่ระบุ"}
                             </span>
                             <span>
                               {formatThaiDateTimeFromISO(order.created_at)}
                             </span>
-                            <span className="font-bold text-amber-200">
+                            <span className="font-bold text-[#FFF0E7]">
                               {formatWaitingDuration(order.created_at)}
                             </span>
                           </div>
@@ -2091,7 +2152,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-emerald-200">
+                    <p className="text-xs text-[#BFF2E9]">
                       ไม่มีคำสั่งที่รอไฟล์
                     </p>
                   )}
@@ -2113,27 +2174,27 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredOrders.slice(0, visibleCount).map((order, index) => {
+          {filteredOrders.slice(0, visibleCount).map((order) => {
             // Status classes
-            let borderLeftCls = "border-l-4 border-l-slate-300";
+            let borderLeftCls = "border-l-4 border-l-[#0057B8]";
             let headerBgCls =
-              "bg-slate-50/50 border-b border-slate-100 px-5 py-4.5 flex flex-col gap-3.5";
+              "bg-[#F8FBFD] border-b border-[#D9E1E2] px-5 py-4.5 flex flex-col gap-3.5";
             if (order.is_cancelled) {
-              borderLeftCls = "border-l-4 border-l-rose-500";
+              borderLeftCls = "border-l-4 border-l-[#C8102E]";
               headerBgCls =
-                "bg-rose-50/60 border-b border-rose-100/80 px-5 py-4.5 flex flex-col gap-3.5";
+                "bg-[#FCEAEC] border-b border-[#C8102E]/15 px-5 py-4.5 flex flex-col gap-3.5";
             } else if (order.is_verified) {
-              borderLeftCls = "border-l-4 border-l-emerald-500";
+              borderLeftCls = "border-l-4 border-l-[#00B398]";
               headerBgCls =
-                "bg-emerald-50/30 border-b border-emerald-100/50 px-5 py-4.5 flex flex-col gap-3.5";
+                "bg-[#E6F8F4] border-b border-[#00B398]/15 px-5 py-4.5 flex flex-col gap-3.5";
             } else if (order.is_no_file) {
-              borderLeftCls = "border-l-4 border-l-amber-500";
+              borderLeftCls = "border-l-4 border-l-[#FF6A13]";
               headerBgCls =
-                "bg-amber-50/30 border-b border-amber-100/50 px-5 py-4.5 flex flex-col gap-3.5";
+                "bg-[#FFF0E7] border-b border-[#FF6A13]/15 px-5 py-4.5 flex flex-col gap-3.5";
             } else if (order.is_printed) {
-              borderLeftCls = "border-l-4 border-l-blue-500";
+              borderLeftCls = "border-l-4 border-l-[#00AEC7]";
               headerBgCls =
-                "bg-blue-50/30 border-b border-blue-100/50 px-5 py-4.5 flex flex-col gap-3.5";
+                "bg-[#E5F8FB] border-b border-[#00AEC7]/15 px-5 py-4.5 flex flex-col gap-3.5";
             }
 
             return (
@@ -2143,7 +2204,7 @@ export default function DashboardPage() {
                 className={`
                                 bg-white border border-slate-200/85 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 rounded-2xl overflow-hidden flex flex-col group relative ${borderLeftCls}
                                 ${order.is_cancelled ? "opacity-85" : ""}
-                                ${focusedOrderId === order.id ? "ring-4 ring-amber-300 ring-offset-2 shadow-xl" : ""}
+                                ${focusedOrderId === order.id ? "ring-4 ring-[#F1C400] ring-offset-2 shadow-xl" : ""}
                             `}
               >
                 {isAdmin &&
@@ -2154,7 +2215,7 @@ export default function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => setStockDetailOrder(order)}
-                      className="relative z-20 w-full cursor-pointer rounded-none border-b border-emerald-300/60 bg-gradient-to-br from-emerald-600 to-emerald-400 px-3 py-1.5 text-left text-white shadow-md transition-colors hover:from-emerald-700 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
+                      className="relative z-20 w-full cursor-pointer rounded-none border-b border-[#008C78]/35 bg-[#00B398] px-3 py-1.5 text-left text-[#003B32] shadow-sm transition-colors hover:bg-[#00A58D] focus:outline-none focus:ring-2 focus:ring-[#00B398]/30 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
                       title={`ตัดสต็อคโดย ${order.reconciled_by || "ไม่ระบุชื่อ"} เมื่อ ${formatThaiDateTimeFromISO(order.reconciled_at)}`}
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -2169,12 +2230,12 @@ export default function DashboardPage() {
                   <div className="w-full">
                     <div className="flex flex-col gap-1.5 mb-2.5">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 shrink-0 tracking-wider">
+                        <span className="font-mono text-[10px] font-black text-[#0057B8] bg-[#EAF3FC] px-2 py-0.5 rounded-lg border border-[#0057B8]/15 shrink-0 tracking-wider">
                           {order.product_id}
                         </span>
                         {order.order_type && (
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? "bg-rose-50 text-rose-700 border-rose-200" : order.order_type === "พิมพ์ฉลาก" ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-indigo-50 text-indigo-700 border-indigo-200"}`}
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shrink-0 shadow-sm border ${order.is_cancelled ? "bg-[#FCEAEC] text-[#9B0B23] border-[#C8102E]/20" : order.order_type === "พิมพ์ฉลาก" ? "bg-[#E5F8FB] text-[#007C8F] border-[#00AEC7]/25" : "bg-[#EAF3FC] text-[#0057B8] border-[#0057B8]/20"}`}
                           >
                             {order.order_type === "พิมพ์ฉลาก"
                               ? "🖨️ พิมพ์ฉลาก"
@@ -2182,14 +2243,14 @@ export default function DashboardPage() {
                           </span>
                         )}
                         {order.is_cancelled && (
-                          <span className="bg-rose-600 text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-sm">
+                          <span className="bg-[#C8102E] text-white text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0 shadow-sm">
                             ยกเลิกแล้ว
                           </span>
                         )}
                         {order.updated_at &&
                           !order.is_verified &&
                           !order.is_cancelled && (
-                            <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
+                            <span className="bg-[#F1C400] text-[#101820] text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
                               แก้ไขแล้ว
                             </span>
                           )}
@@ -2205,22 +2266,22 @@ export default function DashboardPage() {
                           return (
                             isPending &&
                             isRecent && (
-                              <span className="bg-rose-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
+                              <span className="bg-[#0057B8] text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
                                 New
                               </span>
                             )
                           );
                         })()}
                       </div>
-                      <h3 className="text-[16px] md:text-[17px] font-black text-[#0f1e3d] leading-snug break-words">
+                      <h3 className="text-[16px] md:text-[17px] font-black text-[#00263A] leading-snug break-words">
                         {order.product_name}
                       </h3>
                     </div>
-                    <h4 className="text-[14px] font-black text-indigo-950 tracking-tight flex items-center gap-2.5 mt-2.5">
-                      <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider bg-indigo-100/50 px-2 py-0.5 rounded-lg border border-indigo-200/60 shrink-0">
+                    <h4 className="text-[14px] font-black text-[#00263A] tracking-tight flex items-center gap-2.5 mt-2.5">
+                      <span className="text-[10px] font-bold text-[#0057B8] uppercase tracking-wider bg-[#EAF3FC] px-2 py-0.5 rounded-lg border border-[#0057B8]/15 shrink-0">
                         LOT NO.
                       </span>
-                      <span className="text-indigo-950 font-black text-[16px] tracking-wide">
+                      <span className="text-[#00263A] font-black text-[16px] tracking-wide">
                         {order.lot_number}
                       </span>
                       {isAdmin && (
@@ -2231,13 +2292,13 @@ export default function DashboardPage() {
                             setCopiedId(order.id);
                             setTimeout(() => setCopiedId(null), 2000);
                           }}
-                          className="ml-1 w-6 h-6 flex items-center justify-center rounded-md text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all duration-200"
+                          className="ml-1 w-6 h-6 flex items-center justify-center rounded-md text-[#0057B8]/60 hover:text-[#0057B8] hover:bg-[#EAF3FC] border border-transparent hover:border-[#0057B8]/15 transition-all duration-200"
                           title="คัดลอกเลขลอต"
                         >
                           {copiedId === order.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            <Check className="w-4 h-4 text-[#00B398]" />
                           ) : (
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-4 h-4" />
                           )}
                         </button>
                       )}
@@ -2253,28 +2314,28 @@ export default function DashboardPage() {
                                 <button
                                   type="button"
                                   onClick={() => markPrinted(order)}
-                                  className="w-8 h-8 rounded-lg bg-transparent text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-100/80 flex items-center justify-center transition-all duration-200"
+                                  className="w-8 h-8 rounded-lg bg-transparent text-[#00AEC7] hover:bg-[#E5F8FB] border border-transparent hover:border-[#00AEC7]/25 flex items-center justify-center transition-all duration-200"
                                   title="พิมพ์แล้ว"
                                 >
-                                  <Printer className="w-3.5 h-3.5" />
+                                  <Printer className="w-4 h-4" />
                                 </button>
                                 {!order.is_no_file ? (
                                   <button
                                     type="button"
                                     onClick={() => markNoFile(order)}
-                                    className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200"
+                                    className="w-8 h-8 rounded-lg bg-transparent text-[#FF6A13] hover:bg-[#FFF0E7] border border-transparent hover:border-[#FF6A13]/25 flex items-center justify-center transition-all duration-200"
                                     title="ไม่มีไฟล์"
                                   >
-                                    <FileQuestion className="w-3.5 h-3.5" />
+                                    <FileQuestion className="w-4 h-4" />
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={() => unmarkNoFile(order)}
-                                    className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200/60 flex items-center justify-center transition-all duration-200 shadow-sm"
+                                    className="w-8 h-8 rounded-lg bg-[#FFF0E7] text-[#FF6A13] hover:bg-[#FF6A13]/15 border border-[#FF6A13]/25 flex items-center justify-center transition-all duration-200 shadow-sm"
                                     title="ยกเลิกการแจ้งเตือนไม่มีไฟล์"
                                   >
-                                    <Undo className="w-3.5 h-3.5" />
+                                    <Undo className="w-4 h-4" />
                                   </button>
                                 )}
                               </>
@@ -2285,26 +2346,26 @@ export default function DashboardPage() {
                                 className="w-8 h-8 rounded-lg bg-transparent text-slate-600 hover:bg-slate-200/60 border border-transparent hover:border-slate-300/50 flex items-center justify-center transition-all duration-200"
                                 title="ยกเลิกการพิมพ์"
                               >
-                                <Undo className="w-3.5 h-3.5" />
+                                <Undo className="w-4 h-4" />
                               </button>
                             )}
                             <button
                               type="button"
                               onClick={() => verifyOrder(order)}
-                              className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200"
+                              className="w-8 h-8 rounded-lg bg-transparent text-[#00B398] hover:bg-[#E6F8F4] border border-transparent hover:border-[#00B398]/25 flex items-center justify-center transition-all duration-200"
                               title="ตรวจสอบเสร็จและตัดงานจบ"
                             >
-                              <Check className="w-3.5 h-3.5" />
+                              <Check className="w-4 h-4" />
                             </button>
                           </>
                         ) : (
                           <button
                             type="button"
                             onClick={() => unverifyOrder(order)}
-                            className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/85 flex items-center justify-center transition-all duration-200"
+                            className="w-8 h-8 rounded-lg bg-transparent text-[#A88700] hover:bg-[#FFF8D6] border border-transparent hover:border-[#F1C400]/35 flex items-center justify-center transition-all duration-200"
                             title="ยกเลิกการตรวจสอบ"
                           >
-                            <Undo className="w-3.5 h-3.5" />
+                            <Undo className="w-4 h-4" />
                           </button>
                         )}
                       </>
@@ -2316,10 +2377,10 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => startEdit(order)}
-                          className="w-8 h-8 rounded-lg bg-transparent text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100/80 flex items-center justify-center transition-all duration-200"
+                          className="w-8 h-8 rounded-lg bg-transparent text-[#0057B8] hover:bg-[#EAF3FC] border border-transparent hover:border-[#0057B8]/20 flex items-center justify-center transition-all duration-200"
                           title="แก้ไข"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                       )}
                     {isAdmin &&
@@ -2331,19 +2392,19 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => undoReconcile(order)}
-                          className="w-8 h-8 rounded-lg bg-transparent text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200"
+                          className="w-8 h-8 rounded-lg bg-transparent text-[#C8102E] hover:bg-[#FCEAEC] border border-transparent hover:border-[#C8102E]/20 flex items-center justify-center transition-all duration-200"
                           title="ยกเลิกการตัดสต็อคกระดาษ"
                         >
-                          <Undo className="w-3.5 h-3.5" />
+                          <Undo className="w-4 h-4" />
                         </button>
                       ) : (
                         <button
                           type="button"
                           onClick={() => startReconcile(order)}
-                          className="w-8 h-8 rounded-lg bg-transparent text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-100/80 flex items-center justify-center transition-all duration-200"
+                          className="w-8 h-8 rounded-lg bg-transparent text-[#A88700] hover:bg-[#FFF8D6] border border-transparent hover:border-[#F1C400]/35 flex items-center justify-center transition-all duration-200"
                           title="บันทึกผลผลิต / ตัดสต็อคกระดาษ"
                         >
-                          <Layers className="w-3.5 h-3.5" />
+                          <Layers className="w-4 h-4" />
                         </button>
                       ))}
 
@@ -2354,30 +2415,30 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => handleCancelOrder(order)}
-                          className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200"
+                          className="w-8 h-8 rounded-lg bg-transparent text-[#C8102E] hover:bg-[#FCEAEC] border border-transparent hover:border-[#C8102E]/20 flex items-center justify-center transition-all duration-200"
                           title="ยกเลิกการสั่งพิมพ์"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       )}
                     {isAdmin && order.is_cancelled && (
                       <button
                         type="button"
                         onClick={() => restoreOrder(order)}
-                        className="w-8 h-8 rounded-lg bg-transparent text-emerald-600 hover:bg-emerald-50 border border-transparent hover:border-emerald-100/80 flex items-center justify-center transition-all duration-200"
+                        className="w-8 h-8 rounded-lg bg-transparent text-[#00B398] hover:bg-[#E6F8F4] border border-transparent hover:border-[#00B398]/25 flex items-center justify-center transition-all duration-200"
                         title="กู้คืนคำสั่งพิมพ์"
                       >
-                        <Undo className="w-3.5 h-3.5" />
+                        <Undo className="w-4 h-4" />
                       </button>
                     )}
                     {isAdmin && (
                       <button
                         type="button"
                         onClick={() => deleteOrder(order.id)}
-                        className="w-8 h-8 rounded-lg bg-transparent text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100/80 flex items-center justify-center transition-all duration-200"
+                        className="w-8 h-8 rounded-lg bg-transparent text-[#C8102E] hover:bg-[#FCEAEC] border border-transparent hover:border-[#C8102E]/20 flex items-center justify-center transition-all duration-200"
                         title="ลบ"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -2385,7 +2446,7 @@ export default function DashboardPage() {
 
                 <div className="p-5 flex-1 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       เวลาสั่ง (Order Time):
                     </span>
                     <span className="font-bold text-slate-700 sm:text-right">
@@ -2393,7 +2454,7 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       ผู้สั่ง (Created By):
                     </span>
                     <span className="font-bold text-slate-700 flex items-center gap-1.5 flex-wrap sm:justify-end">
@@ -2410,7 +2471,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="my-3 border-t border-slate-100"></div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       วันที่ผลิต (Mfg Date):
                     </span>
                     <span className="font-bold text-slate-700 sm:text-right">
@@ -2418,27 +2479,27 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       วันหมดอายุ (Exp Date):
                     </span>
-                    <span className="font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-100/40 sm:text-right shrink-0">
+                    <span className="font-bold text-[#C8102E] bg-[#FCEAEC] px-2.5 py-0.5 rounded-lg border border-[#C8102E]/15 sm:text-right shrink-0">
                       {formatToThaiDate(order.expiry_date)}
                     </span>
                   </div>
                   <div className="my-3 border-t border-slate-100"></div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       อายุผลิตภัณฑ์ (Shelf Life):
                     </span>
-                    <span className="font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100/40 shrink-0">
+                    <span className="font-bold text-[#0057B8] bg-[#EAF3FC] px-2.5 py-0.5 rounded-lg border border-[#0057B8]/15 shrink-0">
                       {order.product_exp} เดือน
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px] tracking-wider shrink-0">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       จำนวน (Quantity):
                     </span>
-                    <span className="font-black text-xl text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100/60 shadow-sm shrink-0">
+                    <span className="font-black text-xl text-[#00263A] bg-[#E5F8FB] px-3 py-1 rounded-xl border border-[#00AEC7]/20 shadow-sm shrink-0">
                       {order.quantity}
                     </span>
                   </div>
@@ -2450,11 +2511,11 @@ export default function DashboardPage() {
                   />
 
                   {order.notes && order.notes !== "-" && (
-                    <div className="mt-3 bg-amber-50/50 p-3 rounded-xl border border-amber-200/50 text-[12.5px] text-amber-800 shadow-inner">
-                      <span className="font-bold text-amber-900 block mb-1">
+                    <div className="mt-3 bg-[#FFF8D6] p-3 rounded-xl border border-[#F1C400]/30 text-[12.5px] text-[#6E5B00] shadow-inner">
+                      <span className="font-bold text-[#5A4A00] block mb-1">
                         📝 หมายเหตุ:
                       </span>
-                      <span className="text-amber-800 font-medium">
+                      <span className="text-[#6E5B00] font-medium">
                         {order.notes}
                       </span>
                     </div>
@@ -2470,7 +2531,7 @@ export default function DashboardPage() {
                           <button
                             type="button"
                             onClick={() => deleteImage(order)}
-                            className="text-[10px] font-bold bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-2 py-1 rounded-lg border border-rose-200/60 transition-all duration-300 flex items-center gap-1 shadow-sm"
+                            className="text-[10px] font-bold bg-[#FCEAEC] text-[#C8102E] hover:bg-[#C8102E] hover:text-white px-2 py-1 rounded-lg border border-[#C8102E]/20 transition-all duration-300 flex items-center gap-1 shadow-sm"
                           >
                             <Trash2 className="w-3 h-3" /> ลบรูป
                           </button>
@@ -2492,17 +2553,17 @@ export default function DashboardPage() {
 
                 {/* ✅ Card Footer */}
                 <div
-                  className={`p-4 text-center tracking-wide font-bold 
+                  className={`px-4 py-3 text-center tracking-wide font-bold
                                     ${
                                       order.is_cancelled
-                                        ? "bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-inner animate-pulse"
+                                        ? "bg-[#C8102E] text-white shadow-inner"
                                         : order.is_verified
-                                          ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-inner"
+                                          ? "bg-[#00B398] text-[#003B32] shadow-inner"
                                           : order.is_no_file
-                                            ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-inner"
+                                            ? "bg-[#FF6A13] text-[#4A1E00] shadow-inner"
                                             : order.is_printed
-                                              ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-inner"
-                                              : "bg-slate-100 text-slate-400 border-t border-slate-200/80"
+                                              ? "bg-[#00AEC7] text-[#003B46] shadow-inner"
+                                              : "bg-[#F0F3F4] text-[#5F6B70] border-t border-[#D9E1E2]"
                                     }`}
                 >
                   {order.is_cancelled ? (
@@ -2511,7 +2572,7 @@ export default function DashboardPage() {
                       คำสั่งพิมพ์นี้ถูกยกเลิกแล้ว
                     </span>
                   ) : order.is_verified ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                    <div className="flex flex-col items-center justify-center gap-1">
                       <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-sm text-center">
                         <span className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 shrink-0" />{" "}
@@ -2530,7 +2591,7 @@ export default function DashboardPage() {
                           <span>{order.verified_by || "-"}</span>
                         )}
                       </div>
-                      <span className="text-[11px] font-medium text-emerald-100 bg-emerald-800/40 px-3 py-1 rounded-full shadow-inner">
+                      <span className="text-[11px] font-semibold text-current/80 bg-white/35 px-3 py-1 rounded-full border border-current/10">
                         วันที่และเวลาตรวจสอบ:{" "}
                         {formatThaiDateTimeFromISO(order.verified_at)}
                       </span>
@@ -2541,14 +2602,14 @@ export default function DashboardPage() {
                       แจ้งเตือน: ไม่มีไฟล์ฉลากสินค้ารายการนี้
                     </span>
                   ) : order.is_printed ? (
-                    <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                    <div className="flex flex-col items-center justify-center gap-1">
                       <span className="flex items-center justify-center gap-2 text-sm tracking-wider">
                         <Printer className="w-4 h-4" /> พิมพ์ฉลากแล้ว
                         รอตัดชิ้นงาน
                       </span>
                       {order.printed_by && (
                         <div className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1">
-                          <span className="flex items-center gap-1 text-[11px] text-blue-100">
+                          <span className="flex items-center gap-1 text-[11px] text-current/80">
                             ชื่อผู้พิมพ์ชิ้นงาน:
                             {order.printed_by.includes("(") ? (
                               <>
@@ -2563,7 +2624,7 @@ export default function DashboardPage() {
                             )}
                           </span>
                           {order.printed_at && (
-                            <span className="text-[10px] text-blue-100 bg-blue-700/40 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] text-current/80 bg-white/35 px-2 py-0.5 rounded-full border border-current/10">
                               วันที่และเวลาพิมพ์:{" "}
                               {formatThaiDateTimeFromISO(order.printed_at)}
                             </span>
@@ -2593,7 +2654,7 @@ export default function DashboardPage() {
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+                className="w-2 h-2 rounded-full bg-[#00AEC7] animate-bounce"
                 style={{ animationDelay: `${i * 0.15}s` }}
               />
             ))}
@@ -2617,10 +2678,10 @@ export default function DashboardPage() {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md animate-slide-up relative overflow-hidden">
             <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                <span className="p-2 rounded-xl bg-[#EAF3FC] text-[#0057B8]">
                   <Edit2 className="w-5 h-5" />
                 </span>
-                <h2 className="text-lg font-black text-[#0f1e3d] tracking-tight">
+                <h2 className="text-lg font-black text-[#00263A] tracking-tight">
                   แก้ไขข้อมูลคำสั่งชิ้นงาน
                 </h2>
               </div>
@@ -2647,7 +2708,7 @@ export default function DashboardPage() {
                       lot_number: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
                 />
               </div>
 
@@ -2658,7 +2719,7 @@ export default function DashboardPage() {
                 </label>
                 <div className="flex gap-3">
                   <label
-                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "พิมพ์ฉลาก" ? "bg-[#0f1e3d] text-white border-[#0f1e3d] shadow-md shadow-blue-900/10" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
+                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "พิมพ์ฉลาก" ? "bg-[#0057B8] text-white border-[#0057B8] shadow-md shadow-[#0057B8]/15" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
                   >
                     <input
                       type="radio"
@@ -2676,7 +2737,7 @@ export default function DashboardPage() {
                     🖨️ พิมพ์ฉลาก
                   </label>
                   <label
-                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "ปั๊มถุง" ? "bg-indigo-950 text-white border-indigo-950 shadow-md shadow-indigo-900/10" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
+                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "ปั๊มถุง" ? "bg-[#00263A] text-white border-[#00263A] shadow-md shadow-[#00263A]/15" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
                   >
                     <input
                       type="radio"
@@ -2712,7 +2773,7 @@ export default function DashboardPage() {
                     });
                   }}
                   onWheel={(e) => e.currentTarget.blur()}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
                 />
               </div>
 
@@ -2734,10 +2795,10 @@ export default function DashboardPage() {
                       ),
                     });
                   }}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
                 />
                 {editingOrder.expiry_date && (
-                  <p className="mt-2 text-xs text-rose-500 font-bold flex items-center gap-1">
+                  <p className="mt-2 text-xs text-[#C8102E] font-bold flex items-center gap-1">
                     <span>💡</span> วันหมดอายุใหม่:{" "}
                     {editingOrder.expiry_date.split("-").reverse().join("/")}
                   </p>
@@ -2753,7 +2814,7 @@ export default function DashboardPage() {
                   onChange={(e) =>
                     setEditingOrder({ ...editingOrder, notes: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 resize-none shadow-sm"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 resize-none shadow-sm"
                   rows={3}
                 />
               </div>
@@ -2771,7 +2832,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={saveEdit}
                 disabled={isSaving}
-                className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] text-white py-3 rounded-xl font-bold text-xs shadow-md  disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
+                className="flex-1 bg-[#0057B8] hover:bg-[#004A9F] text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
               >
                 {isSaving ? "กำลังบันทึก..." : "💾 บันทึกการแก้ไข"}
               </button>
@@ -2794,14 +2855,14 @@ export default function DashboardPage() {
 
             return (
               <div className="space-y-4">
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
-                  <div className="text-[11px] font-bold text-emerald-700">
+                <div className="rounded-xl border border-[#00B398]/20 bg-[#E6F8F4] p-3">
+                  <div className="text-[11px] font-bold text-[#008C78]">
                     ตัดสต็อคโดย
                   </div>
-                  <div className="mt-0.5 break-words text-sm font-black text-emerald-900">
+                  <div className="mt-0.5 break-words text-sm font-black text-[#003B32]">
                     {stockDetailOrder.reconciled_by || "ไม่ระบุชื่อ"}
                   </div>
-                  <div className="mt-1 text-[11px] text-emerald-700">
+                  <div className="mt-1 text-[11px] text-[#008C78]">
                     {formatThaiDateTimeFromISO(stockDetailOrder.reconciled_at)}
                   </div>
                 </div>
@@ -2809,7 +2870,7 @@ export default function DashboardPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
                     <span className="text-slate-500">ประเภทกระดาษ</span>
-                    <span className="text-right font-bold text-blue-700">
+                    <span className="text-right font-bold text-[#0057B8]">
                       {stockDetailOrder.paper_type || "ไม่ระบุ"}
                     </span>
                   </div>
@@ -2821,19 +2882,19 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
                     <span className="text-slate-500">กระดาษดี</span>
-                    <span className="font-bold text-emerald-600">
+                    <span className="font-bold text-[#008C78]">
                       {goodA3.toLocaleString()} ใบ
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
                     <span className="text-slate-500">กระดาษเสีย</span>
-                    <span className="font-bold text-rose-600">
+                    <span className="font-bold text-[#C8102E]">
                       {wasteA3.toLocaleString()} ใบ
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-slate-500">ชิ้นเสีย</span>
-                    <span className="font-bold text-rose-600">
+                    <span className="font-bold text-[#C8102E]">
                       {(stockDetailOrder.waste_qty || 0).toLocaleString()} ชิ้น
                     </span>
                   </div>
@@ -2876,7 +2937,7 @@ export default function DashboardPage() {
                 <span className="text-slate-500">
                   ประเภทกระดาษ (ล็อคจาก Product)
                 </span>
-                <span className="font-bold text-blue-600">
+                <span className="font-bold text-[#0057B8]">
                   {reconcileCalculation.paperType}
                 </span>
               </div>
@@ -2904,7 +2965,7 @@ export default function DashboardPage() {
                     }))
                   }
                   onWheel={(e) => e.currentTarget.blur()}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10"
                   placeholder="0"
                 />
               </div>
@@ -2923,7 +2984,7 @@ export default function DashboardPage() {
                     }))
                   }
                   onWheel={(e) => e.currentTarget.blur()}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10"
                   placeholder="0"
                 />
               </div>
@@ -2932,12 +2993,13 @@ export default function DashboardPage() {
             {(parseInt(reconcileForm.wasteQty) || 0) > 0 && (
               <div>
                 <label
-                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteQtyRemark.trim() ? "text-red-600" : "text-slate-500"}`}
+                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${
+                    reconcileErrors.wasteQtyRemark
+                      ? "text-[#C8102E]"
+                      : "text-slate-500"
+                  }`}
                 >
-                  หมายเหตุชิ้นเสีย{" "}
-                  {!reconcileForm.wasteQtyRemark.trim() && (
-                    <span className="normal-case">*</span>
-                  )}
+                  หมายเหตุชิ้นเสีย <span className="text-[#C8102E]">*</span>
                 </label>
                 <input
                   type="text"
@@ -2953,15 +3015,15 @@ export default function DashboardPage() {
                     }));
                   }}
                   className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
-                    !reconcileForm.wasteQtyRemark.trim()
-                      ? "bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
-                      : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    reconcileErrors.wasteQtyRemark
+                      ? "bg-[#FCEAEC] border-2 border-[#C8102E]/45 focus:border-[#C8102E] focus:ring-2 focus:ring-[#C8102E]/15"
+                      : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10"
                   }`}
                   placeholder="เช่น สีเพี้ยน"
                 />
-                {!reconcileForm.wasteQtyRemark.trim() && (
-                  <p className="mt-1 text-[11px] text-red-500 font-medium">
-                    มีชิ้นเสีย — กรุณาระบุหมายเหตุ
+                {reconcileErrors.wasteQtyRemark && (
+                  <p className="mt-1 text-[11px] text-[#C8102E] font-medium">
+                    {reconcileErrors.wasteQtyRemark}
                   </p>
                 )}
               </div>
@@ -2969,13 +3031,15 @@ export default function DashboardPage() {
             {(parseInt(reconcileForm.wasteA3) || 0) > 0 && (
               <div>
                 <label
-                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${!reconcileForm.wasteA3Remark.trim() ? "text-red-600" : "text-slate-500"}`}
+                  className={`block text-[11px] font-bold uppercase tracking-wider mb-1.5 ${
+                    reconcileErrors.wasteA3Remark
+                      ? "text-[#C8102E]"
+                      : "text-slate-500"
+                  }`}
                 >
-                  หมายเหตุกระดาษเสีย{" "}
-                  {!reconcileForm.wasteA3Remark.trim() && (
-                    <span className="normal-case">*</span>
-                  )}
+                  หมายเหตุกระดาษเสีย <span className="text-[#C8102E]">*</span>
                 </label>
+
                 <input
                   type="text"
                   value={reconcileForm.wasteA3Remark}
@@ -2984,21 +3048,23 @@ export default function DashboardPage() {
                       ...prev,
                       wasteA3Remark: e.target.value,
                     }));
+
                     setReconcileErrors((prev) => ({
                       ...prev,
                       wasteA3Remark: undefined,
                     }));
                   }}
                   className={`w-full px-3 py-2.5 rounded-lg text-[13px] font-medium focus:outline-none transition-colors ${
-                    !reconcileForm.wasteA3Remark.trim()
-                      ? "bg-red-50 border-2 border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
-                      : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                    reconcileErrors.wasteA3Remark
+                      ? "bg-[#FCEAEC] border-2 border-[#C8102E]/45 focus:border-[#C8102E] focus:ring-2 focus:ring-[#C8102E]/15"
+                      : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10"
                   }`}
                   placeholder="เช่น กระดาษยับตอนป้อนเครื่อง"
                 />
-                {!reconcileForm.wasteA3Remark.trim() && (
-                  <p className="mt-1 text-[11px] text-red-500 font-medium">
-                    มีกระดาษเสีย — กรุณาระบุหมายเหตุ
+
+                {reconcileErrors.wasteA3Remark && (
+                  <p className="mt-1 text-[11px] font-medium text-[#C8102E]">
+                    {reconcileErrors.wasteA3Remark}
                   </p>
                 )}
               </div>
@@ -3018,7 +3084,7 @@ export default function DashboardPage() {
                   }))
                 }
                 onWheel={(e) => e.currentTarget.blur()}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10"
                 placeholder="0"
               />
               <p className="mt-1 text-[11px] text-slate-400">
@@ -3027,12 +3093,12 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
+            <div className="bg-[#E6F8F4] border border-[#00B398]/25 rounded-xl p-3 flex flex-col gap-1.5 text-[12.5px]">
               {/* ซ่อน ชิ้นเกิน ถ้าเป็น 0 */}
               {reconcileCalculation.excessQty > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-yellow-600">ชิ้นเกิน (Excess)</span>
-                  <span className="font-black text-yellow-600">
+                  <span className="text-[#A88700]">ชิ้นเกิน (Excess)</span>
+                  <span className="font-black text-[#A88700]">
                     {reconcileCalculation.excessQty} ชิ้น
                   </span>
                 </div>
@@ -3041,8 +3107,8 @@ export default function DashboardPage() {
               {/* ซ่อน ชิ้นเสีย ถ้าเป็น 0 */}
               {reconcileCalculation.wasteQty > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-rose-600">ชิ้นเสีย (Waste Qty)</span>
-                  <span className="font-black text-rose-600">
+                  <span className="text-[#C8102E]">ชิ้นเสีย (Waste Qty)</span>
+                  <span className="font-black text-[#C8102E]">
                     {reconcileCalculation.wasteQty} ชิ้น
                   </span>
                 </div>
@@ -3053,14 +3119,14 @@ export default function DashboardPage() {
                 reconcileCalculation.wasteQty > 0) &&
                 (reconcileCalculation.goodA3 > 0 ||
                   reconcileCalculation.wasteA3 > 0) && (
-                  <div className="border-t border-emerald-200 my-0.5"></div>
+                  <div className="border-t border-[#00B398]/20 my-0.5"></div>
                 )}
 
               {/* ซ่อน กระดาษดี ถ้าเป็น 0 (เผื่อไว้) */}
               {reconcileCalculation.goodA3 > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-emerald-700">กระดาษดี (A3)</span>
-                  <span className="font-black text-emerald-700">
+                  <span className="text-[#008C78]">กระดาษดี (A3)</span>
+                  <span className="font-black text-[#008C78]">
                     {reconcileCalculation.goodA3} ใบ
                   </span>
                 </div>
@@ -3069,21 +3135,21 @@ export default function DashboardPage() {
               {/* ซ่อน กระดาษเสีย ถ้าเป็น 0 */}
               {reconcileCalculation.wasteA3 > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-rose-600">กระดาษเสีย (A3)</span>
-                  <span className="font-black text-rose-600">
+                  <span className="text-[#C8102E]">กระดาษเสีย (A3)</span>
+                  <span className="font-black text-[#C8102E]">
                     {reconcileCalculation.wasteA3} ใบ
                   </span>
                 </div>
               )}
 
-              <div className="border-t border-emerald-200 my-0.5"></div>
+              <div className="border-t border-[#00B398]/20 my-0.5"></div>
 
               {/* สรุปยอดรวม (ให้แสดงเสมอเพื่อให้เห็นจำนวนตัดสต็อคที่ชัดเจน) */}
               <div className="flex justify-between">
-                <span className="text-emerald-700 font-bold">
+                <span className="text-[#008C78] font-bold">
                   รวมตัดสต็อคทั้งหมด
                 </span>
-                <span className="font-black text-emerald-700">
+                <span className="font-black text-[#008C78]">
                   {reconcileCalculation.sheetsNeeded} ใบ
                 </span>
               </div>
@@ -3101,7 +3167,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={submitReconcile}
                 disabled={isSubmittingReconcile}
-                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
+                className="flex-1 bg-[#0057B8] hover:bg-[#004A9F] text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
               >
                 {isSubmittingReconcile
                   ? "กำลังบันทึก..."
@@ -3120,7 +3186,7 @@ export default function DashboardPage() {
               .querySelector("main")
               ?.scrollTo({ top: 0, behavior: "smooth" })
           }
-          className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#0f1e3d] text-white shadow-xl ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-1 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-400/40"
+          className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[#00263A] text-white shadow-xl ring-1 ring-[#00AEC7]/20 transition-all duration-200 hover:-translate-y-1 hover:bg-[#0057B8] focus:outline-none focus:ring-4 focus:ring-[#00AEC7]/25"
           title="เลื่อนกลับด้านบน"
           aria-label="เลื่อนกลับด้านบน"
         >

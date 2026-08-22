@@ -15,6 +15,12 @@ import {
   ListChecks,
 } from "lucide-react";
 
+const AppSwal = Swal.mixin({
+  confirmButtonColor: "#0057B8",
+  cancelButtonColor: "#75787B",
+  confirmButtonText: "รับทราบ",
+});
+
 const PAPER_TYPES = [
   "สติกเกอร์ RONDA PG-88G (ไม่เหนียว)",
   "สติกเกอร์ MCL-AG-LP K-TAK (เหนียว)",
@@ -96,7 +102,7 @@ export default function FgcodeManagement() {
       }
       setFgcodes(allData);
     } catch {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ผิดพลาด",
         text: "ไม่สามารถดึงข้อมูลรหัสสินค้าได้",
@@ -121,7 +127,7 @@ export default function FgcodeManagement() {
     const cleanName = name.trim();
     const cleanExp = exp.trim();
     if (!cleanId || !cleanName || !cleanExp) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "warning",
         title: "ข้อมูลไม่ครบ",
         text: "กรุณากรอกข้อมูลให้ครบทุกช่อง",
@@ -129,18 +135,18 @@ export default function FgcodeManagement() {
       return;
     }
     if (parseInt(cleanExp) <= 0) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "warning",
-        title: "อายุผลิตภัณท์ไม่ถูกต้อง",
-        text: "อายุผลิตภัณท์ต้องมากกว่า 0",
+        title: "อายุผลิตภัณฑ์ไม่ถูกต้อง",
+        text: "อายุผลิตภัณฑ์ต้องมากกว่า 0",
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
     const thaiCharRegex = /[ก-๙]/;
     if (thaiCharRegex.test(cleanId)) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "warning",
         title: "รหัสสินค้าไม่ถูกต้อง",
         text: "รหัสสินค้าต้องเป็นภาษาอังกฤษ ตัวเลข หรือเครื่องหมายขีด (-) เท่านั้น",
@@ -150,12 +156,12 @@ export default function FgcodeManagement() {
       return;
     }
     if (!isAdminRole && thaiCharRegex.test(cleanName)) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "warning",
         title: "ไม่อนุญาตให้ใช้ภาษาไทย",
         text: "ชื่อสินค้าภาษาไทยไม่อนุญาตให้ใช้",
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       setShowModal(true);
       return;
@@ -177,7 +183,7 @@ export default function FgcodeManagement() {
         cleanId === currentEditing.id &&
         noAdminFieldChange
       ) {
-        await Swal.fire({
+        await AppSwal.fire({
           icon: "info",
           title: "ไม่มีการเปลี่ยนแปลง",
           text: "คุณยังไม่ได้แก้ไขข้อมูลใดๆ",
@@ -195,46 +201,26 @@ export default function FgcodeManagement() {
     setSaving(true);
     try {
       if (currentEditing) {
-        const idChanged = currentEditing.id !== cleanId;
-
-        if (idChanged) {
-          if (!isAdminRole) {
-            throw new Error(
-              "เฉพาะ Moderator และ Assistant Moderator เท่านั้นที่เปลี่ยนรหัสสินค้าได้",
-            );
-          }
-
-          const { data: affectedOrders, error: renameError } =
-            await supabase.rpc("rename_fgcode", {
-              p_old_id: currentEditing.id,
-              p_new_id: cleanId,
-              p_name: cleanName,
-              p_exp: cleanExp,
-              p_default_paper_type: defaultPaperType || null,
-              p_qty_per_a3: qtyPerA3 ? parseInt(qtyPerA3, 10) : null,
-            });
-
-          if (renameError) throw renameError;
-        } else {
-          const updatePayload: Record<string, unknown> = {
-            name: cleanName,
-            exp: cleanExp,
-          };
-
-          if (isAdminRole) {
-            updatePayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3, 10) : null;
-
-            updatePayload.default_paper_type = defaultPaperType || null;
-          }
-
-          const { error: updateError } = await supabase
-            .from("fgcode")
-            .update(updatePayload)
-            .eq("id", currentEditing.id);
-
-          if (updateError) throw updateError;
+        if (cleanId !== currentEditing.id) {
+          throw new Error("รหัสสินค้าไม่สามารถแก้ไขได้");
         }
 
+        const updatePayload: Record<string, unknown> = {
+          name: cleanName,
+          exp: cleanExp,
+        };
+
+        if (isAdminRole) {
+          updatePayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3, 10) : null;
+          updatePayload.default_paper_type = defaultPaperType || null;
+        }
+
+        const { error: updateError } = await supabase
+          .from("fgcode")
+          .update(updatePayload)
+          .eq("id", currentEditing.id);
+
+        if (updateError) throw updateError;
       } else {
         const { data: existing } = await supabase
           .from("fgcode")
@@ -242,7 +228,7 @@ export default function FgcodeManagement() {
           .eq("id", cleanId)
           .single();
         if (existing) {
-          await Swal.fire({
+          await AppSwal.fire({
             icon: "error",
             title: "รหัสสินค้าซ้ำ",
             text: "มีสินค้ารหัสนี้อยู่ในระบบเรียบร้อยแล้ว",
@@ -252,7 +238,7 @@ export default function FgcodeManagement() {
         }
 
         // confirm create
-        const confirm = await Swal.fire({
+        const confirm = await AppSwal.fire({
           icon: "question",
           title: "ยืนยันการเพิ่มสินค้า?",
           html: `
@@ -265,8 +251,8 @@ export default function FgcodeManagement() {
           showCancelButton: true,
           confirmButtonText: "ยืนยัน เพิ่มสินค้า",
           cancelButtonText: "ยกเลิก",
-          confirmButtonColor: "#2563eb",
-          cancelButtonColor: "#6b7280",
+          confirmButtonColor: "#0057B8",
+          cancelButtonColor: "#75787B",
           customClass: { popup: "rounded-xl text-sm" },
         });
         if (!confirm.isConfirmed) {
@@ -288,7 +274,7 @@ export default function FgcodeManagement() {
         const { error } = await supabase.from("fgcode").insert(createPayload);
         if (error) throw error;
       }
-      Swal.fire({
+      AppSwal.fire({
         icon: "success",
         title: "สำเร็จ",
         text: `${currentEditing ? "แก้ไข" : "สร้าง"}รหัสสินค้าสำเร็จ`,
@@ -304,7 +290,7 @@ export default function FgcodeManagement() {
       setDefaultPaperType("");
       fetchFgcodes();
     } catch (error) {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ผิดพลาด",
         text:
@@ -328,7 +314,7 @@ export default function FgcodeManagement() {
 
   const handleDelete = async (rowId: string) => {
     if (!isAdminRole) {
-      await Swal.fire({
+      await AppSwal.fire({
         icon: "error",
         title: "ไม่มีสิทธิ์",
         text: "เฉพาะ Moderator และ Assistant Moderator เท่านั้นที่ลบสินค้าได้",
@@ -339,13 +325,13 @@ export default function FgcodeManagement() {
 
     const productName =
       fgcodes.find((fgcode) => fgcode.id === rowId)?.name || "ไม่พบชื่อสินค้า";
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการลบ",
       text: `ชื่อสินค้า: ${productName}\nรหัสสินค้า: ${rowId}\n\nต้องการลบรายการนี้ใช่หรือไม่?`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: "ลบ",
       cancelButtonText: "ยกเลิก",
     });
@@ -357,7 +343,7 @@ export default function FgcodeManagement() {
           .eq("id", rowId);
         if (error) throw error;
         setSelectedIds((current) => current.filter((id) => id !== rowId));
-        Swal.fire({
+        AppSwal.fire({
           icon: "success",
           title: "ลบสำเร็จ",
           timer: 1500,
@@ -365,7 +351,7 @@ export default function FgcodeManagement() {
         });
         fetchFgcodes();
       } catch {
-        Swal.fire({
+        AppSwal.fire({
           icon: "error",
           title: "ผิดพลาด",
           text: "ไม่สามารถลบรหัสสินค้าได้",
@@ -391,13 +377,13 @@ export default function FgcodeManagement() {
         return `${product?.name || "ไม่พบชื่อสินค้า"} (${id})`;
       })
       .join("\n");
-    const result = await Swal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการลบหลายรายการ",
       text: `รายการที่จะลบ:\n${productsToDelete}\n\nยืนยันการลบ ${idsToDelete.length} รายการใช่หรือไม่?`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
+      confirmButtonColor: "#C8102E",
+      cancelButtonColor: "#75787B",
       confirmButtonText: `ลบ ${idsToDelete.length} รายการ`,
       cancelButtonText: "ยกเลิก",
     });
@@ -412,7 +398,7 @@ export default function FgcodeManagement() {
       if (error) throw error;
       setSelectedIds([]);
       setIsSelectionMode(false);
-      Swal.fire({
+      AppSwal.fire({
         icon: "success",
         title: "ลบสำเร็จ",
         text: `ลบสินค้า ${idsToDelete.length} รายการเรียบร้อยแล้ว`,
@@ -421,7 +407,7 @@ export default function FgcodeManagement() {
       });
       fetchFgcodes();
     } catch {
-      Swal.fire({
+      AppSwal.fire({
         icon: "error",
         title: "ผิดพลาด",
         text: "ไม่สามารถลบสินค้าที่เลือกได้",
@@ -436,7 +422,8 @@ export default function FgcodeManagement() {
       f.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       f.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-  const inputCls = `w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-lg text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 transition-all`;
+  const inputCls =
+    "w-full px-3.5 py-2.5 text-[13px] bg-white border border-[#D9E1E2] rounded-lg text-[#101820] placeholder:text-[#8A9498] focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10 disabled:bg-[#F0F3F4] disabled:text-[#8A9498] transition-all";
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -457,31 +444,34 @@ export default function FgcodeManagement() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="bg-white/90 border-b border-gray-200 px-4 py-3 flex items-center justify-between mb-4">
-          <div className="h-5 w-32 rounded-lg bg-slate-200 animate-pulse" />
-          <div className="h-8 w-20 rounded-lg bg-blue-100 animate-pulse" />
-        </div>
-        <div className="max-w-5xl mx-auto space-y-3 mt-4">
-          <div className="h-10 w-full rounded-xl bg-slate-100 animate-pulse mb-4" />
+      <div className="w-full">
+        <div className="mx-auto max-w-5xl space-y-3">
+          <div className="flex items-center justify-between rounded-2xl border border-[#00AEC7]/15 bg-[#00263A] px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 animate-pulse rounded-xl bg-white/10" />
+              <div className="space-y-2">
+                <div className="h-4 w-32 animate-pulse rounded bg-white/20" />
+                <div className="h-2.5 w-48 animate-pulse rounded bg-[#00AEC7]/15" />
+              </div>
+            </div>
+            <div className="h-9 w-24 animate-pulse rounded-xl bg-[#0057B8]/60" />
+          </div>
+
+          <div className="h-14 animate-pulse rounded-xl border border-[#0057B8]/10 bg-[#EAF3FC]" />
+          <div className="h-11 animate-pulse rounded-xl border border-[#D9E1E2] bg-white" />
+
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="bg-white border border-[#dde8f5] border-l-2 border-l-blue-200 rounded-xl px-3.5 py-3 shadow-sm"
+              className="rounded-xl border border-[#D9E1E2] border-l-4 border-l-[#0057B8]/30 bg-white px-3.5 py-3 shadow-sm"
             >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-200 animate-pulse shrink-0" />
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-[#F0F3F4]" />
                 <div className="flex-1 space-y-2">
-                  <div className="flex gap-2">
-                    <div className="h-4 w-40 rounded bg-slate-200 animate-pulse" />
-                    <div className="h-4 w-20 rounded-full bg-slate-100 animate-pulse" />
-                  </div>
-                  <div className="h-3 w-24 rounded bg-slate-100 animate-pulse" />
-                  <div className="flex gap-2 pt-1">
-                    <div className="h-6 w-14 rounded-lg bg-blue-50 animate-pulse" />
-                    <div className="h-6 w-10 rounded-lg bg-red-50 animate-pulse" />
-                  </div>
+                  <div className="h-4 w-48 animate-pulse rounded bg-[#D9E1E2]" />
+                  <div className="h-3 w-28 animate-pulse rounded bg-[#F0F3F4]" />
                 </div>
+                <div className="h-7 w-16 animate-pulse rounded-lg bg-[#EAF3FC]" />
               </div>
             </div>
           ))}
@@ -490,33 +480,29 @@ export default function FgcodeManagement() {
     );
 
   return (
-    <div
-      className="min-h-screen bg-gray-50"
-      style={{
-        backgroundImage:
-          "radial-gradient(ellipse at 0% 0%, rgba(59,102,199,0.07) 0%, transparent 60%), radial-gradient(ellipse at 100% 100%, rgba(107,56,202,0.05) 0%, transparent 60%)",
-      }}
-    >
+    <div className="w-full text-[#101820]">
       {/* ── Page header ── */}
-      <div className="overflow-hidden bg-white/90 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-6 py-3.5 sticky top-0 z-30">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-70" />
+      <div className="sticky top-0 z-30 mx-auto mb-4 max-w-5xl overflow-hidden rounded-2xl border border-[#00AEC7]/15 bg-[#00263A] px-4 py-3.5 shadow-lg sm:px-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#00AEC7]/12 blur-3xl" />
+
         <div className="relative flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#0f1e3d] flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/15 ring-4 ring-blue-50">
-              <Package className="w-5 h-5 text-blue-300" />
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+              <Package className="h-5 w-5 text-[#00AEC7]" />
             </div>
+
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-[#0f1e3d] font-black text-[16px] sm:text-[17px] leading-tight tracking-tight truncate">
-                  จัดการรหัสสินค้า
-                </h1>
-              </div>
-              <p className="text-slate-400 text-[11px] sm:text-[11.5px] mt-0.5 truncate">
+              <h1 className="truncate text-[16px] font-black leading-tight tracking-tight text-white sm:text-[17px]">
+                จัดการรหัสสินค้า
+              </h1>
+              <p className="mt-0.5 truncate text-[11px] text-white/60 sm:text-[11.5px]">
                 เพิ่ม แก้ไข และจัดการข้อมูลสินค้าในระบบ
               </p>
             </div>
           </div>
+
           <button
+            type="button"
             onClick={() => {
               setEditingFgcode(null);
               setId("");
@@ -526,32 +512,35 @@ export default function FgcodeManagement() {
               setDefaultPaperType("");
               setShowModal(true);
             }}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-[12px] font-bold px-3 sm:px-3.5 py-2 rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-95 shrink-0"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00AEC7]/20 bg-[#0057B8] px-3 py-2 text-[12px] font-bold text-white shadow-md transition-all hover:bg-[#004A9F] active:scale-95 sm:px-3.5"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">เพิ่มรหัสสินค้า</span>
             <span className="sm:hidden">เพิ่ม</span>
           </button>
         </div>
       </div>
 
-      <div className="p-3 sm:p-5 max-w-5xl mx-auto">
+      <div className="mx-auto max-w-5xl">
         {/* ── Stat strip ── */}
-        <div className="bg-gradient-to-br from-white to-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-3 mb-4">
-          <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-            <Package className="w-3.5 h-3.5 text-blue-700" />
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#0057B8]/15 bg-[#EAF3FC] px-4 py-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-[#0057B8]/10">
+            <Package className="h-3.5 w-3.5 text-[#0057B8]" />
           </div>
+
           <div>
-            <span className="text-xl font-bold text-blue-700 mr-2">
+            <span className="mr-2 text-xl font-black text-[#0057B8]">
               {fgcodes.length}
             </span>
-            <span className="text-[11px] font-medium text-slate-400 uppercase tracking-widest">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-[#5F6B70]">
               สินค้าทั้งหมด
             </span>
           </div>
+
           {searchTerm && (
-            <div className="ml-auto flex items-center gap-1 text-[11px] text-blue-500 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-              <Search className="w-3 h-3" /> พบ {filteredFgcodes.length} รายการ
+            <div className="ml-auto flex items-center gap-1 rounded-full border border-[#0057B8]/15 bg-white px-2 py-1 text-[11px] text-[#0057B8]">
+              <Search className="h-3 w-3" />
+              พบ {filteredFgcodes.length} รายการ
             </div>
           )}
         </div>
@@ -564,12 +553,12 @@ export default function FgcodeManagement() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="ค้นหารหัส หรือชื่อสินค้า..."
-            className="w-full pl-10 pr-10 py-2.5 text-[13px] bg-white border border-[#d0daf0] rounded-xl text-[#0f1e3d] placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+            className="w-full pl-10 pr-10 py-2.5 text-[13px] bg-white border border-[#D9E1E2] rounded-xl text-[#101820] placeholder:text-[#8A9498] focus:outline-none focus:border-[#0057B8] focus:ring-2 focus:ring-[#0057B8]/10 transition-all shadow-sm"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A9498] hover:text-[#C8102E] transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -582,13 +571,13 @@ export default function FgcodeManagement() {
               <button
                 type="button"
                 onClick={() => setIsSelectionMode(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 text-[11px] font-bold transition-all active:scale-95"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EAF3FC] border border-[#0057B8]/20 text-[#0057B8] hover:bg-[#0057B8] hover:text-white text-[11px] font-bold transition-all active:scale-95"
               >
                 <ListChecks className="w-3.5 h-3.5" /> เลือกหลายรายการ
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-blue-600">
+                <span className="text-[11px] font-semibold text-[#0057B8]">
                   เลือกแล้ว {selectedIds.length} รายการ
                 </span>
                 <button
@@ -605,7 +594,7 @@ export default function FgcodeManagement() {
                   type="button"
                   onClick={handleBulkDelete}
                   disabled={deleting || selectedIds.length === 0}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 disabled:opacity-60 text-[11px] font-bold transition-all active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#FCEAEC] border border-[#C8102E]/20 text-[#C8102E] hover:bg-[#C8102E] hover:text-white hover:border-[#C8102E] disabled:opacity-60 text-[11px] font-bold transition-all active:scale-95"
                 >
                   <Trash2 className="w-3 h-3" />
                   {deleting ? "กำลังลบ..." : "ลบที่เลือก"}
@@ -618,8 +607,8 @@ export default function FgcodeManagement() {
         {/* ── Product cards ── */}
         {filteredFgcodes.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-12 h-12 bg-white border border-[#dde8f5] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-              <Search className="w-5 h-5 text-slate-300" />
+            <div className="w-12 h-12 bg-white border border-[#D9E1E2] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+              <Search className="w-5 h-5 text-[#B8C4C8]" />
             </div>
             <p className="text-slate-400 text-sm">
               ไม่พบสินค้าที่ตรงกับการค้นหา
@@ -630,7 +619,7 @@ export default function FgcodeManagement() {
             {filteredFgcodes.slice(0, visibleCount).map((fgcode) => (
               <div
                 key={fgcode.id}
-                className="bg-white border border-[#dde8f5] border-l-2 border-l-blue-400 rounded-lg px-3 py-2 hover:shadow-md transition-all duration-200 shadow-sm"
+                className="bg-white border border-[#D9E1E2] border-l-4 border-l-[#0057B8] rounded-xl px-3.5 py-3 hover:shadow-md transition-all duration-200 shadow-sm"
               >
                 <div className="flex items-center gap-2.5">
                   {isAdminRole && isSelectionMode && (
@@ -639,34 +628,34 @@ export default function FgcodeManagement() {
                       checked={selectedIds.includes(fgcode.id)}
                       onChange={() => toggleSelection(fgcode.id)}
                       aria-label={`เลือก ${fgcode.name}`}
-                      className="h-4 w-4 accent-blue-600 cursor-pointer shrink-0"
+                      className="h-4 w-4 accent-[#0057B8] cursor-pointer shrink-0"
                     />
                   )}
-                  <div className="w-9 h-9 min-w-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-sm shrink-0">
+                  <div className="w-9 h-9 min-w-9 rounded-lg bg-[#00263A] border border-[#00AEC7]/20 flex items-center justify-center shadow-sm shrink-0">
                     <span className="text-[8.5px] font-extrabold text-white text-center leading-tight px-1 break-all">
                       {fgcode.id.slice(0, 8)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0 flex items-center gap-x-2 gap-y-1 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[13px] font-black text-[#0f1e3d]">
+                      <span className="text-[13px] font-black text-[#00263A]">
                         {fgcode.name}
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 tracking-wider">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/15 tracking-wider">
                         {fgcode.id}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                      <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#F0F3F4] text-[#5F6B70] border border-[#D9E1E2] font-medium">
                         อายุ {fgcode.exp} เดือน
                       </span>
                       {isAdminRole && fgcode.qty_per_a3 && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">
+                        <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#FFF8D6] text-[#6E5B00] border border-[#F1C400]/30">
                           {fgcode.qty_per_a3} ชิ้น/A3
                         </span>
                       )}
                       {isAdminRole && fgcode.default_paper_type && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">
+                        <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#FFF8D6] text-[#6E5B00] border border-[#F1C400]/30">
                           {fgcode.default_paper_type}
                         </span>
                       )}
@@ -676,7 +665,7 @@ export default function FgcodeManagement() {
                     <button
                       onClick={() => handleEdit(fgcode)}
                       aria-label={`แก้ไข ${fgcode.name}`}
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 text-[11.5px] font-semibold transition-all active:scale-95"
+                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-[#EAF3FC] border border-[#0057B8]/15 text-[#0057B8] hover:bg-[#0057B8] hover:text-white hover:border-[#0057B8] text-[11.5px] font-semibold transition-all active:scale-95"
                     >
                       <Edit2 className="w-3 h-3" />{" "}
                       <span className="hidden sm:inline">แก้ไข</span>
@@ -685,7 +674,7 @@ export default function FgcodeManagement() {
                       <button
                         onClick={() => handleDelete(fgcode.id)}
                         aria-label={`ลบ ${fgcode.name}`}
-                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 text-[11.5px] font-semibold transition-all active:scale-95"
+                        className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-[#FCEAEC] border border-[#C8102E]/20 text-[#C8102E] hover:bg-[#C8102E] hover:text-white hover:border-[#C8102E] text-[11.5px] font-semibold transition-all active:scale-95"
                       >
                         <Trash2 className="w-3 h-3" />{" "}
                         <span className="hidden sm:inline">ลบ</span>
@@ -702,7 +691,7 @@ export default function FgcodeManagement() {
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
-                      className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
+                      className="w-2 h-2 rounded-full bg-[#00AEC7] animate-bounce"
                       style={{ animationDelay: `${i * 0.15}s` }}
                     />
                   ))}
@@ -741,11 +730,11 @@ export default function FgcodeManagement() {
           }}
           size="md"
         >
-          <div className="bg-[#f5f8ff] -mx-6 -mb-6 px-6 pb-6 rounded-b-2xl">
+          <div className="bg-[#F5F7F8] -mx-6 -mb-6 px-6 pb-6 rounded-b-2xl">
             <form onSubmit={handleSubmit} className="pt-4 space-y-4">
               <div>
                 <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
-                  รหัสสินค้า <span className="text-red-500">*</span>
+                  รหัสสินค้า <span className="text-[#C8102E]">*</span>
                 </label>
                 <input
                   type="text"
@@ -754,23 +743,17 @@ export default function FgcodeManagement() {
                   onChange={(e) => setId(e.target.value.toUpperCase())}
                   placeholder="เช่น 01-1-001 หรือ FG-001"
                   required
-                  disabled={!!editingFgcode && !isAdminRole}
+                  disabled={!!editingFgcode}
                 />
-                {editingFgcode && !isAdminRole && (
-                  <small className="text-slate-400 mt-1 block">
-                    ไม่สามารถแก้ไขรหัสสินค้าได้
-                  </small>
-                )}
-                {editingFgcode && isAdminRole && (
-                  <small className="text-amber-600 mt-1 block">
-                    ⚠️
-                    การเปลี่ยนรหัสสินค้าจะอัปเดตคำสั่งพิมพ์ทั้งหมดที่เกี่ยวข้อง
+                {editingFgcode && (
+                  <small className="text-[#8A9498] mt-1 block">
+                    รหัสสินค้าไม่สามารถแก้ไขได้
                   </small>
                 )}
               </div>
               <div>
                 <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
-                  ชื่อสินค้า <span className="text-red-500">*</span>
+                  ชื่อสินค้า <span className="text-[#C8102E]">*</span>
                   {!isAdminRole && (
                     <span className="text-[10px] text-slate-400 ml-1 normal-case">
                       (ภาษาอังกฤษเท่านั้น)
@@ -795,14 +778,15 @@ export default function FgcodeManagement() {
                   required
                 />
                 {!isAdminRole && (
-                  <p className="mt-1.5 text-[11px] text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                  <p className="mt-1.5 text-[11px] text-[#6E5B00] bg-[#FFF8D6] border border-[#F1C400]/30 px-2.5 py-1 rounded-lg">
                     ⚠️ สิทธิ์ของคุณอนุญาตให้ใช้ภาษาอังกฤษและตัวเลขเท่านั้น
                   </p>
                 )}
               </div>
               <div>
                 <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
-                  อายุผลิตภัณฑ์ (เดือน) <span className="text-red-500">*</span>
+                  อายุผลิตภัณฑ์ (เดือน){" "}
+                  <span className="text-[#C8102E]">*</span>
                 </label>
                 <input
                   type="number"
@@ -819,9 +803,9 @@ export default function FgcodeManagement() {
                 />
               </div>
               {isAdminRole && (
-                <div className="border-t border-[#e8eef8] pt-4 space-y-4">
+                <div className="border-t border-[#D9E1E2] pt-4 space-y-4">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                    📄 ข้อมูลสต็อคกระดาษ (Admin only)
+                    📄 ข้อมูลสต็อคกระดาษ (Manager only)
                   </span>
                   <div>
                     <label className="block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -864,7 +848,7 @@ export default function FgcodeManagement() {
                   </div>
                 </div>
               )}
-              <div className="border-t border-[#e8eef8] pt-4 flex justify-end gap-3">
+              <div className="border-t border-[#D9E1E2] pt-4 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -876,14 +860,14 @@ export default function FgcodeManagement() {
                     setQtyPerA3("");
                     setDefaultPaperType("");
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#d0daf0] text-slate-600 font-semibold rounded-lg text-[13px] transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-[#F0F3F4] border border-[#D9E1E2] text-[#5F6B70] font-semibold rounded-lg text-[13px] transition-all"
                 >
                   <X className="w-4 h-4" /> ยกเลิก
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:opacity-60 text-white font-semibold rounded-lg text-[13px] shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#0057B8] hover:bg-[#004A9F] disabled:opacity-60 text-white font-semibold rounded-lg text-[13px] shadow-md shadow-[#0057B8]/15 transition-all active:scale-95"
                 >
                   {saving ? (
                     <>

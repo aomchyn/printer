@@ -1,148 +1,152 @@
 export function DashboardSkeleton() {
   return (
-    <div className="min-h-screen p-4 overflow-x-hidden" style={{ background: "#f1f4f9" }}>
-
+    <div className="min-h-screen overflow-x-hidden bg-[#F5F7F8] p-4">
       {/* Header */}
-      <div
-        className="rounded-3xl p-6 md:p-8 mb-8 border border-blue-900/10 shadow-xl relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #0f1e3d 0%, #152a54 50%, #1e3a8a 100%)" }}
-      >
+      <div className="relative mb-7 overflow-hidden rounded-3xl border border-[#0057B8]/15 bg-gradient-to-br from-[#004A70] via-[#0068B5] to-[#0097B8] p-5 shadow-lg md:p-6">
+        {/* Glow */}
+        <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-72 w-72 rounded-full bg-[#00AEC7]/15 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 -mb-12 -ml-12 h-60 w-60 rounded-full bg-[#00AEC7]/10 blur-3xl" />
 
-        {/* Title row */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-2 h-7 rounded-full shrink-0"
-            style={{ background: "linear-gradient(180deg,#60a5fa,#818cf8)" }} />
-          <div className="h-7 w-36 rounded-lg animate-pulse"
-            style={{ background: "rgba(255,255,255,0.1)" }} />
-          <div className="h-5 w-28 rounded-lg animate-pulse"
-            style={{ background: "rgba(255,255,255,0.07)" }} />
-        </div>
+        <div className="relative flex flex-col gap-4">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            {/* Title */}
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-center gap-3">
+                <div className="h-7 w-2 shrink-0 rounded-full bg-gradient-to-b from-[#00AEC7] to-[#0057B8]" />
 
-        {/* Subtitle */}
-        <div className="h-3 w-56 rounded animate-pulse ml-4 mb-5"
-          style={{ background: "rgba(255,255,255,0.06)" }} />
+                <div className="h-8 w-36 animate-pulse rounded-lg bg-white/20" />
 
-        {/* Search bar */}
-        <div className="h-12 w-full md:w-80 rounded-2xl animate-pulse"
-          style={{ background: "rgba(255,255,255,0.08)" }} />
-
-
-        {/* Refresh status row */}
-        <div
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4 pt-4"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          <div className="h-3 w-40 rounded animate-pulse"
-            style={{ background: "rgba(255,255,255,0.08)" }} />
-          <div className="flex items-center gap-2">
-            <div className="w-24 h-1.5 rounded-full animate-pulse"
-              style={{ background: "rgba(255,255,255,0.1)" }} />
-            <div className="h-3 w-20 rounded animate-pulse"
-              style={{ background: "rgba(255,255,255,0.08)" }} />
-            <div className="h-6 w-20 rounded-lg animate-pulse"
-              style={{ background: "rgba(255,255,255,0.1)" }} />
-          </div>
-        </div>
-
-
-        {/* Loading label */}
-        <div className="flex items-center justify-center gap-2 mb-5">
-          {[0, 1, 2].map(i => (
-            <div
-              key={i}
-              className="w-2 h-2 rounded-full bg-blue-500 animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            />
-          ))}
-          <span className="text-slate-400 text-xs font-semibold tracking-widest ml-1">
-            กำลังโหลดคำสั่งพิมพ์...
-          </span>
-        </div>
-
-        {/* Cards */}
-        <div
-          className="grid gap-4 overflow-hidden"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))" }}
-        >
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm w-full"
-              style={{ borderLeft: "4px solid #e2e8f0" }}
-            >
-              {/* Card header */}
-              <div className="bg-slate-50 border-b border-slate-100 p-5 flex flex-col gap-3">
-                <div className="flex gap-2">
-                  <div className="h-5 w-16 rounded-full bg-slate-200 animate-pulse" />
-                  <div className="h-5 w-20 rounded-full bg-slate-200 animate-pulse" />
-                </div>
-                <div className="h-5 w-4/5 rounded-md bg-slate-200 animate-pulse" />
-                {/* LOT NO. row */}
-                <div className="flex items-center gap-2.5 mt-1">
-                  <div className="h-4 w-16 rounded-lg bg-indigo-100 animate-pulse" />
-                  <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
-                  <div className="w-6 h-6 rounded-md bg-slate-200 animate-pulse" />
-                </div>
-
-                {/* Buttons row */}
-                <div className="flex gap-1.5 items-center flex-wrap w-full bg-slate-100/60 border border-slate-200/40 rounded-xl p-1 justify-center">
-                  {[...Array(4)].map((_, j) => (
-                    <div key={j} className="w-8 h-8 rounded-lg bg-slate-200 animate-pulse" />
-                  ))}
-                </div>
-
-
+                <div className="h-6 w-32 animate-pulse rounded-lg bg-[#BFEFF5]/20" />
               </div>
 
-              {/* Card body */}
-              <div className="p-5 flex flex-col gap-3">
-                {/* เวลาสั่ง / ผู้สั่ง — ค่าบรรทัดเดียว */}
-                {["40%", "38%"].map((l, j) => (
-                  <div key={j} className="flex justify-between items-center">
-                    <div className="h-3 rounded bg-slate-100 animate-pulse" style={{ width: l }} />
-                    <div className="h-3 w-1/3 rounded bg-slate-100 animate-pulse" />
-                  </div>
-                ))}
-                <div className="border-t border-slate-100 my-1" />
-                {/* วันที่ผลิต — ค่า 2 บรรทัด (พ.ศ./ค.ศ.) */}
-                <div className="flex justify-between items-start">
-                  <div className="h-3 w-[42%] rounded bg-slate-100 animate-pulse mt-0.5" />
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="h-3 w-20 rounded bg-slate-100 animate-pulse" />
-                    <div className="h-3 w-20 rounded bg-slate-100 animate-pulse" />
-                  </div>
-                </div>
-                {/* วันหมดอายุ — ในกรอบสีชมพู */}
-                <div className="flex justify-between items-start">
-                  <div className="h-3 w-[36%] rounded bg-slate-100 animate-pulse mt-0.5" />
-                  <div className="flex flex-col items-end gap-1 bg-rose-50/60 border border-rose-100/40 rounded-lg px-2.5 py-1">
-                    <div className="h-3 w-16 rounded bg-rose-100 animate-pulse" />
-                    <div className="h-3 w-16 rounded bg-rose-100 animate-pulse" />
-                  </div>
-                </div>
-                <div className="border-t border-slate-100 my-1" />
-                {/* อายุผลิตภัณฑ์ — ในกรอบสีฟ้า */}
-                <div className="flex justify-between items-center">
-                  <div className="h-3 w-2/5 rounded bg-slate-100 animate-pulse" />
-                  <div className="h-4 w-20 rounded-lg bg-blue-100 animate-pulse" />
-                </div>
-                {/* จำนวน — ตัวเลขใหญ่ในกรอบสีเขียว */}
-                <div className="flex justify-between items-center">
-                  <div className="h-3 w-1/3 rounded bg-slate-100 animate-pulse" />
-                  <div className="h-7 w-14 rounded-xl bg-emerald-100 animate-pulse" />
-                </div>
-              </div>
+              <div className="ml-5 h-3 w-64 max-w-[80%] animate-pulse rounded bg-white/15" />
+            </div>
 
-              {/* Card footer — สถานะ (default: รอดำเนินการ) */}
-              <div className="p-4 bg-slate-100 flex items-center justify-center">
-                <div className="h-3 w-40 rounded bg-slate-200 animate-pulse" />
+            {/* Search + Refresh */}
+            <div className="w-full min-w-0 space-y-3 md:max-w-[440px]">
+              <div className="h-12 w-full animate-pulse rounded-2xl border border-white/15 bg-white/10" />
+
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-white/10 pt-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00B398]" />
+                  <div className="h-3 w-32 animate-pulse rounded bg-white/15" />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full w-2/3 animate-pulse rounded-full bg-[#00AEC7]/70" />
+                  </div>
+
+                  <div className="h-3 w-20 animate-pulse rounded bg-[#BFEFF5]/20" />
+
+                  <div className="h-6 w-20 animate-pulse rounded-lg border border-white/10 bg-white/10" />
+                </div>
               </div>
             </div>
-          ))}
+          </div>
 
+          {/* Pending File Panel */}
+          <div className="w-full rounded-2xl border border-white/10 bg-[#00263A]/20 p-3 md:px-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 animate-pulse rounded-xl bg-[#FF6A13]/20" />
+
+                <div className="space-y-1.5">
+                  <div className="h-4 w-24 animate-pulse rounded bg-white/20" />
+                  <div className="h-2.5 w-44 animate-pulse rounded bg-white/10" />
+                </div>
+              </div>
+
+              <div className="h-8 w-20 animate-pulse rounded-full bg-[#FF6A13]/40" />
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Cards — อยู่นอก Header ให้ตรงกับ Dashboard จริง */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <div
+            key={i}
+            className="flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200/85 border-l-4 border-l-[#0057B8]/35 bg-white shadow-sm"
+          >
+            {/* Card Header */}
+            <div className="flex flex-col gap-3.5 border-b border-[#D9E1E2] bg-[#F8FBFD] px-5 py-4">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-16 animate-pulse rounded-lg bg-[#EAF3FC]" />
+                <div className="h-5 w-20 animate-pulse rounded-full bg-[#E5F8FB]" />
+              </div>
+
+              <div className="h-5 w-4/5 animate-pulse rounded-md bg-slate-200" />
+
+              <div className="flex items-center gap-2.5">
+                <div className="h-5 w-16 animate-pulse rounded-lg bg-[#EAF3FC]" />
+                <div className="h-5 w-24 animate-pulse rounded bg-slate-200" />
+                <div className="h-6 w-6 animate-pulse rounded-md bg-[#EAF3FC]" />
+              </div>
+
+              <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200/40 bg-slate-100/60 p-1">
+                {[...Array(6)].map((_, j) => (
+                  <div
+                    key={j}
+                    className="h-8 w-8 animate-pulse rounded-lg bg-slate-200"
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Card Body */}
+            <div className="flex flex-1 flex-col gap-4 p-5">
+              {[0, 1].map((j) => (
+                <div
+                  key={j}
+                  className="flex items-center justify-between gap-4"
+                >
+                  <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-1/3 animate-pulse rounded bg-slate-200" />
+                </div>
+              ))}
+
+              <div className="border-t border-slate-100" />
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="mt-1 h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+
+                <div className="flex flex-col items-end gap-1">
+                  <div className="h-3 w-20 animate-pulse rounded bg-slate-200" />
+                  <div className="h-3 w-20 animate-pulse rounded bg-slate-100" />
+                </div>
+              </div>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="mt-1 h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+
+                <div className="rounded-lg border border-[#C8102E]/10 bg-[#FCEAEC] px-2.5 py-1">
+                  <div className="mb-1 h-3 w-16 animate-pulse rounded bg-[#C8102E]/10" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-[#C8102E]/10" />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100" />
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="h-3 w-2/5 animate-pulse rounded bg-slate-100" />
+                <div className="h-5 w-20 animate-pulse rounded-lg bg-[#EAF3FC]" />
+              </div>
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="h-3 w-1/3 animate-pulse rounded bg-slate-100" />
+                <div className="h-8 w-14 animate-pulse rounded-xl bg-[#E5F8FB]" />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-center border-t border-[#D9E1E2] bg-[#F0F3F4] px-4 py-3">
+              <div className="h-3 w-40 animate-pulse rounded bg-[#D9E1E2]" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
-

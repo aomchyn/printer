@@ -203,7 +203,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       Swal.fire({
         icon: "warning",
         title: "กรุณากรอกชื่อ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -214,7 +214,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       Swal.fire({
         icon: "error",
         title: "รหัสผ่านไม่ตรงกัน",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -226,7 +226,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           icon: "warning",
           title: "รหัสผ่านไม่ปลอดภัย",
           text: PASSWORD_POLICY_MESSAGE,
-          confirmButtonColor: "#6b7280",
+          confirmButtonColor: "#0057B8",
         });
         return;
       }
@@ -242,7 +242,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         title: "ไม่มีการเปลี่ยนแปลง",
         text: "คุณยังไม่ได้แก้ไขข้อมูลโปรไฟล์ใดๆ",
         confirmButtonText: "รับทราบ",
-        confirmButtonColor: "#6b7280",
+        confirmButtonColor: "#0057B8",
       });
       return;
     }
@@ -337,20 +337,20 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const roleBadge: Record<string, { label: string; cls: string }> = {
     moderator: {
       label: "Moderator",
-      cls: "text-purple-300 bg-purple-500/20 border-purple-500/30",
+      cls: "text-white bg-[#0057B8]/35 border-[#00AEC7]/40",
     },
     assistant_moderator: {
       label: "Asst. Moderator",
-      cls: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30",
+      cls: "text-[#BFEFF5] bg-[#00AEC7]/15 border-[#00AEC7]/30",
     },
     operator: {
       label: "Operator",
-      cls: "text-blue-300 bg-blue-500/20 border-blue-500/30",
+      cls: "text-[#BFEFF5] bg-[#00AEC7]/15 border-[#00AEC7]/30",
     },
   };
   const { label: roleLabel, cls: roleCls } = roleBadge[role] ?? {
     label: "User",
-    cls: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30",
+    cls: "text-white/80 bg-white/10 border-white/15",
   };
 
   const isQaUser = role === "user" && department?.startsWith("QA");
@@ -359,12 +359,12 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     path: string,
     icon: React.ReactNode,
     label: string,
-    activeCls = "bg-white/15 text-white shadow-sm",
+    activeCls = "bg-[#0057B8] text-white shadow-sm",
   ) => (
     <button
       onClick={() => navigate(path)}
       className={`w-full text-left px-4 py-2.5 rounded-xl flex items-center gap-3 text-sm font-semibold transition-all duration-200
-                ${pathname.includes(path.split("/").pop()!) ? activeCls + " border border-white/15" : "text-blue-100/80 hover:bg-white/10 hover:text-white border border-transparent"}`}
+                ${pathname.includes(path.split("/").pop()!) ? activeCls + " border border-[#00AEC7]/40" : "text-white/70 hover:bg-white/8 hover:text-white border border-transparent"}`}
     >
       <span className="shrink-0 opacity-80">{icon}</span>
       {label}
@@ -385,8 +385,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       <div
         className={`
                 fixed inset-y-0 left-0 z-50 w-72 flex flex-col
-                bg-gradient-to-b from-[#0a1628] via-[#0f1e3d] to-[#152a54]
-                border-r border-white/8 shadow-2xl
+bg-[#00263A]
+border-r border-white/10 shadow-2xl
                 transform transition-transform duration-300 ease-in-out
                 md:relative md:translate-x-0
                 ${isOpen ? "translate-x-0" : "-translate-x-full"}
@@ -395,16 +395,16 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* ── Brand ── */}
         <div className="px-5 py-5 border-b border-white/8 relative overflow-hidden shrink-0">
           {/* glow */}
-          <div className="absolute -top-6 -right-6 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -top-6 -right-6 w-32 h-32 bg-[#00AEC7]/15 rounded-full blur-2xl pointer-events-none" />
           <div className="flex items-center gap-3 relative">
             <div className="w-9 h-9 bg-white/10 border border-white/15 rounded-xl flex items-center justify-center shadow-inner shrink-0">
-              <Printer className="w-4.5 h-4.5 text-blue-300" />
+              <Printer className="w-4.5 h-4.5 text-[#00AEC7]" />
             </div>
             <div>
               <div className="text-[16px] font-black text-white tracking-tight leading-none">
                 Printer OP
               </div>
-              <div className="text-[10px] text-blue-300/70 font-medium mt-0.5 tracking-wider uppercase">
+              <div className="text-[10px] text-[#00AEC7]/80 font-medium mt-0.5 tracking-wider uppercase">
                 Label Management System
               </div>
             </div>
@@ -424,7 +424,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
             {/* Avatar row */}
             <div className="px-4 py-3 flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md shadow-blue-900/40">
+              <div className="w-9 h-9 bg-[#0057B8] border border-[#00AEC7]/40 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md">
                 {name ? name.charAt(0).toUpperCase() : "?"}
               </div>
               <div className="min-w-0 flex-1">
@@ -444,7 +444,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               <div className="px-4 pb-3 flex flex-col gap-1.5 text-[11px] border-t border-white/8 pt-2.5">
                 {employeeId && (
                   <div className="flex justify-between items-center">
-                    <span className="text-blue-300/70 font-medium">
+                    <span className="text-[#00AEC7]/80 font-medium">
                       รหัสพนักงาน
                     </span>
                     <span className="text-white/90 font-bold font-mono">
@@ -454,7 +454,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 )}
                 {jobTitle && (
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-blue-300/70 font-medium shrink-0">
+                    <span className="text-[#00AEC7]/80 font-medium shrink-0">
                       ตำแหน่ง
                     </span>
                     <span className="text-white/90 font-medium truncate text-right">
@@ -464,7 +464,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 )}
                 {department && (
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-blue-300/70 font-medium shrink-0">
+                    <span className="text-[#00AEC7]/80 font-medium shrink-0">
                       หน่วยงาน
                     </span>
                     <span className="text-white/90 font-medium truncate text-right">
@@ -538,20 +538,20 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   "/printer/stock",
                   <Package className="w-4 h-4" />,
                   "Paper Stock",
-                  "bg-amber-500/20 text-amber-200 border-amber-500/25",
+                  "bg-[#0057B8] text-white border-[#00AEC7]/40",
                 )}
                 {navItem(
                   "/printer/paper-report",
                   <Layers className="w-4 h-4" />,
                   "Paper Report",
-                  "bg-amber-500/20 text-amber-200 border-amber-500/25",
+                  "bg-[#0057B8] text-white border-[#00AEC7]/40",
                 )}
                 <div className="relative">
                   {navItem(
                     "/printer/user",
                     <Users className="w-4 h-4" />,
                     "Manage Users",
-                    "bg-purple-500/20 text-purple-200 border-purple-500/25",
+                    "bg-[#0057B8] text-white border-[#00AEC7]/40",
                   )}
 
                   {role === "moderator" && qaPendingCount > 0 && (
@@ -579,13 +579,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     "/printer/logs",
                     <ShieldAlert className="w-4 h-4" />,
                     "Audit Logs",
-                    "bg-indigo-500/20 text-indigo-200 border-indigo-500/25",
+                    "bg-[#0057B8] text-white border-[#00AEC7]/40",
                   )}
                 {navItem(
                   "/printer/trash",
                   <Trash2 className="w-4 h-4" />,
                   "Trash",
-                  "bg-rose-500/20 text-rose-200 border-rose-500/25",
+                  "bg-[#0057B8] text-white border-[#00AEC7]/40",
                 )}
               </div>
             </div>
@@ -598,10 +598,10 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-200/80 overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-[#0f1e3d] to-[#1e3a8a] px-6 py-4 flex justify-between items-center">
+            <div className="bg-[#00263A] px-6 py-4 flex justify-between items-center border-b border-[#00AEC7]/20">
               <div className="flex items-center gap-2.5">
                 <div className="p-1.5 bg-white/10 rounded-xl border border-white/15">
-                  <UserCircle className="w-4 h-4 text-blue-200" />
+                  <UserCircle className="w-4 h-4 text-[#00AEC7]" />
                 </div>
                 <h2 className="text-[15px] font-black text-white tracking-tight">
                   แก้ไขโปรไฟล์
@@ -633,7 +633,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                     onChange={(e) =>
                       setProfileForm((f) => ({ ...f, [key]: e.target.value }))
                     }
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-sm font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all"
                   />
                 </div>
               ))}
@@ -643,7 +643,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                   หน่วยงาน
                 </label>
 
-                <div className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium">
+                <div className="w-full px-4 py-2.5 bg-[#F0F3F4] border border-[#D9E1E2] rounded-xl text-[#101820] text-sm font-medium">
                   {department || "ยังไม่ได้เลือกหน่วยงาน"}
                 </div>
 
@@ -673,7 +673,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                           }))
                         }
                         placeholder="ปล่อยว่างถ้าไม่ต้องการเปลี่ยน"
-                        className="w-full px-4 py-2.5 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                        className="w-full px-4 py-2.5 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-sm font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all"
                       />
                       <button
                         type="button"
@@ -706,7 +706,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                             confirm_password: e.target.value,
                           }))
                         }
-                        className="w-full px-4 py-2.5 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[#0f1e3d] text-sm font-medium focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                        className="w-full px-4 py-2.5 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-sm font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all"
                       />
                       <button
                         type="button"
@@ -732,14 +732,14 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
             <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
               <button
                 onClick={() => setIsProfileOpen(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition-all duration-200"
+                className="flex-1 bg-[#F0F3F4] hover:bg-[#D9E1E2] text-[#5F6B70] py-3 rounded-xl font-bold text-xs transition-all duration-200"
               >
                 ยกเลิก
               </button>
               <button
                 onClick={saveProfile}
                 disabled={isSavingProfile}
-                className="flex-1 bg-[#0f1e3d] hover:bg-[#152a54] disabled:bg-slate-300 text-white py-3 rounded-xl font-bold text-xs shadow-md shadow-blue-900/20 transition-all duration-200"
+                className="flex-1 bg-[#0057B8] hover:bg-[#004A9F] disabled:bg-slate-300 text-white py-3 rounded-xl font-bold text-xs shadow-md transition-all duration-200"
               >
                 {isSavingProfile ? "กำลังบันทึก..." : "💾 บันทึกการแก้ไข"}
               </button>
