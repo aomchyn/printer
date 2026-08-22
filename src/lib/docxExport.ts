@@ -3,8 +3,10 @@ import PizZip from "pizzip";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { DocxMerger } from "@spfxappdev/docxmerger";
-// @ts-ignore
+// @ts-expect-error The package does not provide TypeScript declarations.
 import ImageModule from "docxtemplater-image-module-free";
+
+type DocxTemplateData = Record<string, unknown>;
 
 const getArrayBuffer = async (url: string) => {
     const response = await fetch(url);
@@ -40,7 +42,7 @@ const imageOptions = {
     }
 };
 
-export const generateDocument = async (templateUrl: string, fileName: string, data: any) => {
+export const generateDocument = async (templateUrl: string, fileName: string, data: DocxTemplateData) => {
     const templateBuffer = await getArrayBuffer(templateUrl);
     const zip = new PizZip(templateBuffer);
     
@@ -61,7 +63,7 @@ export const generateDocument = async (templateUrl: string, fileName: string, da
     saveAs(out, fileName);
 };
 
-export const generateMultipleDocumentsAsZip = async (templateUrl: string, zipName: string, records: {fileName: string, data: any}[]) => {
+export const generateMultipleDocumentsAsZip = async (templateUrl: string, zipName: string, records: {fileName: string, data: DocxTemplateData}[]) => {
     const templateBuffer = await getArrayBuffer(templateUrl);
     const resultZip = new JSZip();
     
@@ -87,7 +89,7 @@ export const generateMultipleDocumentsAsZip = async (templateUrl: string, zipNam
     saveAs(outZip, zipName);
 };
 
-export const generateMergedDocumentsToSingleDocx = async (templateUrl: string, fileName: string, records: {data: any}[]) => {
+export const generateMergedDocumentsToSingleDocx = async (templateUrl: string, fileName: string, records: {data: DocxTemplateData}[]) => {
     const templateBuffer = await getArrayBuffer(templateUrl);
     
     const buffers: ArrayBuffer[] = [];

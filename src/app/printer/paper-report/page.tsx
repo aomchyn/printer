@@ -1169,7 +1169,7 @@ export default function PaperReportPage() {
       const end = new Date(reportEndDate);
 
       const dates = [];
-      let current = new Date(start);
+      const current = new Date(start);
       while (current <= end) {
         dates.push(new Date(current));
         current.setDate(current.getDate() + 1);
@@ -1470,7 +1470,7 @@ export default function PaperReportPage() {
               : `${fmtDate(dMin)} - ${fmtDate(dMax)}`
             : "-";
 
-        let wsName = dept.substring(0, 31).replace(/[\/*?:\[\]]/g, "");
+        const wsName = dept.substring(0, 31).replace(/[\/*?:\[\]]/g, "");
         const wsDept = ejWb.addWorksheet(wsName);
 
         addHeaderToSheet(

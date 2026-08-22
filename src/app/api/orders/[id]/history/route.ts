@@ -1,6 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+type OrderHistoryEntry = {
+    timestamp: string;
+    action: string;
+    by: string;
+    description: string;
+    changes?: Record<string, unknown>;
+};
+
+type AuditLogRow = {
+    created_at: string;
+    action?: string | null;
+    user_name?: string | null;
+    summary?: string | null;
+    changes?: Record<string, unknown> | null;
+};
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -50,11 +66,11 @@ export async function GET(
             .eq('order_id', orderId)
             .order('created_at', { ascending: false });
 
-        let history: any[] = [];
+        let history: OrderHistoryEntry[] = [];
 
         if (!auditError && auditLogs && auditLogs.length > 0) {
             // Use audit_logs if available (new system)
-            history = auditLogs.map((log: any) => ({
+            history = (auditLogs as AuditLogRow[]).map((log) => ({
                 timestamp: log.created_at,
                 action: log.action || 'อัปเดต',
                 by: log.user_name || 'ไม่ระบุ',

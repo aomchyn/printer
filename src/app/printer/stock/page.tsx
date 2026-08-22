@@ -30,7 +30,7 @@ export default function StockPage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [username, setUsername] = useState("Unknown User");
+  const [, setUsername] = useState("Unknown User");
   const [activeTab, setActiveTab] = useState<"HISTORY" | "DAILY_SUMMARY">(
     "HISTORY",
   );

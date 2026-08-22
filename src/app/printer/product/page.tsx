@@ -52,8 +52,8 @@ export default function FgcodeManagement() {
   const [defaultPaperType, setDefaultPaperType] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [userRole, setUserRole] = useState<string>("user");
-  const [userName, setUserName] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
+  const [, setUserName] = useState("");
+  const [, setEmployeeId] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
