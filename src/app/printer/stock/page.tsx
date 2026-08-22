@@ -72,7 +72,7 @@ export default function StockPage() {
     checkAccess();
   }, []);
 
-  const fetchUserInfo = async () => {
+  async function fetchUserInfo() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -84,9 +84,9 @@ export default function StockPage() {
         .single();
       if (data?.name) setUsername(data.name);
     }
-  };
+  }
 
-  const fetchTransactions = async () => {
+  async function fetchTransactions() {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -105,7 +105,7 @@ export default function StockPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   // Handled by checkAccess now
 

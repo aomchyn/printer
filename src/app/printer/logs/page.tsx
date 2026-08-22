@@ -90,7 +90,7 @@ export default function LogsManagement() {
         checkAccess()
     }, [])
 
-    const fetchLogs = async () => {
+    async function fetchLogs() {
         setLoading(true)
         try {
             const { data, error } = await supabase

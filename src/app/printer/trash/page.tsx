@@ -103,7 +103,7 @@ export default function TrashPage() {
         checkAccess()
     }, [])
 
-    const loadDeletedOrders = async () => {
+    async function loadDeletedOrders() {
         setLoading(true);
         try {
             const sevenDaysAgo = new Date();
@@ -128,7 +128,7 @@ export default function TrashPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }
 
     const getDaysRemaining = (deletedAt: string): number => {
         const deleted = new Date(deletedAt);
