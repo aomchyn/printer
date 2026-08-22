@@ -390,45 +390,45 @@ export default function DashboardPage() {
     setFocusedOrderId(order.id);
   };
 
- const getCurrentUserIdentifier = () =>
-  employeeId ? `${userName} (${employeeId})` : userName;
+  const getCurrentUserIdentifier = () =>
+    employeeId ? `${userName} (${employeeId})` : userName;
 
-const hasStockReconciliation = (order?: OrderInterface | null) =>
-  Boolean(
-    order &&
+  const hasStockReconciliation = (order?: OrderInterface | null) =>
+    Boolean(
+      order &&
       (order.reconciled_at ||
         order.paper_type ||
         typeof order.good_a3 === "number" ||
         (order.waste_qty ?? 0) > 0 ||
         (order.waste_a3 ?? 0) > 0),
-  );
+    );
 
- const deleteOrder = async (id: number) => {
-  if (!isAdmin) {
-    AppSwal.fire({
-      icon: "error",
-      title: "ไม่มีสิทธิ์",
-      text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+  const deleteOrder = async (id: number) => {
+    if (!isAdmin) {
+      AppSwal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์",
+        text: "เฉพาะผู้ดูแลระบบ (Moderator / Assistant Moderator) เท่านั้น",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  const orderToDelete = orders.find((order) => order.id === id);
+    const orderToDelete = orders.find((order) => order.id === id);
 
-  if (hasStockReconciliation(orderToDelete)) {
-    await AppSwal.fire({
-      icon: "warning",
-      title: "ยังลบคำสั่งไม่ได้",
-      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนลบคำสั่ง",
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+    if (hasStockReconciliation(orderToDelete)) {
+      await AppSwal.fire({
+        icon: "warning",
+        title: "ยังลบคำสั่งไม่ได้",
+        text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนลบคำสั่ง",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  const result = await AppSwal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการลบ?",
       text: "คุณต้องการลบคำสั่งพิมพ์ฉลากหรือไม่?",
       icon: "warning",
@@ -628,12 +628,12 @@ const hasStockReconciliation = (order?: OrderInterface | null) =>
     }
   };
 
- const startEdit = (order: OrderInterface) => {
-  if (!isAdmin && order.created_by_user_id !== currentUserId) {
-    AppSwal.fire({
-      icon: "error",
-      title: "ไม่มีสิทธิ์แก้ไข",
-      html: `
+  const startEdit = (order: OrderInterface) => {
+    if (!isAdmin && order.created_by_user_id !== currentUserId) {
+      AppSwal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์แก้ไข",
+        html: `
         <div class="text-sm text-gray-600 space-y-1 text-left">
           <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
           <p class="mt-2 text-[#C8102E] font-medium">
@@ -641,25 +641,25 @@ const hasStockReconciliation = (order?: OrderInterface | null) =>
           </p>
         </div>
       `,
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  if (hasStockReconciliation(order)) {
-    AppSwal.fire({
-      icon: "warning",
-      title: "ยังแก้ไขคำสั่งไม่ได้",
-      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนแก้ไขคำสั่ง",
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+    if (hasStockReconciliation(order)) {
+      AppSwal.fire({
+        icon: "warning",
+        title: "ยังแก้ไขคำสั่งไม่ได้",
+        text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนแก้ไขคำสั่ง",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  setEditingOrder({ ...order });
-};
+    setEditingOrder({ ...order });
+  };
 
   // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
   const startReconcile = (order: OrderInterface) => {
@@ -883,22 +883,22 @@ const hasStockReconciliation = (order?: OrderInterface | null) =>
       (acc, t) => acc + (t.transaction_type === "IN" ? t.qty : -t.qty),
       0,
     );
-const oldSheetsUsed =
-  (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
+    const oldSheetsUsed =
+      (reconcilingOrder.good_a3 || 0) + (reconcilingOrder.waste_a3 || 0);
 
-const previousPaperType = reconcilingOrder.paper_type?.trim() || "";
-const currentPaperType = reconcileCalculation.paperType.trim();
-const isSamePaperType = previousPaperType === currentPaperType;
+    const previousPaperType = reconcilingOrder.paper_type?.trim() || "";
+    const currentPaperType = reconcileCalculation.paperType.trim();
+    const isSamePaperType = previousPaperType === currentPaperType;
 
-const requiredFromCurrentStock = isSamePaperType
-  ? Math.max(0, reconcileCalculation.sheetsNeeded - oldSheetsUsed)
-  : reconcileCalculation.sheetsNeeded;
+    const requiredFromCurrentStock = isSamePaperType
+      ? Math.max(0, reconcileCalculation.sheetsNeeded - oldSheetsUsed)
+      : reconcileCalculation.sheetsNeeded;
 
-if (requiredFromCurrentStock > currentBalance) {
-  await AppSwal.fire({
-    icon: "error",
-    title: "สต็อคกระดาษไม่พอ",
-    html: `
+    if (requiredFromCurrentStock > currentBalance) {
+      await AppSwal.fire({
+        icon: "error",
+        title: "สต็อคกระดาษไม่พอ",
+        html: `
       <div style="text-align:left; font-size:13px;">
         <p>ประเภทกระดาษ: <b>${reconcileCalculation.paperType}</b></p>
         <p>สต็อคคงเหลือ: <b>${currentBalance}</b> ใบ</p>
@@ -918,12 +918,12 @@ if (requiredFromCurrentStock > currentBalance) {
         </p>
       </div>
     `,
-    confirmButtonText: "รับทราบ",
-    confirmButtonColor: "#0057B8",
-    returnFocus: false,
-  });
-  return;
-}
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+        returnFocus: false,
+      });
+      return;
+    }
 
     const confirmResult = await AppSwal.fire({
       icon: "question",
@@ -1073,71 +1073,71 @@ if (requiredFromCurrentStock > currentBalance) {
       }
 
       // อัปเดตตาราง paper_reports
-// อัปเดตตาราง paper_reports
-const { data: existingReport, error: reportLookupErr } = await supabase
-  .from("paper_reports")
-  .select("id")
-  .eq("order_id", entryId)
-  .maybeSingle();
+      // อัปเดตตาราง paper_reports
+      const { data: existingReport, error: reportLookupErr } = await supabase
+        .from("paper_reports")
+        .select("id")
+        .eq("order_id", entryId)
+        .maybeSingle();
 
-if (reportLookupErr) {
-  throw new Error(
-    `ตรวจสอบรายงานกระดาษไม่สำเร็จ: ${reportLookupErr.message}`,
-  );
-}
+      if (reportLookupErr) {
+        throw new Error(
+          `ตรวจสอบรายงานกระดาษไม่สำเร็จ: ${reportLookupErr.message}`,
+        );
+      }
 
-if (existingReport) {
-  const { error: reportUpdateErr } = await supabase
-    .from("paper_reports")
-    .update({
-      target_qty: reconcilingOrder.quantity || 0,
-      target_a3: reconcilingOrder.target_a3 || 0,
-      good_a3: reconcileCalculation.goodA3,
-      waste_a3: reconcileCalculation.wasteA3,
-      waste_qty: reconcileCalculation.wasteQty,
-      waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
-      waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
-      paper_type: reconcileCalculation.paperType,
-      product_id: reconcilingOrder.product_id,
-      department: reconcilingOrder.created_by_department,
-      lot_number: reconcilingOrder.lot_number,
-      qty_per_a3_used: reconcileCalculation.qtyPerA3,
-    })
-    .eq("id", existingReport.id);
+      if (existingReport) {
+        const { error: reportUpdateErr } = await supabase
+          .from("paper_reports")
+          .update({
+            target_qty: reconcilingOrder.quantity || 0,
+            target_a3: reconcilingOrder.target_a3 || 0,
+            good_a3: reconcileCalculation.goodA3,
+            waste_a3: reconcileCalculation.wasteA3,
+            waste_qty: reconcileCalculation.wasteQty,
+            waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
+            waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
+            paper_type: reconcileCalculation.paperType,
+            product_id: reconcilingOrder.product_id,
+            department: reconcilingOrder.created_by_department,
+            lot_number: reconcilingOrder.lot_number,
+            qty_per_a3_used: reconcileCalculation.qtyPerA3,
+          })
+          .eq("id", existingReport.id);
 
-  if (reportUpdateErr) {
-    throw new Error(
-      `อัปเดตรายงานกระดาษไม่สำเร็จ: ${reportUpdateErr.message}`,
-    );
-  }
-} else {
-  const { error: reportInsertErr } = await supabase
-    .from("paper_reports")
-    .insert({
-      order_id: entryId,
-      report_type: "ORDER",
-      lot_number: reconcilingOrder.lot_number,
-      product_id: reconcilingOrder.product_id,
-      department: reconcilingOrder.created_by_department,
-      paper_type: reconcileCalculation.paperType,
-      target_qty: reconcilingOrder.quantity || 0,
-      target_a3: reconcilingOrder.target_a3 || 0,
-      good_a3: reconcileCalculation.goodA3,
-      waste_a3: reconcileCalculation.wasteA3,
-      waste_qty: reconcileCalculation.wasteQty,
-      waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
-      waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
-      created_by: editorName,
-      created_at: new Date().toISOString(),
-      qty_per_a3_used: reconcileCalculation.qtyPerA3,
-    });
+        if (reportUpdateErr) {
+          throw new Error(
+            `อัปเดตรายงานกระดาษไม่สำเร็จ: ${reportUpdateErr.message}`,
+          );
+        }
+      } else {
+        const { error: reportInsertErr } = await supabase
+          .from("paper_reports")
+          .insert({
+            order_id: entryId,
+            report_type: "ORDER",
+            lot_number: reconcilingOrder.lot_number,
+            product_id: reconcilingOrder.product_id,
+            department: reconcilingOrder.created_by_department,
+            paper_type: reconcileCalculation.paperType,
+            target_qty: reconcilingOrder.quantity || 0,
+            target_a3: reconcilingOrder.target_a3 || 0,
+            good_a3: reconcileCalculation.goodA3,
+            waste_a3: reconcileCalculation.wasteA3,
+            waste_qty: reconcileCalculation.wasteQty,
+            waste_a3_remark: reconcileForm.wasteA3Remark.trim() || null,
+            waste_qty_remark: reconcileForm.wasteQtyRemark.trim() || null,
+            created_by: editorName,
+            created_at: new Date().toISOString(),
+            qty_per_a3_used: reconcileCalculation.qtyPerA3,
+          });
 
-  if (reportInsertErr) {
-    throw new Error(
-      `สร้างรายงานกระดาษไม่สำเร็จ: ${reportInsertErr.message}`,
-    );
-  }
-}
+        if (reportInsertErr) {
+          throw new Error(
+            `สร้างรายงานกระดาษไม่สำเร็จ: ${reportInsertErr.message}`,
+          );
+        }
+      }
 
       // อัปเดต Orders ใน State หลังฉาก
       setOrders((prev) =>
@@ -1461,7 +1461,7 @@ if (existingReport) {
       text: `คุณต้องการยืนยันว่าได้พิมพ์ฉลากของ ${order.product_name} เสร็จแล้วหรือไม่?`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#00AEC7",
+      confirmButtonColor: "#0057B8",
       cancelButtonColor: "#75787B",
       confirmButtonText: "✓ ยืนยันพิมพ์แล้ว",
       cancelButtonText: "ยกเลิก",
@@ -1516,21 +1516,21 @@ if (existingReport) {
   };
 
   // ✅ unmarkPrinted — เปรียบเทียบ UUID จาก DB กับ session โดยตรง
- const unmarkPrinted = async (order: OrderInterface) => {
-  if (!isAdmin) return;
+  const unmarkPrinted = async (order: OrderInterface) => {
+    if (!isAdmin) return;
 
-  if (hasStockReconciliation(order)) {
-    await AppSwal.fire({
-      icon: "warning",
-      title: "ยังยกเลิกการพิมพ์ไม่ได้",
-      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนยกเลิกสถานะพิมพ์",
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+    if (hasStockReconciliation(order)) {
+      await AppSwal.fire({
+        icon: "warning",
+        title: "ยังยกเลิกการพิมพ์ไม่ได้",
+        text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนยกเลิกสถานะพิมพ์",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  const [
+    const [
       { data: freshOrder, error: fetchError },
       {
         data: { session },
@@ -1671,12 +1671,12 @@ if (existingReport) {
       try {
         const { error } = await supabase
           .from("orders")
-        .update({
-  is_verified: false,
-  verified_by: null,
-  verified_by_user_id: null,
-  verified_at: null,
-})
+          .update({
+            is_verified: false,
+            verified_by: null,
+            verified_by_user_id: null,
+            verified_at: null,
+          })
           .eq("id", order.id);
         if (error) throw error;
         setOrders((prev) =>
@@ -1710,13 +1710,13 @@ if (existingReport) {
     }
   };
 
-const handleCancelOrder = async (order: OrderInterface) => {
-  // ✅ ตรวจสอบสิทธิ์การยกเลิก
-  if (!isAdmin && order.created_by_user_id !== currentUserId) {
-    AppSwal.fire({
-      icon: "error",
-      title: "ไม่มีสิทธิ์ยกเลิก",
-      html: `
+  const handleCancelOrder = async (order: OrderInterface) => {
+    // ✅ ตรวจสอบสิทธิ์การยกเลิก
+    if (!isAdmin && order.created_by_user_id !== currentUserId) {
+      AppSwal.fire({
+        icon: "error",
+        title: "ไม่มีสิทธิ์ยกเลิก",
+        html: `
         <div class="text-sm text-gray-600 space-y-1 text-left">
           <p>คำสั่งนี้ถูกสั่งโดย <b>${order.created_by}</b></p>
           <p class="mt-2 text-[#C8102E] font-medium">
@@ -1724,24 +1724,24 @@ const handleCancelOrder = async (order: OrderInterface) => {
           </p>
         </div>
       `,
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  if (hasStockReconciliation(order)) {
-    await AppSwal.fire({
-      icon: "warning",
-      title: "ยังยกเลิกคำสั่งไม่ได้",
-      text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนยกเลิกคำสั่ง",
-      confirmButtonText: "รับทราบ",
-      confirmButtonColor: "#0057B8",
-    });
-    return;
-  }
+    if (hasStockReconciliation(order)) {
+      await AppSwal.fire({
+        icon: "warning",
+        title: "ยังยกเลิกคำสั่งไม่ได้",
+        text: "รายการนี้ตัดสต็อคกระดาษแล้ว กรุณายกเลิกการตัดสต็อคกระดาษก่อนยกเลิกคำสั่ง",
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
 
-  const result = await AppSwal.fire({
+    const result = await AppSwal.fire({
       title: "ยืนยันการยกเลิกสั่งพิมพ์?",
       text: "กรุณาระบุเหตุผลที่ต้องการยกเลิกคำสั่งนี้",
       icon: "warning",
@@ -1761,22 +1761,22 @@ const handleCancelOrder = async (order: OrderInterface) => {
         const now = new Date().toISOString();
         const editorName = getCurrentUserIdentifier();
         const summary = `ยกเลิกเพราะ: ${result.value}`;
-   const updateData = {
-  is_printed: false,
-  printed_by: null,
-  printed_by_user_id: null,
-  printed_at: null,
+        const updateData = {
+          is_printed: false,
+          printed_by: null,
+          printed_by_user_id: null,
+          printed_at: null,
 
-  is_verified: false,
-  verified_by: null,
-  verified_by_user_id: null,
-  verified_at: null,
+          is_verified: false,
+          verified_by: null,
+          verified_by_user_id: null,
+          verified_at: null,
 
-  is_cancelled: true,
-  updated_at: now,
-  updated_by: editorName,
-  edit_summary: summary,
-};
+          is_cancelled: true,
+          updated_at: now,
+          updated_by: editorName,
+          edit_summary: summary,
+        };
         const { error } = await supabase
           .from("orders")
           .update(updateData)
@@ -1894,23 +1894,23 @@ const handleCancelOrder = async (order: OrderInterface) => {
       try {
         const now = new Date().toISOString();
         const editorName = getCurrentUserIdentifier();
-  const updateData = {
-  is_cancelled: false,
+        const updateData = {
+          is_cancelled: false,
 
-  is_printed: false,
-  printed_by: null,
-  printed_by_user_id: null,
-  printed_at: null,
+          is_printed: false,
+          printed_by: null,
+          printed_by_user_id: null,
+          printed_at: null,
 
-  is_verified: false,
-  verified_by: null,
-  verified_by_user_id: null,
-  verified_at: null,
+          is_verified: false,
+          verified_by: null,
+          verified_by_user_id: null,
+          verified_at: null,
 
-  updated_at: now,
-  updated_by: editorName,
-  edit_summary: "กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)",
-};
+          updated_at: now,
+          updated_by: editorName,
+          edit_summary: "กู้คืนคำสั่งพิมพ์ฉลาก (จากสถานะยกเลิก)",
+        };
         const { error } = await supabase
           .from("orders")
           .update(updateData)
@@ -2352,18 +2352,18 @@ const handleCancelOrder = async (order: OrderInterface) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-         {filteredOrders.slice(0, visibleCount).map((order) => {
-  const stockMeta = productMetaMap[order.product_id];
+          {filteredOrders.slice(0, visibleCount).map((order) => {
+            const stockMeta = productMetaMap[order.product_id];
 
-  const canReconcileStock =
-    Boolean(stockMeta?.paperType?.trim()) &&
-    Number.isFinite(stockMeta?.qtyPerA3) &&
-    (stockMeta?.qtyPerA3 ?? 0) > 0;
+            const canReconcileStock =
+              Boolean(stockMeta?.paperType?.trim()) &&
+              Number.isFinite(stockMeta?.qtyPerA3) &&
+              (stockMeta?.qtyPerA3 ?? 0) > 0;
 
-  // Status classes
-            let borderLeftCls = "border-l-4 border-l-[#0057B8]";
+            // Status classes
+            let borderLeftCls = "border-l-4 border-l-[#7C3AED]";
             let headerBgCls =
-              "bg-[#F8FBFD] border-b border-[#D9E1E2] px-5 py-4.5 flex flex-col gap-3.5";
+              "bg-[#F7F3FF] border-b border-[#7C3AED]/20 px-5 py-4.5 flex flex-col gap-3.5";
             if (order.is_cancelled) {
               borderLeftCls = "border-l-4 border-l-[#C8102E]";
               headerBgCls =
@@ -2377,9 +2377,9 @@ const handleCancelOrder = async (order: OrderInterface) => {
               headerBgCls =
                 "bg-[#FFF0E7] border-b border-[#FF6A13]/15 px-5 py-4.5 flex flex-col gap-3.5";
             } else if (order.is_printed) {
-              borderLeftCls = "border-l-4 border-l-[#00AEC7]";
+              borderLeftCls = "border-l-4 border-l-[#0057B8]";
               headerBgCls =
-                "bg-[#E5F8FB] border-b border-[#00AEC7]/15 px-5 py-4.5 flex flex-col gap-3.5";
+                "bg-[#EAF3FC] border-b border-[#0057B8]/20 px-5 py-4.5 flex flex-col gap-3.5";
             }
 
             return (
@@ -2393,20 +2393,20 @@ const handleCancelOrder = async (order: OrderInterface) => {
                             `}
               >
                 {isAdmin && hasStockReconciliation(order) && (
-                    <button
-                      type="button"
-                      onClick={() => setStockDetailOrder(order)}
-                      className="relative z-20 w-full cursor-pointer rounded-none border-b border-[#008C78]/35 bg-[#00B398] px-3 py-1.5 text-left text-[#003B32] shadow-sm transition-colors hover:bg-[#00A58D] focus:outline-none focus:ring-2 focus:ring-[#00B398]/30 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
-                      title={`ตัดสต็อคโดย ${order.reconciled_by || "ไม่ระบุชื่อ"} เมื่อ ${formatThaiDateTimeFromISO(order.reconciled_at)}`}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate text-[10px] font-black">
-                          ตัดสต็อค: {order.reconciled_by || "ไม่ระบุชื่อ"}
-                        </span>
-                      </div>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setStockDetailOrder(order)}
+                    className="relative z-20 w-full cursor-pointer rounded-none border-b border-[#008C78]/35 bg-[#00B398] px-3 py-1.5 text-left text-[#003B32] shadow-sm transition-colors hover:bg-[#00A58D] focus:outline-none focus:ring-2 focus:ring-[#00B398]/30 focus:ring-inset sm:absolute sm:top-0 sm:right-0 sm:w-[180px] sm:max-w-[50%] sm:rounded-bl-2xl sm:border-l sm:px-2.5"
+                    title={`ตัดสต็อคโดย ${order.reconciled_by || "ไม่ระบุชื่อ"} เมื่อ ${formatThaiDateTimeFromISO(order.reconciled_at)}`}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate text-[10px] font-black">
+                        ตัดสต็อค: {order.reconciled_by || "ไม่ระบุชื่อ"}
+                      </span>
+                    </div>
+                  </button>
+                )}
                 <div className={headerBgCls}>
                   <div className="w-full">
                     <div className="flex flex-col gap-1.5 mb-2.5">
@@ -2447,7 +2447,7 @@ const handleCancelOrder = async (order: OrderInterface) => {
                           return (
                             isPending &&
                             isRecent && (
-                              <span className="bg-[#0057B8] text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
+                              <span className="bg-[#7C3AED] text-white text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 shadow-sm animate-bounce">
                                 New
                               </span>
                             )
@@ -2495,7 +2495,7 @@ const handleCancelOrder = async (order: OrderInterface) => {
                                 <button
                                   type="button"
                                   onClick={() => markPrinted(order)}
-                                  className="w-8 h-8 rounded-lg bg-transparent text-[#00AEC7] hover:bg-[#E5F8FB] border border-transparent hover:border-[#00AEC7]/25 flex items-center justify-center transition-all duration-200"
+                                  className="w-8 h-8 rounded-lg bg-transparent text-[#0057B8] hover:bg-[#EAF3FC] border border-transparent hover:border-[#0057B8]/20 flex items-center justify-center transition-all duration-200"
                                   title="พิมพ์แล้ว"
                                 >
                                   <Printer className="w-4 h-4" />
@@ -2564,9 +2564,9 @@ const handleCancelOrder = async (order: OrderInterface) => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                       )}
-                  {isAdmin &&
-  !order.is_cancelled &&
-  (hasStockReconciliation(order) ? (
+                    {isAdmin &&
+                      !order.is_cancelled &&
+                      (hasStockReconciliation(order) ? (
                         <button
                           type="button"
                           onClick={() => undoReconcile(order)}
@@ -2576,23 +2576,23 @@ const handleCancelOrder = async (order: OrderInterface) => {
                           <Undo className="w-4 h-4" />
                         </button>
                       ) : (
-                     <button
-  type="button"
-  onClick={() => startReconcile(order)}
-  disabled={!canReconcileStock}
-  className={`w-8 h-8 rounded-lg border border-transparent flex items-center justify-center transition-all duration-200 ${
-    canReconcileStock
-      ? "bg-transparent text-[#A88700] hover:bg-[#FFF8D6] hover:border-[#F1C400]/35"
-      : "bg-[#F0F3F4] text-[#B8C4C8] cursor-not-allowed"
-  }`}
-  title={
-    canReconcileStock
-      ? "บันทึกผลผลิต / ตัดสต็อคกระดาษ"
-      : "ต้องตั้งค่าประเภทกระดาษและจำนวนชิ้นต่อ A3 ที่หน้า Product ก่อน"
-  }
->
-  <Layers className="w-4 h-4" />
-</button>
+                        <button
+                          type="button"
+                          onClick={() => startReconcile(order)}
+                          disabled={!canReconcileStock}
+                          className={`w-8 h-8 rounded-lg border border-transparent flex items-center justify-center transition-all duration-200 ${
+                            canReconcileStock
+                              ? "bg-transparent text-[#A88700] hover:bg-[#FFF8D6] hover:border-[#F1C400]/35"
+                              : "bg-[#F0F3F4] text-[#B8C4C8] cursor-not-allowed"
+                          }`}
+                          title={
+                            canReconcileStock
+                              ? "บันทึกผลผลิต / ตัดสต็อคกระดาษ"
+                              : "ต้องตั้งค่าประเภทกระดาษและจำนวนชิ้นต่อ A3 ที่หน้า Product ก่อน"
+                          }
+                        >
+                          <Layers className="w-4 h-4" />
+                        </button>
                       ))}
 
                     {!order.is_cancelled &&
@@ -2749,7 +2749,7 @@ const handleCancelOrder = async (order: OrderInterface) => {
                                           : order.is_no_file
                                             ? "bg-[#FF6A13] text-[#4A1E00] shadow-inner"
                                             : order.is_printed
-                                              ? "bg-[#00AEC7] text-[#003B46] shadow-inner"
+                                              ? "bg-[#0057B8] text-white shadow-inner"
                                               : "bg-[#F0F3F4] text-[#5F6B70] border-t border-[#D9E1E2]"
                                     }`}
                 >
