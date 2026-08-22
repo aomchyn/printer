@@ -44,27 +44,41 @@ export default function AuthCallbackPage() {
           throw profileError;
         }
 
-        // Defense-in-depth:
-        // Google Login ใช้ได้เฉพาะ role=user
-        if (profile && profile.role !== "user") {
-          await supabase.auth.signOut();
-
-          throw new Error(
-            "บัญชีเจ้าหน้าที่ไม่สามารถเข้าสู่ระบบด้วย Google ได้",
-          );
-        }
-
-        // Google user ใหม่: สร้าง public.users
+        // ไม่พบ profile จาก user.id:
+        // เช็กซ้ำว่า email นี้มีบัญชีเดิมในระบบหรือไม่
         if (!profile) {
+          if (!user.email) {
+            throw new Error("ไม่พบอีเมลจากบัญชี Google");
+          }
+
+          const { data: existingEmailProfile, error: emailCheckError } =
+            await supabase
+              .from("users")
+              .select("id, role, department")
+              .ilike("email", user.email.trim())
+              .maybeSingle();
+
+          if (emailCheckError) {
+            throw emailCheckError;
+          }
+
+          // email มีอยู่แล้ว แต่ auth user id ไม่ตรงกัน
+          // ห้ามสร้างบัญชีใหม่หรือคัดลอก role เพื่อป้องกันสิทธิ์ผิดบัญชี
+          if (existingEmailProfile) {
+            throw new Error(
+              "อีเมลนี้มีบัญชีอยู่ในระบบแล้ว แต่บัญชี Google ยังไม่ได้เชื่อมกับบัญชีเดิม กรุณาติดต่อผู้ดูแลระบบ",
+            );
+          }
+
           const googleName =
             user.user_metadata?.full_name ||
             user.user_metadata?.name ||
-            user.email?.split("@")[0] ||
+            user.email.split("@")[0] ||
             "Google User";
 
           const { error: insertError } = await supabase.from("users").insert({
             id: user.id,
-            email: user.email,
+            email: user.email.trim().toLowerCase(),
             name: String(googleName).trim(),
             role: "user",
             department: null,
@@ -82,11 +96,17 @@ export default function AuthCallbackPage() {
           throw new Error("ไม่สามารถบันทึกประวัติการเข้าสู่ระบบได้");
         }
 
-        if (!profile || !profile.department) {
+        if (!profile) {
           router.replace("/select-department");
-        } else {
-          router.replace("/printer/dashboard");
+          return;
         }
+
+        if (profile.role === "user" && !profile.department) {
+          router.replace("/select-department");
+          return;
+        }
+
+        router.replace("/printer/dashboard");
       } catch (error) {
         console.error("Google login callback error:", error);
 
