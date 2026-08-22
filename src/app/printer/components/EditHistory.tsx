@@ -12,6 +12,17 @@ interface HistoryEntry {
   created_at: string;
 }
 
+const isVisibleHistoryEntry = (entry: HistoryEntry) => {
+  if (entry.action === "CANCEL" || entry.action === "RESTORE_FROM_TRASH") {
+    return true;
+  }
+
+  return (
+    entry.action === "UPDATE" &&
+    (entry.summary.startsWith("แก้ไข:") || entry.summary === "แก้ไขคำสั่งพิมพ์")
+  );
+};
+
 interface Props {
   orderId: number;
   updatedAt?: string | null;
@@ -32,8 +43,7 @@ export default function EditHistory({ orderId, updatedAt, auditKey }: Props) {
         .from("audit_logs")
         .select("id, action, user_name, summary, created_at")
         .eq("order_id", orderId)
-        .eq("action", "UPDATE")
-        .or("summary.like.แก้ไข:%,summary.eq.แก้ไขคำสั่งพิมพ์")
+        .in("action", ["UPDATE", "CANCEL", "RESTORE_FROM_TRASH"])
         .order("created_at", { ascending: false });
 
       if (!cancelled) {
@@ -41,7 +51,7 @@ export default function EditHistory({ orderId, updatedAt, auditKey }: Props) {
           console.error("โหลดประวัติไม่สำเร็จ:", error);
           setHistory([]);
         } else {
-          setHistory(data || []);
+          setHistory((data || []).filter(isVisibleHistoryEntry));
         }
         setLoading(false);
       }
@@ -68,7 +78,7 @@ export default function EditHistory({ orderId, updatedAt, auditKey }: Props) {
         <div className="text-xs bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-lg p-3 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded-full font-bold tracking-wide">
-              ✏️ แก้ไขล่าสุด
+              🕘 กิจกรรมล่าสุด
             </span>
             <span className="text-gray-400 text-[10px]">
               {new Date(latestEntry.created_at).toLocaleString("th-TH", {
