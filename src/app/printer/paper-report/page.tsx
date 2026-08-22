@@ -40,7 +40,51 @@ interface DashboardOrderGroup {
   wasteA3: number;
   remarks: string[];
   productId: string;
-  entries: any[];
+  entries: PaperReportEntry[];
+}
+
+interface ProductRecord {
+  id: string;
+  name?: string | null;
+  qty_per_a3: number;
+  default_paper_type?: string | null;
+}
+
+interface ProductMeta {
+  qtyPerA3: number;
+  paperType: string;
+  name: string;
+}
+
+interface PaperReportRecord {
+  id: string;
+  order_id?: string | null;
+  department?: string | null;
+  lot_number?: string | null;
+  product_id: string;
+  paper_type?: string | null;
+  qty_per_a3_used?: number | null;
+  good_a3?: number | null;
+  waste_a3?: number | null;
+  waste_qty?: number | null;
+  target_qty?: number | null;
+  target_a3?: number | null;
+  waste_qty_remark?: string | null;
+  waste_a3_remark?: string | null;
+  remark?: string | null;
+  report_type?: string | null;
+  created_at?: string | null;
+}
+
+interface PaperReportEntry extends PaperReportRecord {
+  date?: string;
+  sheets_needed?: number;
+}
+
+interface CurrentUser {
+  id: string;
+  email?: string | null;
+  user_metadata?: { full_name?: string };
 }
 
 export default function PaperReportPage() {
@@ -49,7 +93,7 @@ export default function PaperReportPage() {
     "checking" | "allowed" | "denied"
   >("checking");
   const [printOrders, setPrintOrders] = useState<DashboardOrderGroup[]>([]);
-  const [rawOrders, setRawOrders] = useState<any[]>([]);
+  const [rawOrders, setRawOrders] = useState<PaperReportRecord[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
@@ -67,7 +111,7 @@ export default function PaperReportPage() {
   const [reportEndDate, setReportEndDate] = useState<string>(
     new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }),
   );
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   // Accordion state
   const [expandedSections, setExpandedSections] = useState<
@@ -89,9 +133,9 @@ export default function PaperReportPage() {
     fetchUser();
   }, []);
 
-  const [productsList, setProductsList] = useState<any[]>([]);
+  const [productsList, setProductsList] = useState<ProductRecord[]>([]);
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [, setIsExporting] = useState(false);
   const actionLock = useRef(false);
   const editOriginalValues = useRef<Record<string, string>>({});
   const [mdProduct, setMdProduct] = useState("");
@@ -196,13 +240,13 @@ export default function PaperReportPage() {
     checkAccess();
   }, []);
 
-  const fetchOrders = async () => {
+  async function fetchOrders() {
     setIsLoadingOrders(true);
     setOrdersError(null);
     try {
       const PAGE_SIZE = 1000;
 
-      let allFgData: any[] = [];
+      let allFgData: ProductRecord[] = [];
       let fgFrom = 0;
       let fgHasMore = true;
       while (fgHasMore) {
@@ -223,8 +267,8 @@ export default function PaperReportPage() {
       );
       setProductsList(sorted);
 
-      const productMetaMap: Record<string, any> = {};
-      allFgData.forEach((p: any) => {
+      const productMetaMap: Record<string, ProductMeta> = {};
+      allFgData.forEach((p) => {
         productMetaMap[p.id] = {
           qtyPerA3: p.qty_per_a3 || 1,
           paperType: p.default_paper_type || "ไม่ระบุ",
@@ -232,7 +276,7 @@ export default function PaperReportPage() {
         };
       });
 
-      let allData: any[] = [];
+      let allData: PaperReportRecord[] = [];
       let from = 0;
       let hasMore = true;
 
@@ -245,7 +289,7 @@ export default function PaperReportPage() {
 
         if (error) throw error;
         if (data && data.length > 0) {
-          allData = allData.concat(data);
+          allData = allData.concat(data as PaperReportRecord[]);
           from += PAGE_SIZE;
           hasMore = data.length === PAGE_SIZE;
         } else {
@@ -255,7 +299,7 @@ export default function PaperReportPage() {
 
       const groupedOrders = new Map<string, DashboardOrderGroup>();
 
-      allData.forEach((o: any) => {
+      allData.forEach((o) => {
         const department = o.department
           ? o.department.split(" ")[0]
           : "หน่วยงานอื่นๆ";
@@ -338,13 +382,16 @@ export default function PaperReportPage() {
       const formattedOrders = Array.from(groupedOrders.values());
       setRawOrders(allData);
       setPrintOrders(formattedOrders);
-    } catch (error: any) {
+    } catch (error) {
+      const errorWithMessage = error as { message?: string };
       console.error("Error fetching print orders:", error);
-      setOrdersError("ไม่สามารถโหลดประวัติคำสั่งพิมพ์ได้: " + error.message);
+      setOrdersError(
+        "ไม่สามารถโหลดประวัติคำสั่งพิมพ์ได้: " + errorWithMessage.message,
+      );
     } finally {
       setIsLoadingOrders(false);
     }
-  };
+  }
 
   // --- Daily Summary (Today) ---
   const dailySummary = useMemo(() => {
@@ -360,7 +407,7 @@ export default function PaperReportPage() {
     let totalWaste = 0;
 
     printOrders.forEach((group) => {
-      group.entries.forEach((entry: any) => {
+      group.entries.forEach((entry) => {
         const entryDate = entry.date;
         if (entryDate === todayStr) {
           const sheets = entry.sheets_needed || 0;
@@ -390,7 +437,7 @@ export default function PaperReportPage() {
     let totalTarget = 0;
 
     // Build meta map from state
-    const metaMap: Record<string, any> = {};
+    const metaMap: Record<string, ProductMeta> = {};
     productsList.forEach((p) => {
       metaMap[p.id] = {
         qtyPerA3: p.qty_per_a3 || 1,
@@ -399,7 +446,7 @@ export default function PaperReportPage() {
       };
     });
 
-    rawOrders.forEach((o: any) => {
+    rawOrders.forEach((o) => {
       const entryDate = o.created_at
         ? new Date(o.created_at).toLocaleDateString("en-CA", {
             timeZone: "Asia/Bangkok",
@@ -503,7 +550,7 @@ export default function PaperReportPage() {
       summary[dept].wasteQty += group.wasteQty;
       summary[dept].excessQty += group.excessQty;
 
-      group.entries.forEach((entry: any) => {
+      group.entries.forEach((entry) => {
         const pt = entry.paper_type || "ไม่ระบุ";
         if (!byPaperType[pt])
           byPaperType[pt] = { sheetsUsed: 0, sheetsGood: 0, sheetsWaste: 0 };
@@ -532,7 +579,7 @@ export default function PaperReportPage() {
     > = {};
 
     printOrders.forEach((group) => {
-      group.entries.forEach((entry: any) => {
+      group.entries.forEach((entry) => {
         const date = entry.date;
         if (!date) return;
         if (!summary[date]) {
@@ -599,9 +646,9 @@ export default function PaperReportPage() {
     });
     if (!result.isConfirmed) return;
 
-    const idsToDelete = group.entries.map((e: any) => e.id);
+    const idsToDelete = group.entries.map((e) => e.id);
     const orderIdsToDelete = group.entries
-      .map((e: any) => e.order_id)
+      .map((e) => e.order_id)
       .filter(Boolean);
     const allTxRefIds = [...idsToDelete, ...orderIdsToDelete];
     if (idsToDelete.length === 0) return;
@@ -627,7 +674,7 @@ export default function PaperReportPage() {
         showConfirmButton: false,
       });
       fetchOrders();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       Swal.fire({
         icon: "error",
@@ -640,7 +687,7 @@ export default function PaperReportPage() {
   const openEditManualModal = (group: DashboardOrderGroup) => {
     // Pick MANUAL entry if exists, otherwise take the first entry (e.g. from dashboard)
     const manualEntry =
-      group.entries.find((e: any) => e.report_type === "MANUAL") ||
+      group.entries.find((e) => e.report_type === "MANUAL") ||
       group.entries[0];
     if (!manualEntry) return;
 
@@ -980,8 +1027,9 @@ export default function PaperReportPage() {
       }
       closeManualModal();
       fetchOrders();
-    } catch (err: any) {
-      alert("เกิดข้อผิดพลาด: " + err.message);
+    } catch (err) {
+      const errorWithMessage = err as { message?: string };
+      alert("เกิดข้อผิดพลาด: " + errorWithMessage.message);
     } finally {
       setIsSubmittingManual(false);
       actionLock.current = false;
@@ -1070,7 +1118,7 @@ export default function PaperReportPage() {
 
       // 4. บันทึกยกยอดคงเหลือ (เฉพาะกระดาษที่ยอดมากกว่า 0)
       const carryForwardInserts = Object.entries(balances)
-        .filter(([_, balance]) => balance > 0)
+        .filter(([, balance]) => balance > 0)
         .map(([pt, balance]) => ({
           paper_type: pt,
           transaction_type: "IN",
@@ -1097,10 +1145,11 @@ export default function PaperReportPage() {
       });
 
       fetchOrders();
-    } catch (err: any) {
+    } catch (err) {
+      const errorWithMessage = err as { message?: string };
       Swal.fire(
         "เกิดข้อผิดพลาด",
-        err.message || "ไม่สามารถรีเซ็ตข้อมูลได้",
+        errorWithMessage.message || "ไม่สามารถรีเซ็ตข้อมูลได้",
         "error",
       );
     } finally {
@@ -1208,9 +1257,6 @@ export default function PaperReportPage() {
       } else {
         // ออกเอกสารหลายวันรวมเป็นไฟล์เดียว .zip
         const records = dates.map((dateObj) => {
-          const dateStr = dateObj.toLocaleDateString("en-CA", {
-            timeZone: "Asia/Bangkok",
-          });
           const formattedDate = `${String(dateObj.getDate()).padStart(2, "0")}/${String(dateObj.getMonth() + 1).padStart(2, "0")}/${String(dateObj.getFullYear()).slice(-2)}`;
 
           return {
@@ -1228,11 +1274,12 @@ export default function PaperReportPage() {
           records,
         );
       }
-    } catch (error: any) {
+    } catch (error) {
+      const errorWithMessage = error as { message?: string };
       console.error(error);
       alert(
         "เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร (กรุณาตรวจสอบว่ามีไฟล์ cleaning_report.docx ในโฟลเดอร์ public/templates หรือไม่)\n" +
-          error.message,
+          errorWithMessage.message,
       );
     } finally {
       setIsReportLoading(false);
@@ -1249,7 +1296,7 @@ export default function PaperReportPage() {
       ejWb.created = new Date();
 
       const allDates = printOrders
-        .flatMap((g) => g.entries.map((e: any) => e.date as string))
+        .flatMap((g) => g.entries.map((e) => e.date as string))
         .filter(Boolean);
       const minDate = allDates.length
         ? allDates.reduce((a, b) => (a < b ? a : b))
@@ -1295,7 +1342,7 @@ export default function PaperReportPage() {
         string,
         { totalIn: number; totalOutAllTime: number; thisWeekOut: number }
       > = {};
-      (txAll || []).forEach((tx: any) => {
+      (txAll || []).forEach((tx: { paper_type?: string | null; transaction_type?: string | null; qty: number }) => {
         const pt = tx.paper_type || "ไม่ระบุ";
         if (!stockMap[pt])
           stockMap[pt] = { totalIn: 0, totalOutAllTime: 0, thisWeekOut: 0 };
@@ -1455,7 +1502,7 @@ export default function PaperReportPage() {
           (g) => (g.department || "-") === dept,
         );
         const deptDates = deptGroups
-          .flatMap((g) => g.entries.map((e: any) => e.date as string))
+          .flatMap((g) => g.entries.map((e) => e.date as string))
           .filter(Boolean);
         const dMin = deptDates.length
           ? deptDates.reduce((a, b) => (a < b ? a : b))
@@ -1508,7 +1555,7 @@ export default function PaperReportPage() {
         headerRowDept.font = { bold: true };
 
         const deptRows = buildDetailRows(deptGroups);
-        deptRows.forEach((row: any) => {
+        deptRows.forEach((row) => {
           const r = wsDept.addRow([
             row["หน่วยงาน"],
             row["Lot"],
