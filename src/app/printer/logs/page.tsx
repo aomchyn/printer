@@ -24,6 +24,17 @@ interface AuditLog {
     } | { name: string; email: string }[] | null
 }
 
+interface AuditLogDetails {
+    product_name?: string
+    product_id?: string | number
+    lot_number?: string | number
+    order_type?: string | null
+    quantity?: string | number
+    created_by?: string
+    deleted_by?: string
+    restored_by?: string
+}
+
 // ─── Access Denied UI ───────────────────────────────────────────────────────
 function AccessDenied() {
     const router = useRouter()
@@ -147,7 +158,7 @@ export default function LogsManagement() {
         const summary = log.summary
 
         if ((log.action === 'DELETE_ORDER' || log.action === 'PERMANENT_DELETE_ORDER') && data) {
-            const d = data as any
+            const d = data as AuditLogDetails
             return (
                 <div className="text-xs space-y-0.5">
                     <div><span className="text-[#5F6B70]">สินค้า:</span> <span className="font-semibold text-[#101820]">{d.product_name}</span></div>
@@ -163,7 +174,7 @@ export default function LogsManagement() {
         }
 
         if (log.action === 'CREATE_STABILITY_FEED' && data) {
-            const d = data as any
+            const d = data as AuditLogDetails
             return (
                 <div className="text-xs space-y-0.5">
                     {d.product_name && <div><span className="text-[#5F6B70]">สินค้า:</span> <span className="font-semibold text-[#101820]">{d.product_name}</span></div>}
@@ -174,7 +185,7 @@ export default function LogsManagement() {
         }
 
         if (log.action === 'DELETE_STABILITY_FEED' && data) {
-            const d = data as any
+            const d = data as AuditLogDetails
             return (
                 <div className="text-xs space-y-0.5">
                     {d.product_name && <div><span className="text-[#5F6B70]">สินค้า:</span> <span className="font-semibold text-[#101820]">{d.product_name}</span></div>}
@@ -186,7 +197,7 @@ export default function LogsManagement() {
         }
 
         if (log.action === 'RESTORE_FROM_TRASH' && data) {
-            const d = data as any
+            const d = data as AuditLogDetails
             return (
                 <div className="text-xs space-y-0.5">
                     <div><span className="text-[#5F6B70]">สินค้า:</span> <span className="font-semibold text-[#101820]">{d.product_name}</span></div>

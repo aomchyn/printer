@@ -176,7 +176,7 @@ export default function TrashPage() {
 
                 setDeletedOrders(prev => prev.filter(o => o.id !== order.id));
                 Swal.fire({ icon: 'success', title: 'กู้คืนสำเร็จ', text: 'คำสั่งพิมพ์กลับมาใน Dashboard แล้ว', timer: 2000, showConfirmButton: false });
-            } catch (error) {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'กู้คืนไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -207,7 +207,7 @@ export default function TrashPage() {
 
                 setDeletedOrders(prev => prev.filter(o => o.id !== order.id));
                 Swal.fire({ icon: 'success', title: 'ลบถาวรสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'ลบไม่สำเร็จ', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }
@@ -230,7 +230,7 @@ export default function TrashPage() {
                 if (error) throw error;
                 setDeletedOrders([]);
                 Swal.fire({ icon: 'success', title: 'ล้างถังขยะสำเร็จ', timer: 1500, showConfirmButton: false });
-            } catch (error) {
+            } catch {
                 Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'กรุณาลองใหม่อีกครั้ง' });
             }
         }

@@ -179,7 +179,7 @@ export default function StockPage() {
               day: "numeric",
             });
           }
-        } catch (e) {}
+        } catch {}
 
         return {
           dateKey: date,
