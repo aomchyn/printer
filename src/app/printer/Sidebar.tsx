@@ -295,11 +295,12 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         timer: 1500,
         showConfirmButton: false,
       });
-    } catch (err: any) {
+    } catch (err) {
+      const errorWithMessage = err as { message?: string };
       Swal.fire({
         icon: "error",
         title: "บันทึกไม่สำเร็จ",
-        text: err?.message || "กรุณาลองใหม่อีกครั้ง",
+        text: errorWithMessage.message || "กรุณาลองใหม่อีกครั้ง",
       });
     } finally {
       setIsSavingProfile(false);

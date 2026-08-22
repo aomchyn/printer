@@ -73,7 +73,13 @@ export interface OrderInterface {
   reconciled_by?: string | null;
   reconciled_at?: string | null;
   qty_per_a3_used?: number | null;
+  target_a3?: number | null;
 }
+
+type AudioContextWindow = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderInterface[]>([]);
@@ -204,7 +210,8 @@ export default function DashboardPage() {
     const playNotificationSound = () => {
       try {
         const AudioContext =
-          window.AudioContext || (window as any).webkitAudioContext;
+          window.AudioContext ||
+          (window as AudioContextWindow).webkitAudioContext;
         if (!AudioContext) return;
         const audioCtx = new AudioContext();
 
@@ -796,7 +803,7 @@ const hasStockReconciliation = (order?: OrderInterface | null) =>
     };
   }, [reconcilingOrder, reconcileForm, productMetaMap]);
 
-  const submitReconcile = async (e?: any) => {
+  const submitReconcile = async (e?: React.MouseEvent<HTMLButtonElement>) => {
     // 🟢 ดัก Event ป้องกันไม่ให้การคลิกทะลุไปถึง Modal ข้างหลัง
     if (e && e.preventDefault) {
       e.preventDefault();
@@ -1084,7 +1091,7 @@ if (existingReport) {
     .from("paper_reports")
     .update({
       target_qty: reconcilingOrder.quantity || 0,
-      target_a3: (reconcilingOrder as any).target_a3 || 0,
+      target_a3: reconcilingOrder.target_a3 || 0,
       good_a3: reconcileCalculation.goodA3,
       waste_a3: reconcileCalculation.wasteA3,
       waste_qty: reconcileCalculation.wasteQty,
@@ -1114,7 +1121,7 @@ if (existingReport) {
       department: reconcilingOrder.created_by_department,
       paper_type: reconcileCalculation.paperType,
       target_qty: reconcilingOrder.quantity || 0,
-      target_a3: (reconcilingOrder as any).target_a3 || 0,
+      target_a3: reconcilingOrder.target_a3 || 0,
       good_a3: reconcileCalculation.goodA3,
       waste_a3: reconcileCalculation.wasteA3,
       waste_qty: reconcileCalculation.wasteQty,

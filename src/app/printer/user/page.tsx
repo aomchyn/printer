@@ -429,11 +429,12 @@ export default function UserManagement() {
           title: "ลบลายเซ็นเรียบร้อย",
           timer: 1500,
         });
-      } catch (err: any) {
+      } catch (err) {
+        const errorWithMessage = err as { message?: string };
         Swal.fire({
           icon: "error",
           title: "ข้อผิดพลาด",
-          text: err.message || "ไม่สามารถลบลายเซ็นได้",
+          text: errorWithMessage.message || "ไม่สามารถลบลายเซ็นได้",
         });
       }
     }
@@ -577,11 +578,12 @@ export default function UserManagement() {
         });
         resetForm();
         fetchUsers();
-      } catch (error: any) {
+      } catch (error) {
+        const errorWithMessage = error as { message?: string };
         Swal.fire({
           icon: "error",
           title: "ข้อผิดพลาด",
-          text: error.message || "Failed to save user",
+          text: errorWithMessage.message || "Failed to save user",
         });
       }
     } else {
@@ -654,8 +656,9 @@ export default function UserManagement() {
         });
         resetForm();
         fetchUsers();
-      } catch (error: any) {
-        let msg = error.message;
+      } catch (error) {
+        const errorWithMessage = error as { message?: string };
+        let msg = errorWithMessage.message;
         if (msg?.includes("users_id_fkey"))
           msg = "ไม่สามารถสร้างผู้ใช้ได้ เนื่องจากอีเมลนี้ถูกใช้งานไปแล้ว";
         Swal.fire({

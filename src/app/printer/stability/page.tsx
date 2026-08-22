@@ -58,6 +58,13 @@ export interface StabilityFeedLog {
   createdAt?: string;
 }
 
+type UpcomingTest = StabilityFeedLog & {
+  id: number;
+  intervalMonths: number;
+  testDate: Date;
+  diffDays: number;
+};
+
 const FormWrapper = ({
   isModal,
   onClose,
@@ -659,7 +666,7 @@ export default function StabilityPage() {
 
       const { intervals: selected, completed } = parseLogData(log);
 
-      const upcoming: any[] = [];
+      const upcoming: UpcomingTest[] = [];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -680,7 +687,7 @@ export default function StabilityPage() {
             intervalMonths: months,
             testDate: testDate,
             diffDays: diffDays,
-          });
+          } as UpcomingTest);
         }
       });
 
