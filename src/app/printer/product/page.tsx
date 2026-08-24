@@ -196,6 +196,89 @@ export default function FgcodeManagement() {
         setShowModal(true);
         return;
       }
+
+      const escapeHtml = (value: string) =>
+        value.replace(
+          /[&<>'"]/g,
+          (character) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              "'": "&#39;",
+              '"': "&quot;",
+            })[character] || character,
+        );
+      const changes: Array<{ label: string; from: string; to: string }> = [];
+      if (cleanName !== (currentEditing.name || "")) {
+        changes.push({
+          label: "ชื่อสินค้า",
+          from: currentEditing.name || "ไม่ระบุ",
+          to: cleanName,
+        });
+      }
+      if (cleanExp !== (currentEditing.exp || "")) {
+        changes.push({
+          label: "อายุผลิตภัณฑ์",
+          from: `${currentEditing.exp || "ไม่ระบุ"} เดือน`,
+          to: `${cleanExp} เดือน`,
+        });
+      }
+      if (isAdminRole && (cleanQtyPerA3 ?? "") !== (currentQtyPerA3 ?? "")) {
+        changes.push({
+          label: "จำนวนชิ้นต่อแผ่น A3",
+          from: currentQtyPerA3 || "ไม่ระบุ",
+          to: cleanQtyPerA3 || "ไม่ระบุ",
+        });
+      }
+      if (
+        isAdminRole &&
+        (defaultPaperType || "") !== (currentEditing.default_paper_type || "")
+      ) {
+        changes.push({
+          label: "ประเภทกระดาษ",
+          from: currentEditing.default_paper_type || "ไม่ระบุ",
+          to: defaultPaperType || "ไม่ระบุ",
+        });
+      }
+      const changesHtml = changes
+        .map(
+          ({ label, from, to }) => `
+            <tr>
+              <td style="padding:7px 8px; color:#6b7280; font-weight:600;">${escapeHtml(label)}</td>
+              <td style="padding:7px 8px; color:#9b0b23;">${escapeHtml(from)}</td>
+              <td style="padding:7px 8px; color:#008c78; font-weight:700;">${escapeHtml(to)}</td>
+            </tr>`,
+        )
+        .join("");
+
+      const confirmUpdate = await AppSwal.fire({
+        icon: "question",
+        title: "ยืนยันการเปลี่ยนแปลงข้อมูล?",
+        html: `
+          <p style="margin-bottom:10px;">สินค้า <b>${escapeHtml(cleanId)}</b></p>
+          <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+            <thead>
+              <tr style="background:#f9fafb;">
+                <th style="padding:7px 8px; color:#6b7280;">รายการ</th>
+                <th style="padding:7px 8px; color:#9b0b23;">เดิม</th>
+                <th style="padding:7px 8px; color:#008c78;">ใหม่</th>
+              </tr>
+            </thead>
+            <tbody>${changesHtml}</tbody>
+          </table>
+        `,
+        showCancelButton: true,
+        confirmButtonText: "ยืนยันการเปลี่ยนแปลง",
+        cancelButtonText: "ยกเลิก",
+        confirmButtonColor: "#0057B8",
+        cancelButtonColor: "#75787B",
+        customClass: { popup: "rounded-xl text-sm" },
+      });
+      if (!confirmUpdate.isConfirmed) {
+        setShowModal(true);
+        return;
+      }
     }
 
     setSaving(true);
