@@ -8,6 +8,12 @@ import { Package, Plus, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
 import { StockSkeleton } from "./skeleton-loading-stock";
 import { PAPER_TYPES } from "../constants/paperTypes";
 
+const getStockBalanceColor = (balance: number) => {
+  if (balance < 1000) return "text-red-500";
+  if (balance < 2000) return "text-amber-400";
+  return "text-emerald-400";
+};
+
 export interface PaperTransactionInterface {
   id: string;
   date: string;
@@ -412,7 +418,7 @@ export default function StockPage() {
                     {b.type}
                   </span>
                   <span
-                    className={`block text-lg font-bold ${b.balance < 2000 ? "text-amber-400" : "text-emerald-400"}`}
+                    className={`block text-lg font-bold ${getStockBalanceColor(b.balance)}`}
                   >
                     {b.balance.toLocaleString()}
                   </span>
@@ -559,7 +565,9 @@ export default function StockPage() {
                             <span className="text-slate-400 mb-0.5">
                               คงเหลือ
                             </span>
-                            <span className="font-bold text-[#0057B8]">
+                            <span
+                              className={`font-bold ${getStockBalanceColor(p.end)}`}
+                            >
                               {p.end.toLocaleString()}
                             </span>
                           </div>
