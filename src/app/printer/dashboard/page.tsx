@@ -3040,6 +3040,13 @@ export default function DashboardPage() {
             const goodA3 = stockDetailOrder.good_a3 || 0;
             const wasteA3 = stockDetailOrder.waste_a3 || 0;
             const totalSheets = goodA3 + wasteA3;
+            const qtyPerA3 = productMetaMap[stockDetailOrder.product_id]?.qtyPerA3 || 0;
+            const excessQty = Math.max(
+              0,
+              goodA3 * qtyPerA3 -
+                (stockDetailOrder.quantity || 0) -
+                (stockDetailOrder.waste_qty || 0),
+            );
 
             return (
               <div className="space-y-4">
@@ -3056,6 +3063,18 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="space-y-2 text-sm">
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">สินค้า</span>
+                    <span className="max-w-[65%] text-right font-bold text-[#0057B8]">
+                      {stockDetailOrder.product_name || "ไม่ระบุ"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">ลอต</span>
+                    <span className="font-bold text-[#0057B8]">
+                      {stockDetailOrder.lot_number || "ไม่ระบุ"}
+                    </span>
+                  </div>
                   <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-2">
                     <span className="text-slate-500">ประเภทกระดาษ</span>
                     <span className="text-right font-bold text-[#0057B8]">
@@ -3078,6 +3097,12 @@ export default function DashboardPage() {
                     <span className="text-slate-500">กระดาษเสีย</span>
                     <span className="font-bold text-[#C8102E]">
                       {wasteA3.toLocaleString()} ใบ
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2">
+                    <span className="text-slate-500">จำนวนเกิน</span>
+                    <span className="font-bold text-[#A88700]">
+                      {excessQty.toLocaleString()} ชิ้น
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
