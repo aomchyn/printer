@@ -85,6 +85,7 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderInterface[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingOrder, setEditingOrder] = useState<OrderInterface | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [role, setRole] = useState("");
   const [userName, setUserName] = useState("");
@@ -477,6 +478,24 @@ export default function DashboardPage() {
       const original = orders.find((o) => o.id === editingOrder.id);
       const changeDetails: string[] = [];
 
+      const parsedQuantity = Number(editingQuantity);
+
+      if (
+        editingQuantity.trim() === "" ||
+        !Number.isInteger(parsedQuantity) ||
+        parsedQuantity <= 0
+      ) {
+        AppSwal.fire({
+          icon: "warning",
+          title: "จำนวนไม่ถูกต้อง",
+          text: "กรุณากรอกจำนวนสั่งทำเป็นจำนวนเต็มที่มากกว่า 0",
+          confirmButtonText: "รับทราบ",
+          confirmButtonColor: "#0057B8",
+        });
+        setIsSaving(false);
+        return;
+      }
+
       if (original) {
         const displayVal = (val: unknown) =>
           val === null ||
@@ -500,7 +519,7 @@ export default function DashboardPage() {
 
         // จำนวน
         const oldQty = Number(original.quantity) || 0;
-        const newQty = Number(editingOrder.quantity) || 0;
+        const newQty = parsedQuantity;
         if (oldQty !== newQty)
           changeDetails.push(`จำนวน: ${oldQty} ➡️ ${newQty}`);
 
@@ -520,18 +539,6 @@ export default function DashboardPage() {
         const newNotes = displayVal(editingOrder.notes);
         if (oldNotes !== newNotes)
           changeDetails.push(`หมายเหตุ: ${oldNotes} ➡️ ${newNotes}`);
-      }
-
-      if (!editingOrder.quantity || editingOrder.quantity <= 0) {
-        AppSwal.fire({
-          icon: "warning",
-          title: "จำนวนไม่ถูกต้อง",
-          text: "จำนวนสั่งทำต้องมากกว่า 0",
-          confirmButtonText: "รับทราบ",
-          confirmButtonColor: "#0057B8",
-        });
-        setIsSaving(false);
-        return;
       }
 
       if (changeDetails.length === 0) {
@@ -590,7 +597,7 @@ export default function DashboardPage() {
       const updateData = {
         order_type: editingOrder.order_type,
         lot_number: editingOrder.lot_number,
-        quantity: editingOrder.quantity,
+        quantity: parsedQuantity,
         production_date: editingOrder.production_date,
         expiry_date: editingOrder.expiry_date,
         notes: editingOrder.notes,
@@ -657,8 +664,8 @@ export default function DashboardPage() {
       });
       return;
     }
-
     setEditingOrder({ ...order });
+    setEditingQuantity(String(order.quantity ?? ""));
   };
 
   // ✅ บันทึกผลผลิต (กระดาษดี/เสีย) — เฉพาะ moderator/assistant_moderator เท่านั้น
@@ -2951,14 +2958,8 @@ export default function DashboardPage() {
                 <input
                   type="number"
                   min="1"
-                  value={editingOrder.quantity}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
-                    setEditingOrder({
-                      ...editingOrder,
-                      quantity: Math.max(1, val),
-                    });
-                  }}
+                  value={editingQuantity}
+                  onChange={(e) => setEditingQuantity(e.target.value)}
                   onWheel={(e) => e.currentTarget.blur()}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
                 />

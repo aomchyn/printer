@@ -793,10 +793,7 @@ export default function FgcodeManagement() {
                   min="1"
                   className={inputCls}
                   value={exp}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
-                    setExp(String(Math.max(1, val)));
-                  }}
+                  onChange={(e) => setExp(e.target.value)}
                   onWheel={(e) => e.currentTarget.blur()}
                   placeholder="เช่น 12"
                   required
