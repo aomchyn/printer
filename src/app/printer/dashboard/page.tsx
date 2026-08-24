@@ -2190,19 +2190,18 @@ export default function DashboardPage() {
 
         <div className="relative flex flex-col gap-4">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            {/* Title */}
-            <div className="min-w-0">
+            <div className="hidden min-w-0 md:block">
               <div className="flex items-center gap-3 mb-1.5">
                 <div className="w-2 h-7 bg-gradient-to-b from-[#00AEC7] to-[#0057B8] rounded-full" />
-                <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                <h1 className="text-2xl font-black text-white tracking-tight">
                   Dashboard
-                  <span className="text-[#BFEFF5] ml-3 font-medium text-lg md:text-xl">
+                  <span className="text-[#BFEFF5] ml-3 font-medium text-lg">
                     คำสั่งพิมพ์ชิ้นงาน
                   </span>
                 </h1>
               </div>
               <p className="text-[12.5px] text-white/80 font-bold uppercase tracking-wider ml-5">
-                Label & Bag Stamp Production Control Center
+                Label &amp; Bag Stamp Production Control Center
               </p>
             </div>
 
