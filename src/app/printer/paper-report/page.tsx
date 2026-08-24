@@ -18,6 +18,7 @@ import {
   FileText,
   ChevronDown,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { PAPER_TYPES } from "../constants/paperTypes";
 import {
@@ -687,8 +688,7 @@ export default function PaperReportPage() {
   const openEditManualModal = (group: DashboardOrderGroup) => {
     // Pick MANUAL entry if exists, otherwise take the first entry (e.g. from dashboard)
     const manualEntry =
-      group.entries.find((e) => e.report_type === "MANUAL") ||
-      group.entries[0];
+      group.entries.find((e) => e.report_type === "MANUAL") || group.entries[0];
     if (!manualEntry) return;
 
     setEditReportId(manualEntry.id);
@@ -1342,13 +1342,19 @@ export default function PaperReportPage() {
         string,
         { totalIn: number; totalOutAllTime: number; thisWeekOut: number }
       > = {};
-      (txAll || []).forEach((tx: { paper_type?: string | null; transaction_type?: string | null; qty: number }) => {
-        const pt = tx.paper_type || "ไม่ระบุ";
-        if (!stockMap[pt])
-          stockMap[pt] = { totalIn: 0, totalOutAllTime: 0, thisWeekOut: 0 };
-        if (tx.transaction_type === "IN") stockMap[pt].totalIn += tx.qty;
-        else stockMap[pt].totalOutAllTime += tx.qty;
-      });
+      (txAll || []).forEach(
+        (tx: {
+          paper_type?: string | null;
+          transaction_type?: string | null;
+          qty: number;
+        }) => {
+          const pt = tx.paper_type || "ไม่ระบุ";
+          if (!stockMap[pt])
+            stockMap[pt] = { totalIn: 0, totalOutAllTime: 0, thisWeekOut: 0 };
+          if (tx.transaction_type === "IN") stockMap[pt].totalIn += tx.qty;
+          else stockMap[pt].totalOutAllTime += tx.qty;
+        },
+      );
 
       Object.entries(weeklySummary.byPaperType).forEach(([pt, data]) => {
         if (!stockMap[pt])
@@ -1630,8 +1636,67 @@ export default function PaperReportPage() {
 
   if (accessStatus === "checking") {
     return (
-      <div className="min-h-screen flex items-center justify-center text-[#8A9498] text-sm">
-        กำลังตรวจสอบสิทธิ์...
+      <div className="relative min-h-[100dvh] overflow-hidden bg-[#F5F7F8] px-5">
+        {/* Background decoration */}
+        <div className="pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full bg-[#0057B8]/8 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[#00AEC7]/8 blur-3xl" />
+
+        <div className="relative flex min-h-[100dvh] items-center justify-center">
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-full max-w-[380px] overflow-hidden rounded-3xl border border-[#D9E1E2] bg-white shadow-[0_20px_60px_rgba(0,38,58,0.10)]"
+          >
+            {/* Brand header */}
+            <div className="border-b border-[#D9E1E2]/80 bg-[#00263A] px-6 py-5">
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-inner">
+                  <Layers className="h-5 w-5 text-[#00AEC7]" />
+                </div>
+
+                <div>
+                  <div className="text-[17px] font-black tracking-tight text-white">
+                    Paper Reports
+                  </div>
+                  <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#00AEC7]">
+                    Paper Stock Management
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Loading content */}
+            <div className="px-7 py-9 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#EAF3FC] ring-1 ring-[#0057B8]/10">
+                <Loader2
+                  className="h-10 w-10 animate-spin text-[#0057B8]"
+                  strokeWidth={2.25}
+                  aria-hidden="true"
+                />
+              </div>
+
+              <h1 className="mt-6 text-xl font-black tracking-tight text-[#00263A]">
+                กำลังตรวจสอบสิทธิ์
+              </h1>
+
+              <p className="mx-auto mt-2 max-w-[280px] text-[13px] font-medium leading-relaxed text-[#5F6B70]">
+                กำลังยืนยันสิทธิ์การเข้าถึงรายงานกระดาษ
+                <br />
+                กรุณารอสักครู่
+              </p>
+
+              {/* Loading bar */}
+              <div className="relative mx-auto mt-6 h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-[#EAF3FC]">
+                <div className="auth-loading-bar absolute inset-y-0 left-0 w-[45%] rounded-full bg-gradient-to-r from-[#0057B8] via-[#00AEC7] to-[#00B398]" />
+              </div>
+
+              <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#8A9498]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00B398]" />
+                Manager Access Verification
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
