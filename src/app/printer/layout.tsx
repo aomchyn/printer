@@ -31,8 +31,36 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
         .from("users")
         .select("*")
         .eq("id", session.user.id)
-        .single();
-      if (error) console.error("Error fetching user in layout:", error);
+        .maybeSingle();
+      if (error) {
+        console.error("Error fetching user in layout:", error);
+
+        const {
+          data: { session: latestSession },
+        } = await supabase.auth.getSession();
+
+        // Session ถูกยกเลิกระหว่างตรวจสอบ เช่น ครบเวลาใช้งาน 8 ชั่วโมง
+        if (!latestSession) {
+          router.replace("/login?reason=session_expired");
+          return;
+        }
+
+        const result = await Swal.fire({
+          icon: "error",
+          title: "ตรวจสอบข้อมูลไม่สำเร็จ",
+          text: "ระบบไม่สามารถตรวจสอบข้อมูลผู้ใช้งานได้ กรุณาลองใหม่อีกครั้ง",
+          confirmButtonText: "ลองใหม่",
+          confirmButtonColor: "#0057B8",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        });
+
+        if (result.isConfirmed) {
+          window.location.reload();
+        }
+
+        return;
+      }
 
       const isQaUser =
         data?.role === "user" && data?.department?.startsWith("QA");
@@ -42,16 +70,34 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
         "operator",
       ].includes(data?.role);
 
-      // เตะออกแค่คนไม่มีข้อมูลในฐานข้อมูล
+      // เตะออกเฉพาะกรณียังมี session อยู่ แต่ไม่มีข้อมูลผู้ใช้ในฐานข้อมูลจริง
       if (!data) {
+        const {
+          data: { session: latestSession },
+        } = await supabase.auth.getSession();
+
+        // ถ้า session หายไประหว่างตรวจสอบ
+        // เช่น SessionExpiryGuard บังคับออกเมื่อครบ 8 ชั่วโมง
+        // ไม่ต้องแสดง Swal "ไม่พบข้อมูลผู้ใช้งาน"
+        if (!latestSession) {
+          router.replace("/login?reason=session_expired");
+          return;
+        }
+
+        // ยังมี session แต่ไม่มี row ใน public.users จริง
         await Swal.fire({
           icon: "error",
           title: "ไม่มีสิทธิ์เข้าถึง",
           text: "ไม่พบข้อมูลผู้ใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
           confirmButtonColor: "#0057B8",
         });
-        await supabase.auth.signOut();
-        router.push("/login");
+
+        await supabase.auth.signOut({
+          scope: "local",
+        });
+
+        router.replace("/login");
+        return;
       } else if (
         pathname === "/printer/stability" &&
         !isQaUser &&
@@ -72,12 +118,69 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
 
     checkRole();
   }, [router, pathname]);
-
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F7F8] text-[#00263A]">
-        <Loader2 className="animate-spin mr-2" size={32} />
-        <span className="text-lg font-bold">กำลังตรวจสอบสิทธิ์...</span>
+      <div className="relative min-h-[100dvh] overflow-hidden bg-[#F5F7F8] px-5">
+        {/* Background decoration */}
+        <div className="pointer-events-none absolute -top-24 -right-20 h-72 w-72 rounded-full bg-[#0057B8]/8 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-[#00AEC7]/8 blur-3xl" />
+
+        <div className="relative flex min-h-[100dvh] items-center justify-center">
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-full max-w-[380px] overflow-hidden rounded-3xl border border-[#D9E1E2] bg-white shadow-[0_20px_60px_rgba(0,38,58,0.10)]"
+          >
+            {/* Brand header */}
+            <div className="border-b border-[#D9E1E2]/80 bg-[#00263A] px-6 py-5">
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-inner">
+                  <Printer className="h-5 w-5 text-[#00AEC7]" />
+                </div>
+
+                <div>
+                  <div className="text-[17px] font-black tracking-tight text-white">
+                    Printer OP
+                  </div>
+                  <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#00AEC7]">
+                    Label Management System
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Loading content */}
+            <div className="px-7 py-9 text-center">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#EAF3FC] ring-1 ring-[#0057B8]/10">
+                <Loader2
+                  className="h-10 w-10 animate-spin text-[#0057B8]"
+                  strokeWidth={2.25}
+                  aria-hidden="true"
+                />
+              </div>
+
+              <h1 className="mt-6 text-xl font-black tracking-tight text-[#00263A]">
+                กำลังตรวจสอบสิทธิ์
+              </h1>
+
+              <p className="mx-auto mt-2 max-w-[280px] text-[13px] font-medium leading-relaxed text-[#5F6B70]">
+                กำลังยืนยันบัญชีและสิทธิ์การใช้งาน
+                <br />
+                กรุณารอสักครู่
+              </p>
+
+              {/* Loading indicator */}
+              <div className="relative mx-auto mt-6 h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-[#EAF3FC]">
+                <div className="auth-loading-bar absolute inset-y-0 left-0 w-[45%] rounded-full bg-gradient-to-r from-[#0057B8] via-[#00AEC7] to-[#00B398]" />
+              </div>
+
+              <div className="mt-5 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#8A9498]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00B398]" />
+                Secure Access Verification
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

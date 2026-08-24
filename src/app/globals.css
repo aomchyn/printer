@@ -152,3 +152,29 @@
 .animate-slide-up {
   animation: slideUp 0.5s ease-out forwards;
 }
+
+@keyframes auth-loading-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  50% {
+    transform: translateX(120%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.auth-loading-bar {
+  animation: auth-loading-slide 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-loading-bar {
+    animation: none;
+    width: 100%;
+  }
+}
