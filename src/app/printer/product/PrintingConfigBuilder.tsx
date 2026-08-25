@@ -1,19 +1,28 @@
 "use client";
 
 import {
-  PRODUCT_DATE_FORMATS,
   type DateFormatSpec,
   type PrintingConfigV1,
-  type ProductDateFormat,
   type ProductPrintingConfig,
   formatProductDate,
   renderPrintingTemplate,
   validatePrintingConfig,
 } from "@/lib/productPrinting";
+import {
+  buildDateOnlyPrintingConfig,
+  isPrintingDateFormatEnabled,
+  isRetiredPrintingDatePattern,
+  sortPrintingDateFormats,
+  usesMonthNameInPrintingDatePattern,
+  type PrintingDateFormatRegistryRow,
+} from "@/lib/printingDateFormatRegistry";
 
 interface PrintingConfigBuilderProps {
   value: ProductPrintingConfig;
   onChange: (value: ProductPrintingConfig) => void;
+  formats: readonly PrintingDateFormatRegistryRow[];
+  registryStatus: "loading" | "loaded" | "error";
+  onRetryRegistryLoad: () => void;
 }
 
 type ProductPrintingMode = "none" | "date_only" | "legacy";
@@ -24,35 +33,13 @@ const DEFAULT_FORMAT: DateFormatSpec = {
 };
 const SAMPLE_PRODUCTION_DATE = "2025-06-18";
 
-function usesMonthName(pattern: string): boolean {
-  return pattern.includes("MMM");
-}
-
-function withRelevantMonthCase(format: DateFormatSpec): DateFormatSpec {
-  if (usesMonthName(format.pattern)) {
-    return {
-      ...format,
-      monthCase: format.monthCase ?? "title",
-    };
-  }
-
-  const { monthCase: _monthCase, ...withoutMonthCase } = format;
-  return withoutMonthCase;
-}
-
 function createDateOnlyConfig(
-  sourceFormat?: DateFormatSpec | null,
+  sourceFormat: DateFormatSpec | null | undefined,
+  fallbackPattern: string,
 ): PrintingConfigV1 {
-  return {
-    version: 1,
-    preset: "date_only",
-    template: "{MFG_DATE}",
-    mfg_format: withRelevantMonthCase({
-      ...(sourceFormat ?? DEFAULT_FORMAT),
-    }),
-    exp_format: null,
-    exp_offset_days: 0,
-  };
+  return buildDateOnlyPrintingConfig({
+    ...(sourceFormat ?? { ...DEFAULT_FORMAT, pattern: fallbackPattern }),
+  });
 }
 
 function isDateOnlyConfig(
@@ -65,24 +52,36 @@ function isDateOnlyConfig(
   );
 }
 
-function formatOptionLabel(pattern: ProductDateFormat): string {
+function formatOptionLabel(format: PrintingDateFormatRegistryRow): string {
   const sample = formatProductDate(SAMPLE_PRODUCTION_DATE, {
-    pattern,
+    pattern: format.pattern,
     calendar: "gregorian",
-    monthCase: pattern === "MMMM YYYY" ? "title" : "upper",
+    monthCase: usesMonthNameInPrintingDatePattern(format.pattern) ? "title" : undefined,
   });
-  return `${pattern} — ${sample}`;
+  return `${format.display_label} — ${format.pattern} (${sample})`;
 }
 
 export default function PrintingConfigBuilder({
   value,
   onChange,
+  formats,
+  registryStatus,
+  onRetryRegistryLoad,
 }: PrintingConfigBuilderProps) {
   const configValidation = validatePrintingConfig(value);
   const mode: ProductPrintingMode =
     value === null ? "none" : isDateOnlyConfig(value) ? "date_only" : "legacy";
   const dateOnlyConfig = mode === "date_only" ? value : null;
   const currentFormat = dateOnlyConfig?.mfg_format ?? DEFAULT_FORMAT;
+  const enabledFormats = sortPrintingDateFormats(formats.filter((format) => format.enabled));
+  const registryReady = registryStatus === "loaded" && enabledFormats.length > 0;
+  const unavailableCurrentPattern = mode === "date_only"
+    && registryStatus === "loaded"
+    && !isPrintingDateFormatEnabled(formats, currentFormat.pattern);
+  const retiredCurrentPattern = unavailableCurrentPattern
+    && isRetiredPrintingDatePattern(formats, currentFormat.pattern);
+  const currentPatternIsEnabled = registryStatus === "loaded"
+    && isPrintingDateFormatEnabled(formats, currentFormat.pattern);
 
   const selectMode = (nextMode: Exclude<ProductPrintingMode, "legacy">) => {
     if (nextMode === "none") {
@@ -90,18 +89,25 @@ export default function PrintingConfigBuilder({
       return;
     }
 
+    if (!registryReady) return;
+
     onChange(
       createDateOnlyConfig(
-        value !== null && configValidation.valid ? value.mfg_format : null,
+        mode === "date_only" && currentPatternIsEnabled
+          ? dateOnlyConfig?.mfg_format
+          : null,
+        enabledFormats[0].pattern,
       ),
     );
   };
 
   const updateDateOnlyFormat = (update: Partial<DateFormatSpec>) => {
     if (dateOnlyConfig === null) return;
+    if (unavailableCurrentPattern && update.pattern === undefined) return;
     onChange(
       createDateOnlyConfig(
-        withRelevantMonthCase({ ...currentFormat, ...update }),
+        { ...currentFormat, ...update },
+        enabledFormats[0]?.pattern ?? DEFAULT_FORMAT.pattern,
       ),
     );
   };
@@ -173,19 +179,35 @@ export default function PrintingConfigBuilder({
       {mode === "date_only" && (
         <div className="rounded-lg border border-[#D9E1E2] bg-white p-3 space-y-3">
           <p className="text-[12px] font-bold text-[#00263A]">รูปแบบวันที่ผลิต</p>
+          {registryStatus === "loading" && <p className="text-[12px] text-slate-500">กำลังโหลดรูปแบบวันที่...</p>}
+          {registryStatus === "error" && (
+            <div className="rounded-lg border border-[#C8102E]/25 bg-[#FCEAEC] px-3 py-2 text-[12px] text-[#9B0B23]" role="alert">
+              ไม่สามารถโหลดรูปแบบวันที่ได้ การตั้งค่าปัจจุบันจะไม่ถูกเปลี่ยน
+              <button type="button" onClick={onRetryRegistryLoad} className="ml-2 font-bold underline">ลองใหม่</button>
+            </div>
+          )}
+          {unavailableCurrentPattern && (
+            <p className="rounded-lg border border-[#F1C400]/30 bg-[#FFF8D6] px-3 py-2 text-[12px] text-[#6E5B00]" role="alert">
+              {retiredCurrentPattern
+                ? "รูปแบบวันที่ปัจจุบันถูกปิดใช้งานแล้ว"
+                : "ไม่พบรูปแบบวันที่ปัจจุบันในรายการที่ใช้งานได้"} ระบบจะเก็บค่าเดิมไว้จนกว่าจะเลือกรูปแบบใหม่หรือเลือกไม่มีรูปแบบพิเศษ
+            </p>
+          )}
           <div>
             <label className="mb-1 block text-[11px] font-semibold text-slate-500">รูปแบบวันที่ผลิต</label>
             <select
               className="w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 text-[13px] text-[#101820] focus:border-[#0057B8] focus:outline-none focus:ring-2 focus:ring-[#0057B8]/10"
               value={currentFormat.pattern}
+              disabled={!registryReady}
               onChange={(event) =>
                 updateDateOnlyFormat({
-                  pattern: event.target.value as ProductDateFormat,
+                  pattern: event.target.value,
                 })
               }
             >
-              {PRODUCT_DATE_FORMATS.map((pattern) => (
-                <option key={pattern} value={pattern}>{formatOptionLabel(pattern)}</option>
+              {unavailableCurrentPattern && <option value={currentFormat.pattern}>{currentFormat.pattern} — ไม่พร้อมเลือกใหม่</option>}
+              {enabledFormats.map((format) => (
+                <option key={format.id} value={format.pattern}>{formatOptionLabel(format)}</option>
               ))}
             </select>
           </div>
@@ -195,6 +217,7 @@ export default function PrintingConfigBuilder({
               <select
                 className="w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 text-[13px] text-[#101820] focus:border-[#0057B8] focus:outline-none focus:ring-2 focus:ring-[#0057B8]/10"
                 value={currentFormat.calendar}
+                disabled={!registryReady || unavailableCurrentPattern}
                 onChange={(event) =>
                   updateDateOnlyFormat({
                     calendar: event.target.value as DateFormatSpec["calendar"],
@@ -205,12 +228,13 @@ export default function PrintingConfigBuilder({
                 <option value="buddhist">พ.ศ.</option>
               </select>
             </div>
-            {usesMonthName(currentFormat.pattern) && (
+            {usesMonthNameInPrintingDatePattern(currentFormat.pattern) && (
               <div>
                 <label className="mb-1 block text-[11px] font-semibold text-slate-500">ตัวพิมพ์ชื่อเดือน</label>
                 <select
                   className="w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 text-[13px] text-[#101820] focus:border-[#0057B8] focus:outline-none focus:ring-2 focus:ring-[#0057B8]/10"
                   value={currentFormat.monthCase ?? "title"}
+                  disabled={!registryReady || unavailableCurrentPattern}
                   onChange={(event) =>
                     updateDateOnlyFormat({
                       monthCase: event.target.value as DateFormatSpec["monthCase"],

@@ -15,7 +15,12 @@ import {
   type ProductPrintingConfig,
   validatePrintingConfig,
 } from "@/lib/productPrinting";
+import {
+  sortPrintingDateFormats,
+  type PrintingDateFormatRegistryRow,
+} from "@/lib/printingDateFormatRegistry";
 import PrintingConfigBuilder from "./PrintingConfigBuilder";
+import PrintingDateFormatManager from "./PrintingDateFormatManager";
 import {
   Search,
   Plus,
@@ -119,6 +124,7 @@ function formatThaiDate(canonicalDate: string): string {
 export default function FgcodeManagement() {
   const [fgcodes, setFgcodes] = useState<FgcodeInterface[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showPrintingDateFormatManager, setShowPrintingDateFormatManager] = useState(false);
   const [editingFgcode, setEditingFgcode] = useState<FgcodeInterface | null>(
     null,
   );
@@ -138,6 +144,8 @@ export default function FgcodeManagement() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [printingDateFormats, setPrintingDateFormats] = useState<PrintingDateFormatRegistryRow[]>([]);
+  const [printingDateFormatStatus, setPrintingDateFormatStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [visibleCount, setVisibleCount] = useState(20);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -217,9 +225,27 @@ export default function FgcodeManagement() {
     }
   };
 
+  const fetchPrintingDateFormats = async () => {
+    setPrintingDateFormatStatus("loading");
+    const { data, error } = await supabase
+      .from("printing_date_formats")
+      .select("id, pattern, display_label, enabled, sort_order")
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true });
+
+    if (error || !data) {
+      setPrintingDateFormatStatus("error");
+      return;
+    }
+
+    setPrintingDateFormats(sortPrintingDateFormats(data as PrintingDateFormatRegistryRow[]));
+    setPrintingDateFormatStatus("loaded");
+  };
+
   useEffect(() => {
     fetchFgcodes();
     fetchUserRole();
+    fetchPrintingDateFormats();
   }, []);
 
   const isAdminRole =
@@ -770,18 +796,30 @@ export default function FgcodeManagement() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00AEC7]/20 bg-[#0057B8] px-3 py-2 text-[12px] font-bold text-white shadow-md transition-all hover:bg-[#004A9F] active:scale-95 sm:px-3.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">เพิ่มรหัสสินค้า</span>
-            <span className="sm:hidden">เพิ่ม</span>
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {isAdminRole && (
+              <button
+                type="button"
+                onClick={() => setShowPrintingDateFormatManager(true)}
+                className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[12px] font-bold text-white transition-all hover:bg-white/20"
+              >
+                <span className="hidden sm:inline">จัดการรูปแบบวันที่</span>
+                <span className="sm:hidden">รูปแบบวันที่</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setShowModal(true);
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-[#00AEC7]/20 bg-[#0057B8] px-3 py-2 text-[12px] font-bold text-white shadow-md transition-all hover:bg-[#004A9F] active:scale-95 sm:px-3.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">เพิ่มรหัสสินค้า</span>
+              <span className="sm:hidden">เพิ่ม</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1088,6 +1126,9 @@ export default function FgcodeManagement() {
               <PrintingConfigBuilder
                 value={printingConfig}
                 onChange={setPrintingConfig}
+                formats={printingDateFormats}
+                registryStatus={printingDateFormatStatus}
+                onRetryRegistryLoad={fetchPrintingDateFormats}
               />
               {isAdminRole && (
                 <div className="border-t border-[#D9E1E2] pt-4 space-y-4">
@@ -1182,6 +1223,16 @@ export default function FgcodeManagement() {
             </form>
           </div>
         </Modal>
+      )}
+      {isAdminRole && (
+        <PrintingDateFormatManager
+          open={showPrintingDateFormatManager}
+          formats={printingDateFormats}
+          loading={printingDateFormatStatus === "loading"}
+          loadError={printingDateFormatStatus === "error"}
+          onClose={() => setShowPrintingDateFormatManager(false)}
+          onRefresh={fetchPrintingDateFormats}
+        />
       )}
     </div>
   );
