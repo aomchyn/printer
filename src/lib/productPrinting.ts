@@ -22,6 +22,7 @@ export const PRODUCT_DATE_FORMATS = [
 ] as const;
 
 export type ProductDateFormat = (typeof PRODUCT_DATE_FORMATS)[number];
+export type ProductDatePattern = string;
 export type ProductDateCalendar = "gregorian" | "buddhist";
 export type ProductDateMonthCase = "upper" | "title";
 export type PrintingPresetV1 =
@@ -33,7 +34,7 @@ export type PrintingPresetV1 =
   | "custom";
 
 export interface DateFormatSpec {
-  pattern: ProductDateFormat;
+  pattern: ProductDatePattern;
   calendar: ProductDateCalendar;
   monthCase?: ProductDateMonthCase;
 }
@@ -98,6 +99,14 @@ const TEMPLATE_MAX_LENGTH = 1000;
 const UPPERCASE_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const TITLECASE_SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const TITLECASE_LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const DATE_PATTERN_TOKENS = ["MMMM", "YYYY", "MMM", "DD", "MM", "YY", "D", "M"] as const;
+const DATE_PATTERN_LITERALS = [" ", "/", "-", ".", ","] as const;
+
+export type ProductDatePatternToken = (typeof DATE_PATTERN_TOKENS)[number];
+export type ProductDatePatternLiteral = (typeof DATE_PATTERN_LITERALS)[number];
+export type ProductDatePatternSegment =
+  | { type: "token"; value: ProductDatePatternToken }
+  | { type: "literal"; value: ProductDatePatternLiteral };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -115,6 +124,74 @@ function includesPlaceholder(template: string, placeholder: (typeof ALLOWED_PLAC
   return template.includes(placeholder);
 }
 
+function isProductDatePatternLiteral(value: string): value is ProductDatePatternLiteral {
+  return (DATE_PATTERN_LITERALS as readonly string[]).includes(value);
+}
+
+/**
+ * Parses the same closed, deterministic date-pattern grammar as the DB V1
+ * validator. It deliberately accepts no free text or executable formatter
+ * syntax, and resolves overlapping tokens longest-first.
+ */
+export function tokenizeProductDatePattern(pattern: string): ProductDatePatternSegment[] {
+  if (pattern.trim() === "") {
+    throw new Error("Printing date pattern must be non-empty");
+  }
+  if (pattern.length > 32) {
+    throw new Error("Printing date pattern must be at most 32 characters");
+  }
+
+  const segments: ProductDatePatternSegment[] = [];
+  let position = 0;
+  let previousLiteral: ProductDatePatternSegment["value"] | null = null;
+  let hasYear = false;
+  let hasMonth = false;
+  let hasDay = false;
+
+  while (position < pattern.length) {
+    const token = DATE_PATTERN_TOKENS.find((candidate) => pattern.startsWith(candidate, position));
+
+    if (token) {
+      if (token === "YYYY" || token === "YY") {
+        if (hasYear) throw new Error("Printing date pattern must contain exactly one year token");
+        hasYear = true;
+      } else if (token === "MMMM" || token === "MMM" || token === "MM" || token === "M") {
+        if (hasMonth) throw new Error("Printing date pattern must contain exactly one month token");
+        hasMonth = true;
+      } else {
+        if (hasDay) throw new Error("Printing date pattern can contain at most one day token");
+        hasDay = true;
+      }
+
+      segments.push({ type: "token", value: token });
+      previousLiteral = null;
+      position += token.length;
+      continue;
+    }
+
+    const literal = pattern[position];
+    if (!isProductDatePatternLiteral(literal)) {
+      throw new Error("Printing date pattern contains an unsupported token or literal");
+    }
+    if (position === 0 || position === pattern.length - 1) {
+      throw new Error("Printing date pattern cannot start or end with a literal");
+    }
+    if (literal === previousLiteral) {
+      throw new Error("Printing date pattern contains repeated adjacent literals");
+    }
+
+    segments.push({ type: "literal", value: literal });
+    previousLiteral = literal;
+    position += 1;
+  }
+
+  if (!hasYear || !hasMonth) {
+    throw new Error("Printing date pattern must contain exactly one year and one month token");
+  }
+
+  return segments;
+}
+
 function validateDateFormatSpec(value: unknown, fieldName: string): string[] {
   if (!isRecord(value)) return [`${fieldName} must be a DateFormatSpec object`];
 
@@ -125,7 +202,9 @@ function validateDateFormatSpec(value: unknown, fieldName: string): string[] {
   if (!hasRequiredKeys(value, ["pattern", "calendar"]) || typeof value.pattern !== "string" || typeof value.calendar !== "string") {
     errors.push(`${fieldName} must include string pattern and calendar values`);
   } else {
-    if (!PRODUCT_DATE_FORMATS.includes(value.pattern as ProductDateFormat)) {
+    try {
+      tokenizeProductDatePattern(value.pattern);
+    } catch {
       errors.push(`${fieldName} has an unsupported date pattern`);
     }
     if (value.calendar !== "gregorian" && value.calendar !== "buddhist") {
@@ -184,6 +263,7 @@ export function validatePrintingConfig(config: unknown): PrintingConfigValidatio
 /** Formats a canonical calendar date using a deterministic PrintingConfigV1 date format. */
 export function formatProductDate(canonicalDate: string, format: DateFormatSpec): string {
   const { year, month, day } = parseCalendarDate(canonicalDate);
+  const segments = tokenizeProductDatePattern(format.pattern);
   const formattedYear = year + (format.calendar === "buddhist" ? 543 : 0);
   const yyyy = String(formattedYear).padStart(4, "0");
   const yy = yyyy.slice(-2);
@@ -193,26 +273,20 @@ export function formatProductDate(canonicalDate: string, format: DateFormatSpec)
   const shortMonth = titleMonths[month - 1];
   const longMonth = format.monthCase === "upper" ? TITLECASE_LONG_MONTHS[month - 1].toUpperCase() : TITLECASE_LONG_MONTHS[month - 1];
 
-  switch (format.pattern) {
-    case "DD/MM/YYYY": return `${dd}/${mm}/${yyyy}`;
-    case "DDMMYYYY": return `${dd}${mm}${yyyy}`;
-    case "DD/MM/YY": return `${dd}/${mm}/${yy}`;
-    case "DDMMYY": return `${dd}${mm}${yy}`;
-    case "YYYY/MM/DD": return `${yyyy}/${mm}/${dd}`;
-    case "YYYY/M/D": return `${yyyy}/${month}/${day}`;
-    case "YYYY-MM-DD": return `${yyyy}-${mm}-${dd}`;
-    case "YYYYMMDD": return `${yyyy}${mm}${dd}`;
-    case "DD-MM-YYYY": return `${dd}-${mm}-${yyyy}`;
-    case "DD.MM.YYYY": return `${dd}.${mm}.${yyyy}`;
-    case "MM/YY": return `${mm}/${yy}`;
-    case "MM YYYY": return `${mm} ${yyyy}`;
-    case "MMM YYYY": return `${shortMonth} ${yyyy}`;
-    case "MMMM YYYY": return `${longMonth} ${yyyy}`;
-    case "DD MMM,YYYY": return `${dd} ${shortMonth},${yyyy}`;
-    case "DD MMM.,YYYY": return `${dd} ${shortMonth}.,${yyyy}`;
-    case "DD,MMM.,YYYY": return `${dd},${shortMonth}.,${yyyy}`;
-    case "MMM,DD,YYYY": return `${shortMonth},${dd},${yyyy}`;
-  }
+  const tokenOutput: Record<ProductDatePatternToken, string> = {
+    D: String(day),
+    DD: dd,
+    M: String(month),
+    MM: mm,
+    MMM: shortMonth,
+    MMMM: longMonth,
+    YY: yy,
+    YYYY: yyyy,
+  };
+
+  return segments.map((segment) => (
+    segment.type === "literal" ? segment.value : tokenOutput[segment.value]
+  )).join("");
 }
 
 /** Renders only whitelisted placeholders and keeps canonical expiry separate from printed expiry. */

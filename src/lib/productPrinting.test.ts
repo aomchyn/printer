@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCT_DATE_FORMATS,
   formatProductDate,
   renderPrintingTemplate,
+  tokenizeProductDatePattern,
   validatePrintingConfig,
   type DateFormatSpec,
   type PrintingConfigV1,
@@ -54,6 +56,84 @@ describe("productPrinting", () => {
         exp_format: null,
       }))).toEqual({ valid: true });
     }
+  });
+
+  it("tokenizes every current Product seed pattern in its exact stored order", () => {
+    expect(PRODUCT_DATE_FORMATS).toEqual([
+      "DD/MM/YYYY",
+      "DDMMYYYY",
+      "DD/MM/YY",
+      "DDMMYY",
+      "YYYY/MM/DD",
+      "YYYY/M/D",
+      "YYYY-MM-DD",
+      "YYYYMMDD",
+      "DD-MM-YYYY",
+      "DD.MM.YYYY",
+      "MM/YY",
+      "MM YYYY",
+      "MMM YYYY",
+      "MMMM YYYY",
+      "DD MMM,YYYY",
+      "DD MMM.,YYYY",
+      "DD,MMM.,YYYY",
+      "MMM,DD,YYYY",
+    ]);
+
+    for (const pattern of PRODUCT_DATE_FORMATS) {
+      expect(tokenizeProductDatePattern(pattern).map((segment) => segment.value).join("")).toBe(pattern);
+    }
+  });
+
+  it("accepts grammar-valid dynamic patterns outside the current Product choices", () => {
+    for (const pattern of ["YY-MM-DD", "D/M/YY", "YYYY,M,D", "YY.MM"]) {
+      expect(PRODUCT_DATE_FORMATS).not.toContain(pattern as never);
+      expect(tokenizeProductDatePattern(pattern).map((segment) => segment.value).join("")).toBe(pattern);
+    }
+
+    expect(validatePrintingConfig(config({
+      preset: "date_only",
+      template: "{MFG_DATE}",
+      mfg_format: { pattern: "YY-MM-DD", calendar: "gregorian" },
+      exp_format: null,
+    }))).toEqual({ valid: true });
+  });
+
+  it("rejects patterns outside the shared DB grammar", () => {
+    for (const pattern of [
+      "",
+      "   ",
+      "DD/MM",
+      "YYYY",
+      "DD//MM/YYYY",
+      "DD..MM.YYYY",
+      "DD  MM YYYY",
+      "DD_MM_YYYY",
+      "DD/MM/YYYY<script>",
+      "DD/MM/YYYY HH",
+      "YYYYMMDDDD",
+      "DD/MM/YYYY/",
+      "/DD/MM/YYYY",
+      "YYYYYYYYMM",
+      "DDMMYYYYYYYY",
+      "DD/MM/YYYYวัน",
+      "DD/'MM'/YYYY",
+      "DD\\MM\\YYYY",
+    ]) {
+      expect(() => tokenizeProductDatePattern(pattern)).toThrow();
+    }
+  });
+
+  it("renders grammar-valid dynamic Gregorian and Buddhist patterns", () => {
+    expect(formatProductDate("2025-06-18", { pattern: "YY-MM-DD", calendar: "gregorian" })).toBe("25-06-18");
+    expect(formatProductDate("2025-06-18", { pattern: "D/M/YYYY", calendar: "gregorian" })).toBe("18/6/2025");
+    expect(formatProductDate("2025-01-03", { pattern: "D/M/YY", calendar: "gregorian" })).toBe("3/1/25");
+    expect(formatProductDate("2025-06-18", { pattern: "YY-MM-DD", calendar: "buddhist" })).toBe("68-06-18");
+    expect(formatProductDate("2025-06-18", { pattern: "D/M/YYYY", calendar: "buddhist" })).toBe("18/6/2568");
+    expect(formatProductDate("2025-06-18", { pattern: "YY,MMM.D", calendar: "gregorian", monthCase: "upper" })).toBe("25,JUN.18");
+    expect(formatProductDate("2025-06-18", { pattern: "YY,MMM.D", calendar: "gregorian", monthCase: "title" })).toBe("25,Jun.18");
+    expect(formatProductDate("2025-06-18", { pattern: "MMMM YYYY", calendar: "gregorian", monthCase: "upper" })).toBe("JUNE 2025");
+    expect(formatProductDate("2025-06-18", { pattern: "MMMM YYYY", calendar: "gregorian", monthCase: "title" })).toBe("June 2025");
   });
 
   it("renders date-only labels", () => {
@@ -144,5 +224,18 @@ describe("productPrinting", () => {
       canonicalExpiryDate: "2027-06-03",
       lot: "2606042",
     })).toEqual({ status: "ready", text: "03/06/2026 / Lot 2606042" });
+  });
+
+  it("renders a grammar-valid dynamic historical-style snapshot", () => {
+    expect(renderPrintingTemplate({
+      config: config({
+        preset: "date_only",
+        template: "MFG {MFG_DATE}",
+        mfg_format: { pattern: "YY-MM-DD", calendar: "gregorian" },
+        exp_format: null,
+      }),
+      productionDate: "2025-06-18",
+      canonicalExpiryDate: "2026-06-18",
+    })).toEqual({ status: "ready", text: "MFG 25-06-18" });
   });
 });

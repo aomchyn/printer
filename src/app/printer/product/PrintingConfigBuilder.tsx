@@ -24,7 +24,7 @@ const DEFAULT_FORMAT: DateFormatSpec = {
 };
 const SAMPLE_PRODUCTION_DATE = "2025-06-18";
 
-function usesMonthName(pattern: ProductDateFormat): boolean {
+function usesMonthName(pattern: string): boolean {
   return pattern.includes("MMM");
 }
 
