@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Swal from "sweetalert2";
 import Modal from "../components/Modal";
 import { supabase } from "@/lib/supabase";
+import {
+  calculateProductExpiryDate,
+  parseProductShelfLifeMonths,
+  type ActualExpiryOffsetDays,
+} from "@/lib/productDate";
+import {
+  type ProductPrintingConfig,
+  validatePrintingConfig,
+} from "@/lib/productPrinting";
+import PrintingConfigBuilder from "./PrintingConfigBuilder";
 import {
   Search,
   Plus,
@@ -37,6 +47,73 @@ export interface FgcodeInterface {
   exp: string;
   qty_per_a3?: number | null;
   default_paper_type?: string | null;
+  expiry_offset_days?: ActualExpiryOffsetDays | null;
+  printing_config?: ProductPrintingConfig;
+}
+
+const ACTUAL_EXPIRY_OPTIONS: Array<{
+  value: ActualExpiryOffsetDays;
+  label: string;
+}> = [
+  { value: 0, label: "ตามอายุผลิตภัณฑ์" },
+  { value: -1, label: "ก่อนวันปกติ 1 วัน" },
+];
+
+const PRINTING_PRESET_LABELS: Record<NonNullable<ProductPrintingConfig>["preset"], string> = {
+  date_only: "วันที่ผลิตอย่างเดียว",
+  date_and_lot: "วันที่ผลิต + LOT",
+  mfg_exp: "MFG + EXP",
+  mfg_exp_lot: "MFG + EXP + LOT",
+  mfg_exp_unlabeled: "MFG + EXP ไม่มี label",
+  custom: "กำหนดรูปแบบเอง",
+};
+
+function stableJsonStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableJsonStringify).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableJsonStringify(record[key])}`)
+    .join(",")}}`;
+}
+
+function hasSamePrintingConfig(
+  left: ProductPrintingConfig,
+  right: ProductPrintingConfig,
+): boolean {
+  return stableJsonStringify(left) === stableJsonStringify(right);
+}
+
+function actualExpiryRuleLabel(value: ActualExpiryOffsetDays): string {
+  return ACTUAL_EXPIRY_OPTIONS.find((option) => option.value === value)?.label ?? "ไม่ระบุ";
+}
+
+function printingConfigLabel(config: ProductPrintingConfig): string {
+  return config === null ? "ยังไม่ได้กำหนดรูปแบบการพิมพ์" : PRINTING_PRESET_LABELS[config.preset];
+}
+
+function printingConfigSummary(config: ProductPrintingConfig): string {
+  if (config === null) return "ยังไม่ได้กำหนดรูปแบบการพิมพ์";
+  const formats = [
+    config.mfg_format ? `วันผลิต ${config.mfg_format.pattern}` : null,
+    config.exp_format ? `วันหมดอายุ ${config.exp_format.pattern}` : null,
+  ].filter((value): value is string => value !== null);
+  return formats.length > 0
+    ? `${printingConfigLabel(config)} — ${formats.join(" / ")}`
+    : printingConfigLabel(config);
+}
+
+function printedExpiryRuleLabel(config: ProductPrintingConfig): string {
+  if (config === null || !config.template.includes("{EXP_DATE}")) return "ไม่ใช้วันหมดอายุในการพิมพ์";
+  return config.exp_offset_days === -1
+    ? "ก่อนวันหมดอายุจริง 1 วัน"
+    : "ตรงกับวันหมดอายุจริง";
+}
+
+function formatThaiDate(canonicalDate: string): string {
+  const [year, month, day] = canonicalDate.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 export default function FgcodeManagement() {
@@ -50,6 +127,8 @@ export default function FgcodeManagement() {
   const [exp, setExp] = useState("");
   const [qtyPerA3, setQtyPerA3] = useState("");
   const [defaultPaperType, setDefaultPaperType] = useState("");
+  const [expiryOffsetDays, setExpiryOffsetDays] = useState<ActualExpiryOffsetDays>(0);
+  const [printingConfig, setPrintingConfig] = useState<ProductPrintingConfig>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [userRole, setUserRole] = useState<string>("user");
   const [, setUserName] = useState("");
@@ -61,6 +140,37 @@ export default function FgcodeManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(20);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const resetForm = () => {
+    setEditingFgcode(null);
+    setId("");
+    setName("");
+    setExp("");
+    setQtyPerA3("");
+    setDefaultPaperType("");
+    setExpiryOffsetDays(0);
+    setPrintingConfig(null);
+  };
+
+  const previewDates = useMemo(() => {
+    try {
+      parseProductShelfLifeMonths(exp);
+      return {
+        actual: calculateProductExpiryDate({
+          productionDate: "2026-12-12",
+          shelfLifeMonths: exp,
+          actualExpiryOffsetDays: expiryOffsetDays,
+        }),
+        printing: calculateProductExpiryDate({
+          productionDate: "2025-06-18",
+          shelfLifeMonths: exp,
+          actualExpiryOffsetDays: expiryOffsetDays,
+        }),
+      };
+    } catch {
+      return { actual: null, printing: null };
+    }
+  }, [exp, expiryOffsetDays]);
 
   const fetchUserRole = async () => {
     const {
@@ -134,13 +244,32 @@ export default function FgcodeManagement() {
       });
       return;
     }
-    if (parseInt(cleanExp) <= 0) {
+    try {
+      parseProductShelfLifeMonths(cleanExp);
+    } catch {
       AppSwal.fire({
         icon: "warning",
         title: "อายุผลิตภัณฑ์ไม่ถูกต้อง",
-        text: "อายุผลิตภัณฑ์ต้องมากกว่า 0",
+        text: "อายุผลิตภัณฑ์ต้องเป็นจำนวนเต็มเดือนที่มากกว่า 0",
         confirmButtonText: "รับทราบ",
         confirmButtonColor: "#0057B8",
+      });
+      return;
+    }
+    if (expiryOffsetDays !== 0 && expiryOffsetDays !== -1) {
+      await AppSwal.fire({
+        icon: "warning",
+        title: "รูปแบบวันหมดอายุไม่ถูกต้อง",
+        text: "กรุณาเลือกรูปแบบวันหมดอายุที่กำหนดไว้",
+      });
+      return;
+    }
+    const printingConfigValidation = validatePrintingConfig(printingConfig);
+    if (!printingConfigValidation.valid) {
+      await AppSwal.fire({
+        icon: "warning",
+        title: "รูปแบบการพิมพ์ไม่ถูกต้อง",
+        text: "กรุณาตรวจสอบรูปแบบการพิมพ์ก่อนบันทึก",
       });
       return;
     }
@@ -181,6 +310,11 @@ export default function FgcodeManagement() {
         cleanName === (currentEditing.name || "") &&
         cleanExp === (currentEditing.exp || "") &&
         cleanId === currentEditing.id &&
+        expiryOffsetDays === (currentEditing.expiry_offset_days ?? 0) &&
+        hasSamePrintingConfig(
+          printingConfig,
+          currentEditing.printing_config ?? null,
+        ) &&
         noAdminFieldChange
       ) {
         await AppSwal.fire({
@@ -189,10 +323,6 @@ export default function FgcodeManagement() {
           text: "คุณยังไม่ได้แก้ไขข้อมูลใดๆ",
           confirmButtonText: "รับทราบ",
         });
-        setEditingFgcode(currentEditing);
-        setId(currentEditing.id);
-        setName(currentEditing.name);
-        setExp(currentEditing.exp);
         setShowModal(true);
         return;
       }
@@ -222,6 +352,27 @@ export default function FgcodeManagement() {
           label: "อายุผลิตภัณฑ์",
           from: `${currentEditing.exp || "ไม่ระบุ"} เดือน`,
           to: `${cleanExp} เดือน`,
+        });
+      }
+      const currentExpiryOffsetDays = currentEditing.expiry_offset_days ?? 0;
+      if (expiryOffsetDays !== currentExpiryOffsetDays) {
+        changes.push({
+          label: "วันหมดอายุจริง",
+          from: actualExpiryRuleLabel(currentExpiryOffsetDays),
+          to: actualExpiryRuleLabel(expiryOffsetDays),
+        });
+      }
+      const currentPrintingConfig = currentEditing.printing_config ?? null;
+      if (!hasSamePrintingConfig(printingConfig, currentPrintingConfig)) {
+        changes.push({
+          label: "รูปแบบการพิมพ์",
+          from: printingConfigSummary(currentPrintingConfig),
+          to: printingConfigSummary(printingConfig),
+        });
+        changes.push({
+          label: "วันที่ EXP ที่พิมพ์",
+          from: printedExpiryRuleLabel(currentPrintingConfig),
+          to: printedExpiryRuleLabel(printingConfig),
         });
       }
       if (isAdminRole && (cleanQtyPerA3 ?? "") !== (currentQtyPerA3 ?? "")) {
@@ -291,6 +442,8 @@ export default function FgcodeManagement() {
         const updatePayload: Record<string, unknown> = {
           name: cleanName,
           exp: cleanExp,
+          expiry_offset_days: expiryOffsetDays,
+          printing_config: printingConfig,
         };
 
         if (isAdminRole) {
@@ -349,6 +502,8 @@ export default function FgcodeManagement() {
           id: cleanId,
           name: cleanName,
           exp: cleanExp,
+          expiry_offset_days: expiryOffsetDays,
+          printing_config: printingConfig,
         };
         if (isAdminRole) {
           createPayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3) : null;
@@ -365,12 +520,7 @@ export default function FgcodeManagement() {
         showConfirmButton: false,
       });
       setShowModal(false);
-      setEditingFgcode(null);
-      setId("");
-      setName("");
-      setExp("");
-      setQtyPerA3("");
-      setDefaultPaperType("");
+      resetForm();
       fetchFgcodes();
     } catch (error) {
       AppSwal.fire({
@@ -392,6 +542,8 @@ export default function FgcodeManagement() {
     setExp(fgcode.exp || "");
     setQtyPerA3(fgcode.qty_per_a3 != null ? String(fgcode.qty_per_a3) : "");
     setDefaultPaperType(fgcode.default_paper_type || "");
+    setExpiryOffsetDays(fgcode.expiry_offset_days ?? 0);
+    setPrintingConfig(fgcode.printing_config ?? null);
     setShowModal(true);
   };
 
@@ -587,12 +739,7 @@ export default function FgcodeManagement() {
           <button
             type="button"
             onClick={() => {
-              setEditingFgcode(null);
-              setId("");
-              setName("");
-              setExp("");
-              setQtyPerA3("");
-              setDefaultPaperType("");
+              resetForm();
               setShowModal(true);
             }}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#00AEC7]/20 bg-[#0057B8] px-3 py-2 text-[12px] font-bold text-white shadow-md transition-all hover:bg-[#004A9F] active:scale-95 sm:px-3.5"
@@ -804,14 +951,9 @@ export default function FgcodeManagement() {
           title={editingFgcode ? "แก้ไขรหัสสินค้า" : "เพิ่มรหัสสินค้าใหม่"}
           onClose={() => {
             setShowModal(false);
-            setEditingFgcode(null);
-            setId("");
-            setName("");
-            setExp("");
-            setQtyPerA3("");
-            setDefaultPaperType("");
+            resetForm();
           }}
-          size="md"
+          size="lg"
         >
           <div className="bg-[#F5F7F8] -mx-6 -mb-6 px-6 pb-6 rounded-b-2xl">
             <form onSubmit={handleSubmit} className="pt-4 space-y-4">
@@ -872,16 +1014,48 @@ export default function FgcodeManagement() {
                   <span className="text-[#C8102E]">*</span>
                 </label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   className={inputCls}
                   value={exp}
                   onChange={(e) => setExp(e.target.value)}
-                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="เช่น 12"
                   required
                 />
               </div>
+              <fieldset className="space-y-3 border-t border-[#D9E1E2] pt-4">
+                <legend className="text-sm font-black text-[#00263A]">
+                  วันหมดอายุจริง
+                </legend>
+                <div className="space-y-2 text-[13px] text-slate-700">
+                  {ACTUAL_EXPIRY_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="radio"
+                        name="actual-expiry-rule"
+                        checked={expiryOffsetDays === option.value}
+                        onChange={() => setExpiryOffsetDays(option.value)}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+                {previewDates.actual ? (
+                  <div className="rounded-lg border border-[#00AEC7]/20 bg-[#EAF8FA] px-3 py-2 text-[12px] text-[#00263A]">
+                    <div className="flex justify-between gap-3"><span>วันผลิตตัวอย่าง</span><strong>{formatThaiDate("2026-12-12")}</strong></div>
+                    <div className="mt-1 flex justify-between gap-3"><span>วันหมดอายุจริง</span><strong>{formatThaiDate(previewDates.actual)}</strong></div>
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-[#F1C400]/30 bg-[#FFF8D6] px-3 py-2 text-[12px] text-[#6E5B00]">
+                    กรุณากำหนดอายุผลิตภัณฑ์เพื่อดูตัวอย่างวันหมดอายุ
+                  </p>
+                )}
+              </fieldset>
+              <PrintingConfigBuilder
+                value={printingConfig}
+                onChange={setPrintingConfig}
+                canonicalExpiryDate={previewDates.printing}
+              />
               {isAdminRole && (
                 <div className="border-t border-[#D9E1E2] pt-4 space-y-4">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
@@ -933,12 +1107,7 @@ export default function FgcodeManagement() {
                   type="button"
                   onClick={() => {
                     setShowModal(false);
-                    setEditingFgcode(null);
-                    setId("");
-                    setName("");
-                    setExp("");
-                    setQtyPerA3("");
-                    setDefaultPaperType("");
+                    resetForm();
                   }}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-[#F0F3F4] border border-[#D9E1E2] text-[#5F6B70] font-semibold rounded-lg text-[13px] transition-all"
                 >

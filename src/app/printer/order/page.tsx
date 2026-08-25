@@ -1,9 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import Swal from "sweetalert2";
 import { ImagePlus, X } from "lucide-react";
+import {
+  calculateProductExpiryDate,
+  parseProductShelfLifeMonths,
+  type ActualExpiryOffsetDays,
+} from "@/lib/productDate";
+import {
+  formatProductDate,
+  renderPrintingTemplate,
+  type ProductPrintingConfig,
+  validatePrintingConfig,
+} from "@/lib/productPrinting";
 const AppSwal = Swal.mixin({
   confirmButtonColor: "#0057B8",
   cancelButtonColor: "#75787B",
@@ -20,6 +31,8 @@ export interface OrderInterface {
   productId: string;
   productName: string;
   productExp: string;
+  actualExpiryOffsetDays: ActualExpiryOffsetDays;
+  printingConfig: ProductPrintingConfig;
   productionDate: string;
   expiryDate: string;
   quantity: number;
@@ -36,27 +49,98 @@ export interface FgcodeInterface {
   id: string;
   name: string;
   exp: string;
+  expiry_offset_days?: number | null;
+  printing_config?: unknown;
+}
+
+interface InsertedOrderSnapshot {
+  id: number;
+  product_exp: string;
+  expiry_offset_days_used: unknown;
+  printing_config_used: unknown;
+  production_date: string;
+  expiry_date: string;
+}
+
+const PRINTING_PRESET_LABELS: Record<
+  NonNullable<ProductPrintingConfig>["preset"],
+  string
+> = {
+  date_only: "วันที่ผลิตอย่างเดียว",
+  date_and_lot: "วันที่ผลิต + LOT",
+  mfg_exp: "MFG + EXP",
+  mfg_exp_lot: "MFG + EXP + LOT",
+  mfg_exp_unlabeled: "MFG + EXP ไม่มี label",
+  custom: "กำหนดรูปแบบเอง",
+};
+
+function isActualExpiryOffsetDays(
+  value: unknown,
+): value is ActualExpiryOffsetDays {
+  return value === 0 || value === -1;
+}
+
+function actualExpiryRuleLabel(value: ActualExpiryOffsetDays): string {
+  return value === -1 ? "ก่อนวันปกติ 1 วัน" : "ตามอายุผลิตภัณฑ์";
+}
+
+function printingConfigLabel(config: ProductPrintingConfig): string {
+  return config === null
+    ? "ยังไม่ได้กำหนด"
+    : PRINTING_PRESET_LABELS[config.preset];
+}
+
+function printedExpiryRuleLabel(config: ProductPrintingConfig): string | null {
+  if (config === null || !config.template.includes("{EXP_DATE}")) return null;
+  return config.exp_offset_days === -1
+    ? "ก่อนวันหมดอายุจริง 1 วัน"
+    : "ตรงกับวันหมดอายุจริง";
+}
+
+function stableJsonStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJsonStringify).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableJsonStringify(record[key])}`)
+    .join(",")}}`;
+}
+
+function formatOrderDate(canonicalDate: string): string {
+  return formatProductDate(canonicalDate, {
+    pattern: "DD/MM/YYYY",
+    calendar: "gregorian",
+  });
+}
+
+function createInitialOrderData(): OrderInterface {
+  const now = new Date();
+  return {
+    orderDate: now.toISOString().split("T")[0],
+    orderTime: now.toTimeString().split(" ")[0].substring(0, 5),
+    orderDateTime: now.toISOString(),
+    orderType: "พิมพ์ฉลาก",
+    lotNumber: "",
+    productId: "",
+    productName: "",
+    productExp: "",
+    actualExpiryOffsetDays: 0,
+    printingConfig: null,
+    productionDate: "",
+    expiryDate: "",
+    quantity: 0,
+    notes: "",
+  };
 }
 
 export default function OrderPage() {
   // ✅ ใส่ค่า initial time ตรงนี้แทน useEffect เพื่อหลีกเลี่ยง setState in effect
-  const [orderData, setOrderData] = useState<OrderInterface>(() => {
-    const now = new Date();
-    return {
-      orderDate: now.toISOString().split("T")[0],
-      orderTime: now.toTimeString().split(" ")[0].substring(0, 5),
-      orderDateTime: now.toISOString(),
-      orderType: "พิมพ์ฉลาก",
-      lotNumber: "",
-      productId: "",
-      productName: "",
-      productExp: "",
-      productionDate: "",
-      expiryDate: "",
-      quantity: 0,
-      notes: "",
-    };
-  });
+  const [orderData, setOrderData] = useState<OrderInterface>(
+    createInitialOrderData,
+  );
   const [products, setProducts] = useState<FgcodeInterface[]>([]);
   const [username, setUsername] = useState("Unknown User");
   const [department, setDepartment] = useState("");
@@ -67,6 +151,11 @@ export default function OrderPage() {
   const [productSearch, setProductSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [productConfigurationError, setProductConfigurationError] = useState<
+    string | null
+  >(null);
+  const [hasValidActualExpiryOffset, setHasValidActualExpiryOffset] =
+    useState(true);
 
   // ✅ ย้ายฟังก์ชันขึ้นก่อน useEffect
   const fetchUserInfo = async () => {
@@ -125,67 +214,142 @@ export default function OrderPage() {
     );
   }, []);
 
-  const calculateExpiryDate = (
-    manufactureDate: string,
-    shelfLife: string,
+  const calculateCanonicalExpiry = (
+    productionDate: string,
+    shelfLifeMonths: string,
+    actualExpiryOffsetDays: ActualExpiryOffsetDays,
   ): string => {
-    if (!manufactureDate || !shelfLife) return "";
+    if (!productionDate) return "";
     try {
-      const mfgDate = new Date(manufactureDate);
-      if (isNaN(mfgDate.getTime())) return "";
-
-      const trimmedShelfLife = shelfLife.trim();
-      const spaceIndex = trimmedShelfLife.indexOf(" ");
-      let numValue: number;
-      let unit: string;
-
-      if (spaceIndex === -1) {
-        numValue = parseInt(trimmedShelfLife);
-        unit = "months";
-      } else {
-        numValue = parseInt(trimmedShelfLife.substring(0, spaceIndex));
-        unit = trimmedShelfLife.substring(spaceIndex + 1).toLowerCase();
-      }
-
-      if (isNaN(numValue) || numValue <= 0) return "";
-
-      const newDate = new Date(mfgDate);
-      if (unit.includes("day") || unit.includes("วัน")) {
-        newDate.setDate(newDate.getDate() + numValue);
-      } else if (
-        unit.includes("month") ||
-        unit.includes("mon") ||
-        unit.includes("เดือน")
-      ) {
-        newDate.setMonth(newDate.getMonth() + numValue);
-      } else if (
-        unit.includes("year") ||
-        unit.includes("yr") ||
-        unit.includes("ปี")
-      ) {
-        newDate.setFullYear(newDate.getFullYear() + numValue);
-      } else {
-        newDate.setMonth(newDate.getMonth() + numValue);
-      }
-
-      return newDate.toISOString().split("T")[0];
+      parseProductShelfLifeMonths(shelfLifeMonths);
+      return calculateProductExpiryDate({
+        productionDate,
+        shelfLifeMonths,
+        actualExpiryOffsetDays,
+      });
     } catch {
       return "";
+    }
+  };
+
+  const clearSelectedProduct = () => {
+    setProductConfigurationError(null);
+    setHasValidActualExpiryOffset(true);
+    setOrderData((prev) => ({
+      ...prev,
+      productId: "",
+      productName: "",
+      productExp: "",
+      actualExpiryOffsetDays: 0,
+      printingConfig: null,
+      expiryDate: "",
+    }));
+  };
+
+  const handleProductSelection = (product: FgcodeInterface) => {
+    const productExp = typeof product.exp === "string" ? product.exp : "";
+    const expiryOffsetCandidate = product.expiry_offset_days ?? 0;
+    const hasValidExpiryOffset = isActualExpiryOffsetDays(
+      expiryOffsetCandidate,
+    );
+    const printingConfigCandidate = product.printing_config ?? null;
+    const printingConfigValidation = validatePrintingConfig(
+      printingConfigCandidate,
+    );
+    const printingConfig = printingConfigValidation.valid
+      ? (printingConfigCandidate as ProductPrintingConfig)
+      : null;
+
+    let shelfLifeError: string | null = null;
+    try {
+      parseProductShelfLifeMonths(productExp);
+    } catch {
+      shelfLifeError = `รหัสสินค้า "${product.id}" ไม่มีข้อมูลอายุผลิตภัณฑ์ที่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product`;
+    }
+
+    const configurationError = !hasValidExpiryOffset
+      ? "รูปแบบวันหมดอายุของสินค้าไม่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product"
+      : !printingConfigValidation.valid
+        ? "รูปแบบการพิมพ์ของสินค้าไม่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product"
+        : null;
+
+    setProductSearch(product.id);
+    setShowDropdown(false);
+    setProductConfigurationError(shelfLifeError ?? configurationError);
+    setHasValidActualExpiryOffset(hasValidExpiryOffset);
+    setOrderData((prev) => ({
+      ...prev,
+      productId: product.id,
+      productName: product.name,
+      productExp,
+      actualExpiryOffsetDays: hasValidExpiryOffset
+        ? expiryOffsetCandidate
+        : 0,
+      printingConfig,
+      expiryDate:
+        shelfLifeError || !hasValidExpiryOffset
+          ? ""
+          : calculateCanonicalExpiry(
+              prev.productionDate,
+              productExp,
+              expiryOffsetCandidate,
+            ),
+    }));
+
+    const warning = shelfLifeError ?? configurationError;
+    if (warning) {
+      AppSwal.fire({
+        icon: "warning",
+        title: shelfLifeError ? "ไม่มีอายุผลิตภัณฑ์" : "ข้อมูลสินค้าไม่ถูกต้อง",
+        text: warning,
+        confirmButtonText: "รับทราบ",
+        confirmButtonColor: "#0057B8",
+      });
     }
   };
 
   const handleProductionDateChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (!orderData.productId || !orderData.productExp) return;
-
     const mfgDate = e.target.value;
     setOrderData((prev) => ({
       ...prev,
       productionDate: mfgDate,
-      expiryDate: calculateExpiryDate(mfgDate, prev.productExp),
+      expiryDate:
+        prev.productId && hasValidActualExpiryOffset
+          ? calculateCanonicalExpiry(
+              mfgDate,
+              prev.productExp,
+              prev.actualExpiryOffsetDays,
+            )
+          : "",
     }));
   };
+
+  const printingPreview = useMemo(() => {
+    if (
+      productConfigurationError ||
+      !orderData.productId ||
+      !orderData.productionDate ||
+      !orderData.expiryDate
+    ) {
+      return null;
+    }
+
+    return renderPrintingTemplate({
+      config: orderData.printingConfig,
+      productionDate: orderData.productionDate,
+      canonicalExpiryDate: orderData.expiryDate,
+      lot: orderData.lotNumber,
+    });
+  }, [
+    orderData.expiryDate,
+    orderData.lotNumber,
+    orderData.printingConfig,
+    orderData.productionDate,
+    orderData.productId,
+    productConfigurationError,
+  ]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,8 +382,93 @@ export default function OrderPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const resetOrderForm = () => {
+    removeImage();
+    setProductSearch("");
+    setShowDropdown(false);
+    setProductConfigurationError(null);
+    setHasValidActualExpiryOffset(true);
+    setOrderData(createInitialOrderData());
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (
+      !orderData.lotNumber.trim() ||
+      !orderData.productId ||
+      !orderData.productionDate ||
+      !orderData.quantity
+    ) {
+      await AppSwal.fire({
+        icon: "warning",
+        title: "ข้อมูลไม่ครบ",
+        text: "กรุณากรอกเลข LOT, สินค้า, วันที่ผลิต และจำนวนสั่งทำให้ครบถ้วน",
+      });
+      return;
+    }
+
+    if (productConfigurationError) {
+      await AppSwal.fire({
+        icon: "error",
+        title: "ข้อมูลสินค้าไม่ถูกต้อง",
+        text: productConfigurationError,
+      });
+      return;
+    }
+
+    if (
+      !hasValidActualExpiryOffset ||
+      !isActualExpiryOffsetDays(orderData.actualExpiryOffsetDays)
+    ) {
+      await AppSwal.fire({
+        icon: "error",
+        title: "ข้อมูลสินค้าไม่ถูกต้อง",
+        text: "รูปแบบวันหมดอายุของสินค้าไม่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product",
+      });
+      return;
+    }
+
+    try {
+      parseProductShelfLifeMonths(orderData.productExp);
+    } catch {
+      await AppSwal.fire({
+        icon: "error",
+        title: "ไม่สามารถบันทึกได้",
+        text: "สินค้านี้ไม่มีข้อมูลอายุผลิตภัณฑ์ที่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product",
+      });
+      return;
+    }
+
+    const printingConfigValidation = validatePrintingConfig(
+      orderData.printingConfig,
+    );
+    if (!printingConfigValidation.valid) {
+      await AppSwal.fire({
+        icon: "error",
+        title: "ข้อมูลสินค้าไม่ถูกต้อง",
+        text: "รูปแบบการพิมพ์ของสินค้าไม่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product",
+      });
+      return;
+    }
+
+    const canonicalExpiryDate = calculateCanonicalExpiry(
+      orderData.productionDate,
+      orderData.productExp,
+      orderData.actualExpiryOffsetDays,
+    );
+    if (!canonicalExpiryDate) {
+      await AppSwal.fire({
+        icon: "error",
+        title: "ไม่สามารถคำนวณวันหมดอายุได้",
+        text: "กรุณาตรวจสอบวันที่ผลิตและอายุผลิตภัณฑ์",
+      });
+      return;
+    }
+
+    if (orderData.expiryDate !== canonicalExpiryDate) {
+      setOrderData((prev) => ({ ...prev, expiryDate: canonicalExpiryDate }));
+    }
 
     let imageHtml = "";
     if (imagePreview) {
@@ -246,7 +495,7 @@ export default function OrderPage() {
                         <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📝 ชื่อสินค้า</td><td style="padding:4px 6px; font-weight:600;">${orderData.productName}</td></tr>
                         <tr><td style="padding:4px 6px; color:#4b5563;">🔢 จำนวน</td><td style="padding:4px 6px; font-weight:600;">${orderData.quantity}</td></tr>
                         <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📅 วันที่ผลิต</td><td style="padding:4px 6px; font-weight:600;">${orderData.productionDate}</td></tr>
-                        <tr><td style="padding:4px 6px; color:#4b5563;">📅 วันหมดอายุ</td><td style="padding:4px 6px; font-weight:600;">${orderData.expiryDate}</td></tr>
+                        <tr><td style="padding:4px 6px; color:#4b5563;">📅 วันหมดอายุจริง</td><td style="padding:4px 6px; font-weight:600;">${canonicalExpiryDate}</td></tr>
                         <tr style="background:#f9fafb;"><td style="padding:4px 6px; color:#4b5563;">📋 หมายเหตุ</td><td style="padding:4px 6px; font-weight:600;">${orderData.notes || "-"}</td></tr>
                     </table>
                     ${imageHtml}
@@ -270,31 +519,6 @@ export default function OrderPage() {
     if (!confirm.isConfirmed) return;
 
     try {
-      const requiredFields = [
-        "lotNumber",
-        "productId",
-        "productionDate",
-        "quantity",
-      ];
-      const missingFields = requiredFields.filter(
-        (field) => !orderData[field as keyof OrderInterface],
-      );
-      if (missingFields.length > 0) {
-        alert(`กรุณากรอกข้อมูลให้ครบถ้วน: ${missingFields.join(", ")}`);
-        return;
-      }
-
-      if (!orderData.productExp || orderData.productExp.trim() === "") {
-        AppSwal.fire({
-          icon: "error",
-          title: "ไม่สามารถบันทึกได้",
-          text: "สินค้านี้ไม่มีข้อมูลอายุผลิตภัณฑ์ที่ถูกต้อง กรุณาเลือกสินค้าใหม่หรือตรวจสอบข้อมูลใน FG Code",
-          confirmButtonText: "รับทราบ",
-          confirmButtonColor: "#0057B8",
-        });
-        return;
-      }
-
       setUploading(true);
 
       let imageUrl: string | null = null;
@@ -334,7 +558,7 @@ export default function OrderPage() {
         imageUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase
+      const { data: insertedOrder, error } = await supabase
         .from("orders")
         .insert({
           order_date: orderData.orderDate,
@@ -346,7 +570,7 @@ export default function OrderPage() {
           product_name: orderData.productName,
           product_exp: orderData.productExp,
           production_date: orderData.productionDate,
-          expiry_date: orderData.expiryDate,
+          expiry_date: canonicalExpiryDate,
           quantity: orderData.quantity,
           notes: orderData.notes || "-",
           created_by: username,
@@ -356,34 +580,75 @@ export default function OrderPage() {
           verified_at: null,
           image_url: imageUrl,
         })
-        .select("id");
+        .select(
+          "id, product_exp, expiry_offset_days_used, printing_config_used, production_date, expiry_date",
+        )
+        .single();
 
       if (error) throw new Error(error.message);
+      if (!insertedOrder) {
+        throw new Error("ไม่ได้รับข้อมูล Order ที่บันทึกแล้ว");
+      }
 
-      AppSwal.fire({
-        icon: "success",
-        title: "บันทึกสำเร็จ",
-        text: "บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว",
+      const stored = insertedOrder as unknown as InsertedOrderSnapshot;
+      const storedOffsetIsValid = isActualExpiryOffsetDays(
+        stored.expiry_offset_days_used,
+      );
+      const storedConfigCandidate = Object.prototype.hasOwnProperty.call(
+        stored,
+        "printing_config_used",
+      )
+        ? stored.printing_config_used
+        : undefined;
+      const storedConfigValidation = validatePrintingConfig(
+        storedConfigCandidate,
+      );
+      const storedDataIsValid =
+        typeof stored.product_exp === "string" &&
+        typeof stored.production_date === "string" &&
+        typeof stored.expiry_date === "string" &&
+        storedOffsetIsValid &&
+        storedConfigValidation.valid;
+
+      const usedLatestProductConfig =
+        storedDataIsValid &&
+        (stored.product_exp !== orderData.productExp ||
+          stored.expiry_offset_days_used !==
+            orderData.actualExpiryOffsetDays ||
+          stableJsonStringify(storedConfigCandidate) !==
+            stableJsonStringify(orderData.printingConfig) ||
+          stored.expiry_date !== canonicalExpiryDate);
+
+      let successText = "บันทึกคำสั่งพิมพ์ชิ้นงานสำเร็จแล้ว";
+      let successIcon: "success" | "warning" = "success";
+      let successTitle = "บันทึกสำเร็จ";
+
+      if (!storedDataIsValid) {
+        successIcon = "warning";
+        successTitle = "บันทึกสำเร็จ แต่ข้อมูลที่บันทึกกลับมาไม่สมบูรณ์";
+        successText =
+          "กรุณาตรวจสอบ Order ที่สร้างแล้ว เนื่องจากระบบได้รับข้อมูล snapshot ที่ไม่เป็นไปตามที่คาดไว้";
+      } else if (usedLatestProductConfig) {
+        successText =
+          "ข้อมูลสินค้าถูกปรับปรุงระหว่างสร้าง Order ระบบได้บันทึกโดยใช้ข้อมูลสินค้าล่าสุดแล้ว";
+        const finalPrintingOutput = renderPrintingTemplate({
+          config: storedConfigCandidate as ProductPrintingConfig,
+          productionDate: stored.production_date,
+          canonicalExpiryDate: stored.expiry_date,
+          lot: orderData.lotNumber,
+        });
+        if (finalPrintingOutput.status === "ready") {
+          successText += `\nข้อความที่ต้องพิมพ์: ${finalPrintingOutput.text}`;
+        }
+      }
+
+      await AppSwal.fire({
+        icon: successIcon,
+        title: successTitle,
+        text: successText,
       });
 
-      // Reset form
-      removeImage();
-      setProductSearch("");
-      const resetNow = new Date();
-      setOrderData({
-        orderDate: resetNow.toISOString().split("T")[0],
-        orderTime: resetNow.toTimeString().split(" ")[0].substring(0, 5),
-        orderDateTime: resetNow.toISOString(),
-        orderType: "พิมพ์ฉลาก",
-        lotNumber: "",
-        productId: "",
-        productName: "",
-        productExp: "",
-        productionDate: "",
-        expiryDate: "",
-        quantity: 0,
-        notes: "",
-      });
+      resetOrderForm();
     } catch {
       AppSwal.fire({
         icon: "error",
@@ -626,13 +891,7 @@ export default function OrderPage() {
                       setProductSearch(e.target.value);
                       setShowDropdown(true);
                       if (!e.target.value) {
-                        setOrderData((prev) => ({
-                          ...prev,
-                          productId: "",
-                          productName: "",
-                          productExp: "",
-                          expiryDate: "",
-                        }));
+                        clearSelectedProduct();
                       }
                     }}
                     onFocus={() => setShowDropdown(true)}
@@ -650,13 +909,7 @@ export default function OrderPage() {
                         onClick={() => {
                           setProductSearch("");
                           setShowDropdown(false);
-                          setOrderData((prev) => ({
-                            ...prev,
-                            productId: "",
-                            productName: "",
-                            productExp: "",
-                            expiryDate: "",
-                          }));
+                          clearSelectedProduct();
                         }}
                         className="text-[#8A9498] hover:text-[#C8102E] hover:bg-[#FCEAEC] rounded-full p-1 transition-colors"
                       >
@@ -686,33 +939,7 @@ export default function OrderPage() {
                           <button
                             key={product.id}
                             type="button"
-                            onClick={() => {
-                              setProductSearch(product.id);
-                              setShowDropdown(false);
-                              const hasExp =
-                                product.exp && product.exp.trim() !== "";
-                              setOrderData((prev) => ({
-                                ...prev,
-                                productId: product.id,
-                                productName: product.name,
-                                productExp: product.exp ?? "",
-                                expiryDate: hasExp
-                                  ? calculateExpiryDate(
-                                      prev.productionDate,
-                                      product.exp,
-                                    )
-                                  : "",
-                              }));
-                              if (!hasExp) {
-                                AppSwal.fire({
-                                  icon: "warning",
-                                  title: "ไม่มีอายุผลิตภัณฑ์",
-                                  text: `รหัสสินค้า "${product.id}" ไม่มีข้อมูลอายุผลิตภัณฑ์ที่ถูกต้อง กรุณาตรวจสอบข้อมูลใน Product`,
-                                  confirmButtonText: "รับทราบ",
-                                  confirmButtonColor: "#0057B8",
-                                });
-                              }
-                            }}
+                            onClick={() => handleProductSelection(product)}
                             className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors"
                           >
                             <div className="font-mono font-bold text-[#0057B8] text-[12.5px]">
@@ -764,6 +991,28 @@ export default function OrderPage() {
                 </div>
               )}
 
+              {orderData.productId && (
+                <div className="md:col-span-2 min-w-0 rounded-xl border border-[#00AEC7]/20 bg-[#EAF8FA] p-4">
+                  <h2 className="text-[12px] font-black uppercase tracking-wider text-[#00263A]">
+                    ข้อมูลสินค้าและกฎที่ใช้กับ Order นี้
+                  </h2>
+                  {productConfigurationError ? (
+                    <p className="mt-2 rounded-lg border border-[#C8102E]/25 bg-[#FCEAEC] px-3 py-2 text-[12px] font-semibold text-[#9B0B23]" role="alert">
+                      {productConfigurationError}
+                    </p>
+                  ) : (
+                    <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
+                      <div className="flex items-start justify-between gap-3"><dt className="text-[#5F6B70]">อายุผลิตภัณฑ์</dt><dd className="font-bold text-[#00263A]">{orderData.productExp ? `${orderData.productExp} เดือน` : "ไม่ระบุ"}</dd></div>
+                      <div className="flex items-start justify-between gap-3"><dt className="text-[#5F6B70]">รูปแบบวันหมดอายุ</dt><dd className="font-bold text-[#00263A]">{actualExpiryRuleLabel(orderData.actualExpiryOffsetDays)}</dd></div>
+                      <div className="flex items-start justify-between gap-3"><dt className="text-[#5F6B70]">รูปแบบการพิมพ์</dt><dd className="font-bold text-[#00263A]">{printingConfigLabel(orderData.printingConfig)}</dd></div>
+                      {printedExpiryRuleLabel(orderData.printingConfig) && (
+                        <div className="flex items-start justify-between gap-3"><dt className="text-[#5F6B70]">วันที่ EXP ที่พิมพ์</dt><dd className="font-bold text-[#00263A]">{printedExpiryRuleLabel(orderData.printingConfig)}</dd></div>
+                      )}
+                    </dl>
+                  )}
+                </div>
+              )}
+
               {/* อายุผลิตภัณฑ์ */}
               {orderData.productExp && (
                 <div>
@@ -812,7 +1061,7 @@ export default function OrderPage() {
               {orderData.expiryDate && (
                 <div>
                   <label className="block text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    วันหมดอายุ (Calculated Expiry Date)
+                    วันหมดอายุจริง (Canonical Expiry Date)
                   </label>
                   <input
                     type="date"
@@ -821,6 +1070,33 @@ export default function OrderPage() {
                     className="w-full px-4 py-3 bg-[#E6F8F4] border border-[#00B398]/20 rounded-xl text-[#008C78] text-[13.5px] font-bold cursor-not-allowed"
                   />
                   {renderDateLabels(orderData.expiryDate)}
+                </div>
+              )}
+
+              {orderData.productionDate && orderData.expiryDate && (
+                <div className="md:col-span-2 min-w-0 rounded-xl border border-[#0057B8]/15 bg-[#EAF3FC] p-4" aria-live="polite">
+                  <h2 className="text-[12px] font-black uppercase tracking-wider text-[#00263A]">
+                    วันที่และข้อความสำหรับพิมพ์
+                  </h2>
+                  <dl className="mt-3 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
+                    <div className="flex items-start justify-between gap-3"><dt className="text-[#5F6B70]">วันที่ผลิต</dt><dd className="font-bold text-[#00263A]">{formatOrderDate(orderData.productionDate)}</dd></div>
+                    <div className="flex items-start justify-between gap-3"><dt className="text-[#5F6B70]">วันหมดอายุจริง</dt><dd className="font-bold text-[#00263A]">{formatOrderDate(orderData.expiryDate)}</dd></div>
+                  </dl>
+                  <div className="mt-3 border-t border-[#0057B8]/15 pt-3">
+                    <p className="text-[12px] font-semibold text-[#5F6B70]">รูปแบบที่ต้องพิมพ์</p>
+                    {printingPreview?.status === "ready" && (
+                      <p className="mt-1 whitespace-pre-wrap break-words rounded-lg bg-white px-3 py-2 font-mono text-[13px] text-[#00263A]">{printingPreview.text}</p>
+                    )}
+                    {printingPreview?.status === "not_configured" && (
+                      <p className="mt-1 text-[13px] text-[#5F6B70]">ยังไม่ได้กำหนดรูปแบบการพิมพ์</p>
+                    )}
+                    {printingPreview?.status === "incomplete" && (
+                      <p className="mt-1 text-[13px] font-semibold text-[#A88700]">กรุณากรอก LOT เพื่อดูข้อความสำหรับพิมพ์</p>
+                    )}
+                    {(printingPreview?.status === "invalid_config" || printingPreview?.status === "invalid_input") && (
+                      <p className="mt-1 text-[13px] font-semibold text-[#C8102E]">ไม่สามารถสร้างตัวอย่างการพิมพ์ได้ กรุณาตรวจสอบข้อมูลสินค้า</p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -953,7 +1229,9 @@ export default function OrderPage() {
                     !orderData.productId ||
                     !orderData.productExp ||
                     !orderData.productionDate ||
+                    !orderData.expiryDate ||
                     !orderData.quantity ||
+                    !!productConfigurationError ||
                     uploading
                   }
                 >

@@ -6,7 +6,8 @@
     "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
     "build": "NODE_OPTIONS='--max-old-space-size=4096' next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@spfxappdev/docxmerger": "^1.0.3",
@@ -39,9 +40,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   },
-   "overrides": {
+  "overrides": {
     "postcss": "8.5.26",
     "uuid": "11.1.1",
     "xmldom": "npm:@xmldom/xmldom@^0.9.11"

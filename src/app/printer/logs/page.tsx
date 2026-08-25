@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import Swal from "sweetalert2"
 import { useRouter } from "next/navigation"
 import { Search, History, RefreshCcw, ShieldAlert, X, ShieldOff } from "lucide-react"
+import {
+    type PrintingConfigV1,
+    validatePrintingConfig,
+} from "@/lib/productPrinting"
 import LogsSkeleton from './skeleton-loading-logs'
 
 interface AuditLog {
@@ -33,6 +37,195 @@ interface AuditLogDetails {
     created_by?: string
     deleted_by?: string
     restored_by?: string
+}
+
+type JsonRecord = Record<string, unknown>
+
+interface AuditFieldChange {
+    old: unknown
+    new: unknown
+}
+
+const PRINTING_PRESET_LABELS: Record<PrintingConfigV1['preset'], string> = {
+    date_only: 'วันที่ผลิตอย่างเดียว',
+    date_and_lot: 'วันที่ผลิต + LOT',
+    mfg_exp: 'MFG + EXP',
+    mfg_exp_lot: 'MFG + EXP + LOT',
+    mfg_exp_unlabeled: 'MFG + EXP ไม่มี label',
+    custom: 'กำหนดรูปแบบเอง',
+}
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function getFieldChange(changes: unknown, field: string): AuditFieldChange | null {
+    if (!isJsonRecord(changes) || !isJsonRecord(changes[field])) return null
+    const change = changes[field]
+    if (!Object.prototype.hasOwnProperty.call(change, 'old') || !Object.prototype.hasOwnProperty.call(change, 'new')) {
+        return null
+    }
+    return { old: change.old, new: change.new }
+}
+
+function displayValue(value: unknown, fallback = 'ไม่ระบุ'): string {
+    if (value === null || value === undefined || value === '') return fallback
+    return typeof value === 'string' || typeof value === 'number' ? String(value) : fallback
+}
+
+function actualExpiryRuleLabel(value: unknown): string {
+    if (value === 0) return 'ตามอายุผลิตภัณฑ์'
+    if (value === -1) return 'ก่อนวันปกติ 1 วัน'
+    return 'ไม่ระบุ'
+}
+
+function calendarLabel(calendar: string | undefined): string {
+    if (calendar === 'gregorian') return 'ค.ศ.'
+    if (calendar === 'buddhist') return 'พ.ศ.'
+    return 'ไม่ระบุ'
+}
+
+function monthCaseLabel(monthCase: string | undefined): string {
+    if (monthCase === 'upper') return 'ตัวพิมพ์ใหญ่'
+    if (monthCase === 'title' || monthCase === undefined) return 'ตัวพิมพ์ปกติ'
+    return 'ไม่ระบุ'
+}
+
+function readPrintingConfig(value: unknown): PrintingConfigV1 | null | undefined {
+    if (value === null) return null
+    const validation = validatePrintingConfig(value)
+    return validation.valid ? value as PrintingConfigV1 : undefined
+}
+
+function printingConfigLabel(config: PrintingConfigV1 | null | undefined): string {
+    if (config === null) return 'ยังไม่ได้กำหนด'
+    if (config === undefined) return 'รูปแบบการพิมพ์ที่บันทึกไว้ไม่ถูกต้อง'
+    return PRINTING_PRESET_LABELS[config.preset]
+}
+
+function formatPatternLabel(config: PrintingConfigV1, field: 'mfg_format' | 'exp_format'): string {
+    return config[field]?.pattern ?? 'ไม่ใช้'
+}
+
+function formatCalendarLabel(config: PrintingConfigV1, field: 'mfg_format' | 'exp_format'): string {
+    const format = config[field]
+    return format ? calendarLabel(format.calendar) : 'ไม่ใช้'
+}
+
+function formatMonthCaseLabel(config: PrintingConfigV1, field: 'mfg_format' | 'exp_format'): string | null {
+    const format = config[field]
+    if (!format || !format.pattern.includes('MMM')) return null
+    return monthCaseLabel(format.monthCase)
+}
+
+function printedExpiryRuleLabel(config: PrintingConfigV1): string {
+    if (!config.template.includes('{EXP_DATE}')) return 'ไม่ใช้วันหมดอายุในการพิมพ์'
+    return config.exp_offset_days === -1
+        ? 'ก่อนวันหมดอายุจริง 1 วัน'
+        : 'ตรงกับวันหมดอายุจริง'
+}
+
+function ProductChangeRow({ label, oldValue, newValue }: { label: string; oldValue: string; newValue: string }) {
+    return (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 text-xs">
+            <span className="font-semibold text-[#5F6B70]">{label}</span>
+            <span className="text-right text-[#101820]">{oldValue} <span className="mx-1 text-[#8A9498]">→</span> {newValue}</span>
+        </div>
+    )
+}
+
+function ProductConfigChanges({ change }: { change: AuditFieldChange }) {
+    const oldConfig = readPrintingConfig(change.old)
+    const newConfig = readPrintingConfig(change.new)
+
+    if (oldConfig === undefined || newConfig === undefined) {
+        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />
+    }
+
+    if (oldConfig === null || newConfig === null) {
+        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />
+    }
+
+    const rows: ReactNode[] = []
+    if (oldConfig.preset !== newConfig.preset) {
+        rows.push(<ProductChangeRow key="preset" label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />)
+    }
+
+    for (const [field, label] of [
+        ['mfg_format', 'รูปแบบวันที่ผลิต'],
+        ['exp_format', 'รูปแบบวันหมดอายุ'],
+    ] as const) {
+        const oldPattern = formatPatternLabel(oldConfig, field)
+        const newPattern = formatPatternLabel(newConfig, field)
+        if (oldPattern !== newPattern) {
+            rows.push(<ProductChangeRow key={`${field}-pattern`} label={label} oldValue={oldPattern} newValue={newPattern} />)
+        }
+
+        const oldCalendar = formatCalendarLabel(oldConfig, field)
+        const newCalendar = formatCalendarLabel(newConfig, field)
+        if (oldCalendar !== newCalendar) {
+            rows.push(<ProductChangeRow key={`${field}-calendar`} label={field === 'mfg_format' ? 'ปฏิทินวันผลิต' : 'ปฏิทินวันหมดอายุ'} oldValue={oldCalendar} newValue={newCalendar} />)
+        }
+
+        const oldMonthCase = formatMonthCaseLabel(oldConfig, field)
+        const newMonthCase = formatMonthCaseLabel(newConfig, field)
+        if ((oldMonthCase !== null || newMonthCase !== null) && oldMonthCase !== newMonthCase) {
+            rows.push(<ProductChangeRow key={`${field}-month-case`} label={field === 'mfg_format' ? 'ตัวพิมพ์เดือนวันผลิต' : 'ตัวพิมพ์เดือนวันหมดอายุ'} oldValue={oldMonthCase ?? 'ไม่ใช้'} newValue={newMonthCase ?? 'ไม่ใช้'} />)
+        }
+    }
+
+    const oldPrintedRule = printedExpiryRuleLabel(oldConfig)
+    const newPrintedRule = printedExpiryRuleLabel(newConfig)
+    if (oldPrintedRule !== newPrintedRule) {
+        rows.push(<ProductChangeRow key="printed-exp-rule" label="วันที่ EXP ที่พิมพ์" oldValue={oldPrintedRule} newValue={newPrintedRule} />)
+    }
+
+    if ((oldConfig.preset === 'custom' || newConfig.preset === 'custom') && oldConfig.template !== newConfig.template) {
+        rows.push(<ProductChangeRow key="template" label="Template" oldValue={oldConfig.template} newValue={newConfig.template} />)
+    }
+
+    return rows.length > 0
+        ? <>{rows}</>
+        : <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />
+}
+
+function ProductAuditDetail({ action, details, changes }: Pick<AuditLog, 'action' | 'details' | 'changes'>) {
+    if (action === 'CREATE_PRODUCT') {
+        const product = isJsonRecord(details) ? details : {}
+        const config = Object.prototype.hasOwnProperty.call(product, 'printing_config')
+            ? readPrintingConfig(product.printing_config)
+            : null
+        return (
+            <div className="space-y-0.5 text-xs">
+                <div><span className="text-[#5F6B70]">รหัสสินค้า:</span> <span className="font-semibold text-[#101820]">{displayValue(product.id)}</span></div>
+                <div><span className="text-[#5F6B70]">ชื่อสินค้า:</span> <span className="font-semibold text-[#101820]">{displayValue(product.name)}</span></div>
+                <div><span className="text-[#5F6B70]">อายุผลิตภัณฑ์:</span> <span className="text-[#101820]">{displayValue(product.exp)} เดือน</span></div>
+                <div><span className="text-[#5F6B70]">วันหมดอายุจริง:</span> <span className="text-[#101820]">{actualExpiryRuleLabel(product.expiry_offset_days)}</span></div>
+                <div><span className="text-[#5F6B70]">รูปแบบการพิมพ์:</span> <span className="text-[#101820]">{printingConfigLabel(config)}</span></div>
+                {product.default_paper_type != null && <div><span className="text-[#5F6B70]">ประเภทกระดาษ:</span> <span className="text-[#101820]">{displayValue(product.default_paper_type)}</span></div>}
+                {product.qty_per_a3 != null && <div><span className="text-[#5F6B70]">จำนวนชิ้นต่อแผ่น A3:</span> <span className="text-[#101820]">{displayValue(product.qty_per_a3)}</span></div>}
+            </div>
+        )
+    }
+
+    const name = getFieldChange(changes, 'name')
+    const exp = getFieldChange(changes, 'exp')
+    const paperType = getFieldChange(changes, 'default_paper_type')
+    const qtyPerA3 = getFieldChange(changes, 'qty_per_a3')
+    const expiryOffset = getFieldChange(changes, 'expiry_offset_days')
+    const printingConfig = getFieldChange(changes, 'printing_config')
+    const rows: ReactNode[] = []
+
+    if (name) rows.push(<ProductChangeRow key="name" label="ชื่อสินค้า" oldValue={displayValue(name.old)} newValue={displayValue(name.new)} />)
+    if (exp) rows.push(<ProductChangeRow key="exp" label="อายุผลิตภัณฑ์" oldValue={`${displayValue(exp.old)} เดือน`} newValue={`${displayValue(exp.new)} เดือน`} />)
+    if (paperType) rows.push(<ProductChangeRow key="paper" label="ประเภทกระดาษ" oldValue={displayValue(paperType.old)} newValue={displayValue(paperType.new)} />)
+    if (qtyPerA3) rows.push(<ProductChangeRow key="qty" label="จำนวนชิ้นต่อแผ่น A3" oldValue={displayValue(qtyPerA3.old)} newValue={displayValue(qtyPerA3.new)} />)
+    if (expiryOffset) rows.push(<ProductChangeRow key="expiry-offset" label="วันหมดอายุจริง" oldValue={actualExpiryRuleLabel(expiryOffset.old)} newValue={actualExpiryRuleLabel(expiryOffset.new)} />)
+    if (printingConfig) rows.push(<ProductConfigChanges key="printing-config" change={printingConfig} />)
+
+    return rows.length > 0
+        ? <div className="space-y-1.5">{rows}</div>
+        : <span className="text-xs text-[#101820]/30">ไม่มีรายละเอียดการเปลี่ยนแปลง</span>
 }
 
 // ─── Access Denied UI ───────────────────────────────────────────────────────
@@ -154,6 +347,10 @@ export default function LogsManagement() {
     }
 
     const getDisplayDetail = (log: AuditLog) => {
+        if (log.action === 'CREATE_PRODUCT' || log.action === 'UPDATE_PRODUCT') {
+            return <ProductAuditDetail action={log.action} details={log.details} changes={log.changes} />
+        }
+
         const data = log.details || log.changes
         const summary = log.summary
 

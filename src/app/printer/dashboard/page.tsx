@@ -24,6 +24,17 @@ import {
 import EditHistory from "../components/EditHistory";
 import { DashboardSkeleton } from "./loading-skeleton";
 import Modal from "../components/Modal";
+import {
+  calculateProductExpiryDate,
+  parseProductShelfLifeMonths,
+  type ActualExpiryOffsetDays,
+} from "@/lib/productDate";
+import {
+  formatProductDate,
+  renderPrintingTemplate,
+  type ProductPrintingConfig,
+  validatePrintingConfig,
+} from "@/lib/productPrinting";
 
 const AppSwal = Swal.mixin({
   confirmButtonColor: "#0057B8",
@@ -40,6 +51,8 @@ export interface OrderInterface {
   product_id: string;
   product_name: string;
   product_exp: string;
+  expiry_offset_days_used?: unknown;
+  printing_config_used?: unknown;
   production_date: string;
   expiry_date: string;
   quantity: number;
@@ -80,6 +93,146 @@ type AudioContextWindow = Window &
   typeof globalThis & {
     webkitAudioContext?: typeof AudioContext;
   };
+
+type CanonicalSnapshotValidation =
+  | { valid: true; actualExpiryOffsetDays: ActualExpiryOffsetDays }
+  | { valid: false; message: string };
+
+type PrintingSnapshotValidation =
+  | { valid: true; config: ProductPrintingConfig }
+  | { valid: false; message: string };
+
+type OrderPrintingDisplay =
+  | { state: "invalid_config" }
+  | { state: "not_configured" }
+  | { state: "incomplete"; presetLabel: string }
+  | { state: "unavailable"; presetLabel: string }
+  | { state: "ready"; presetLabel: string; text: string };
+
+const PRINTING_PRESET_LABELS: Record<
+  NonNullable<ProductPrintingConfig>["preset"],
+  string
+> = {
+  date_only: "วันที่ผลิตอย่างเดียว",
+  date_and_lot: "วันที่ผลิต + LOT",
+  mfg_exp: "MFG + EXP",
+  mfg_exp_lot: "MFG + EXP + LOT",
+  mfg_exp_unlabeled: "MFG + EXP ไม่มี label",
+  custom: "กำหนดรูปแบบเอง",
+};
+
+function isActualExpiryOffsetDays(
+  value: unknown,
+): value is ActualExpiryOffsetDays {
+  return value === 0 || value === -1;
+}
+
+function validateCanonicalSnapshot(
+  order: Pick<OrderInterface, "product_exp" | "expiry_offset_days_used">,
+): CanonicalSnapshotValidation {
+  if (typeof order.product_exp !== "string") {
+    return {
+      valid: false,
+      message: "อายุผลิตภัณฑ์ของ Order นี้ไม่ถูกต้อง จึงไม่สามารถคำนวณวันหมดอายุใหม่ได้",
+    };
+  }
+
+  try {
+    parseProductShelfLifeMonths(order.product_exp);
+  } catch {
+    return {
+      valid: false,
+      message: "อายุผลิตภัณฑ์ของ Order นี้ไม่ถูกต้อง จึงไม่สามารถคำนวณวันหมดอายุใหม่ได้",
+    };
+  }
+
+  if (!isActualExpiryOffsetDays(order.expiry_offset_days_used)) {
+    return {
+      valid: false,
+      message: "รูปแบบวันหมดอายุของ Order นี้ไม่ถูกต้อง จึงไม่สามารถคำนวณวันหมดอายุใหม่ได้",
+    };
+  }
+
+  return {
+    valid: true,
+    actualExpiryOffsetDays: order.expiry_offset_days_used,
+  };
+}
+
+function validatePrintingSnapshot(
+  value: unknown,
+): PrintingSnapshotValidation {
+  const validation = validatePrintingConfig(value);
+  if (!validation.valid) {
+    return {
+      valid: false,
+      message: "รูปแบบการพิมพ์ของ Order นี้ไม่ถูกต้อง จึงไม่สามารถสร้างตัวอย่างการพิมพ์ได้",
+    };
+  }
+
+  return { valid: true, config: value as ProductPrintingConfig };
+}
+
+function deriveOrderPrintingDisplay(
+  order: Pick<
+    OrderInterface,
+    "printing_config_used" | "production_date" | "expiry_date" | "lot_number"
+  >,
+): OrderPrintingDisplay {
+  const snapshot = validatePrintingSnapshot(order.printing_config_used);
+  if (!snapshot.valid) return { state: "invalid_config" };
+  if (snapshot.config === null) return { state: "not_configured" };
+
+  const presetLabel = PRINTING_PRESET_LABELS[snapshot.config.preset];
+  const preview = renderPrintingTemplate({
+    config: snapshot.config,
+    productionDate: order.production_date,
+    canonicalExpiryDate: order.expiry_date,
+    lot: order.lot_number,
+  });
+
+  if (preview.status === "ready") {
+    return { state: "ready", presetLabel, text: preview.text };
+  }
+  if (preview.status === "incomplete") {
+    return { state: "incomplete", presetLabel };
+  }
+
+  return { state: "unavailable", presetLabel };
+}
+
+function calculateSnapshotExpiryDate(
+  productionDate: string,
+  order: Pick<OrderInterface, "product_exp" | "expiry_offset_days_used">,
+): string {
+  if (!productionDate) return "";
+
+  const snapshot = validateCanonicalSnapshot(order);
+  if (!snapshot.valid) return "";
+
+  try {
+    return calculateProductExpiryDate({
+      productionDate,
+      shelfLifeMonths: order.product_exp,
+      actualExpiryOffsetDays: snapshot.actualExpiryOffsetDays,
+    });
+  } catch {
+    return "";
+  }
+}
+
+function formatCalendarDateForSummary(date: string): string {
+  if (!date) return "ไม่มี";
+
+  try {
+    return formatProductDate(date, {
+      pattern: "DD/MM/YYYY",
+      calendar: "gregorian",
+    });
+  } catch {
+    return date;
+  }
+}
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderInterface[]>([]);
@@ -131,6 +284,31 @@ export default function DashboardPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
+
+  const editingCanonicalSnapshot = editingOrder
+    ? validateCanonicalSnapshot(editingOrder)
+    : null;
+  const editingPrintingSnapshot = editingOrder
+    ? validatePrintingSnapshot(editingOrder.printing_config_used)
+    : null;
+  const editingPrintingConfig = editingPrintingSnapshot?.valid
+    ? editingPrintingSnapshot.config
+    : null;
+  const editingHasPrintedExpiry =
+    editingPrintingConfig !== null &&
+    editingPrintingConfig.template.includes("{EXP_DATE}");
+  const editingPrintingPreview =
+    editingOrder &&
+    editingPrintingSnapshot?.valid &&
+    editingOrder.production_date &&
+    editingOrder.expiry_date
+      ? renderPrintingTemplate({
+          config: editingPrintingSnapshot.config,
+          productionDate: editingOrder.production_date,
+          canonicalExpiryDate: editingOrder.expiry_date,
+          lot: editingOrder.lot_number,
+        })
+      : null;
 
   const fetchUserInfo = async () => {
     try {
@@ -479,6 +657,10 @@ export default function DashboardPage() {
       const changeDetails: string[] = [];
 
       const parsedQuantity = Number(editingQuantity);
+      const productionDateChanged = Boolean(
+        original && original.production_date !== editingOrder.production_date,
+      );
+      let expiryDateForSave = editingOrder.expiry_date;
 
       if (
         editingQuantity.trim() === "" ||
@@ -494,6 +676,37 @@ export default function DashboardPage() {
         });
         setIsSaving(false);
         return;
+      }
+
+      if (productionDateChanged) {
+        const canonicalSnapshot = validateCanonicalSnapshot(editingOrder);
+        if (!canonicalSnapshot.valid) {
+          await AppSwal.fire({
+            icon: "error",
+            title: "ไม่สามารถแก้ไขวันที่ผลิตได้",
+            text: canonicalSnapshot.message,
+            confirmButtonText: "รับทราบ",
+            confirmButtonColor: "#0057B8",
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        expiryDateForSave = calculateSnapshotExpiryDate(
+          editingOrder.production_date,
+          editingOrder,
+        );
+        if (!expiryDateForSave) {
+          await AppSwal.fire({
+            icon: "error",
+            title: "ไม่สามารถคำนวณวันหมดอายุได้",
+            text: "กรุณาตรวจสอบวันที่ผลิตของ Order นี้",
+            confirmButtonText: "รับทราบ",
+            confirmButtonColor: "#0057B8",
+          });
+          setIsSaving(false);
+          return;
+        }
       }
 
       if (original) {
@@ -527,10 +740,15 @@ export default function DashboardPage() {
         const oldDateRaw = original.production_date || "";
         const newDateRaw = editingOrder.production_date || "";
         if (oldDateRaw !== newDateRaw) {
-          const formatDate = (d: string) =>
-            d ? d.split("-").reverse().join("/") : "ไม่มี";
           changeDetails.push(
-            `วันที่ผลิต: ${formatDate(oldDateRaw)} ➡️ ${formatDate(newDateRaw)}`,
+            `วันที่ผลิต: ${formatCalendarDateForSummary(oldDateRaw)} ➡️ ${formatCalendarDateForSummary(newDateRaw)}`,
+          );
+        }
+
+        const oldExpiryRaw = original.expiry_date || "";
+        if (oldExpiryRaw !== expiryDateForSave) {
+          changeDetails.push(
+            `วันหมดอายุจริง (คำนวณอัตโนมัติ): ${formatCalendarDateForSummary(oldExpiryRaw)} ➡️ ${formatCalendarDateForSummary(expiryDateForSave)}`,
           );
         }
 
@@ -599,7 +817,7 @@ export default function DashboardPage() {
         lot_number: editingOrder.lot_number,
         quantity: parsedQuantity,
         production_date: editingOrder.production_date,
-        expiry_date: editingOrder.expiry_date,
+        expiry_date: expiryDateForSave,
         notes: editingOrder.notes,
         updated_at: now,
         updated_by: editorName,
@@ -2044,16 +2262,20 @@ export default function DashboardPage() {
   const formatToThaiDate = (dateString: string) => {
     if (!dateString) return "";
     try {
-      const date = new Date(dateString);
-      const day = date.getDate().toString().padStart(2, "0");
-      const month = (date.getMonth() + 1).toString().padStart(2, "0");
-      const yearCE = date.getFullYear();
+      const thaiDate = formatProductDate(dateString, {
+        pattern: "DD/MM/YYYY",
+        calendar: "buddhist",
+      });
+      const gregorianDate = formatProductDate(dateString, {
+        pattern: "DD/MM/YYYY",
+        calendar: "gregorian",
+      });
       return (
         <>
-          {day}/{month}/{yearCE + 543}
+          {thaiDate}
           <br />
           <span className="text-sm opacity-75">
-            {day}/{month}/{yearCE}
+            {gregorianDate}
           </span>
         </>
       );
@@ -2072,45 +2294,6 @@ export default function DashboardPage() {
     });
   };
 
-  const calculateExpiryDate = (
-    manufactureDate: string,
-    shelfLife: string,
-  ): string => {
-    if (!manufactureDate || !shelfLife) return "";
-    try {
-      const mfgDate = new Date(manufactureDate);
-      if (isNaN(mfgDate.getTime())) return "";
-      const trimmed = shelfLife.trim();
-      const spaceIdx = trimmed.indexOf(" ");
-      const numValue = parseInt(
-        spaceIdx === -1 ? trimmed : trimmed.substring(0, spaceIdx),
-      );
-      const unit =
-        spaceIdx === -1
-          ? "months"
-          : trimmed.substring(spaceIdx + 1).toLowerCase();
-      if (isNaN(numValue) || numValue <= 0) return "";
-      const newDate = new Date(mfgDate);
-      if (unit.includes("day") || unit.includes("วัน"))
-        newDate.setDate(newDate.getDate() + numValue);
-      else if (
-        unit.includes("month") ||
-        unit.includes("mon") ||
-        unit.includes("เดือน")
-      )
-        newDate.setMonth(newDate.getMonth() + numValue);
-      else if (
-        unit.includes("year") ||
-        unit.includes("yr") ||
-        unit.includes("ปี")
-      )
-        newDate.setFullYear(newDate.getFullYear() + numValue);
-      else newDate.setMonth(newDate.getMonth() + numValue);
-      return newDate.toISOString().split("T")[0];
-    } catch {
-      return "";
-    }
-  };
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -2360,6 +2543,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredOrders.slice(0, visibleCount).map((order) => {
             const stockMeta = productMetaMap[order.product_id];
+            const printingDisplay = deriveOrderPrintingDisplay(order);
 
             const canReconcileStock =
               Boolean(stockMeta?.paperType?.trim()) &&
@@ -2679,6 +2863,45 @@ export default function DashboardPage() {
                       {formatToThaiDate(order.expiry_date)}
                     </span>
                   </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
+                      รูปแบบการพิมพ์ (Print Format):
+                    </span>
+                    {printingDisplay.state === "invalid_config" ? (
+                      <span className="font-bold text-[#C8102E] sm:text-right">
+                        รูปแบบการพิมพ์ที่บันทึกไว้ไม่ถูกต้อง
+                      </span>
+                    ) : printingDisplay.state === "not_configured" ? (
+                      <span className="font-bold text-slate-500 sm:text-right">
+                        ยังไม่ได้กำหนด
+                      </span>
+                    ) : (
+                      <span className="font-bold text-[#0057B8] bg-[#EAF3FC] px-2.5 py-0.5 rounded-lg border border-[#0057B8]/15 sm:text-right shrink-0">
+                        {printingDisplay.presetLabel}
+                      </span>
+                    )}
+                  </div>
+                  {printingDisplay.state !== "invalid_config" &&
+                    printingDisplay.state !== "not_configured" && (
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
+                        <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
+                          ข้อความสำหรับพิมพ์ (Print Text):
+                        </span>
+                        {printingDisplay.state === "ready" ? (
+                          <span className="min-w-0 whitespace-pre-wrap break-words font-mono font-bold text-slate-700 sm:text-right">
+                            {printingDisplay.text}
+                          </span>
+                        ) : printingDisplay.state === "incomplete" ? (
+                          <span className="font-semibold text-[#A88700] sm:text-right">
+                            กรุณากรอก LOT เพื่อดูข้อความสำหรับพิมพ์
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-[#C8102E] sm:text-right">
+                            ไม่สามารถสร้างข้อความสำหรับพิมพ์ได้
+                          </span>
+                        )}
+                      </div>
+                    )}
                   <div className="my-3 border-t border-slate-100"></div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
                     <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
@@ -2888,6 +3111,62 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-4">
+              <section className="rounded-xl border border-[#00AEC7]/20 bg-[#EAF8FA] p-3 text-[12px]">
+                <h3 className="font-black uppercase tracking-wider text-[#00263A]">
+                  ข้อมูลผลิตภัณฑ์ของ Order นี้
+                </h3>
+                <dl className="mt-2 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-[#5F6B70]">อายุผลิตภัณฑ์</dt>
+                    <dd className="text-right font-bold text-[#00263A]">
+                      {editingCanonicalSnapshot?.valid
+                        ? `${editingOrder.product_exp} เดือน`
+                        : "ข้อมูลไม่ถูกต้อง"}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-[#5F6B70]">รูปแบบวันหมดอายุจริง</dt>
+                    <dd className="text-right font-bold text-[#00263A]">
+                      {editingCanonicalSnapshot?.valid
+                        ? editingCanonicalSnapshot.actualExpiryOffsetDays === -1
+                          ? "ก่อนวันปกติ 1 วัน"
+                          : "ตามอายุผลิตภัณฑ์"
+                        : "ข้อมูลไม่ถูกต้อง"}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt className="text-[#5F6B70]">รูปแบบการพิมพ์</dt>
+                    <dd className="text-right font-bold text-[#00263A]">
+                      {!editingPrintingSnapshot?.valid
+                        ? "ข้อมูลไม่ถูกต้อง"
+                        : editingPrintingConfig === null
+                          ? "ยังไม่ได้กำหนด"
+                          : PRINTING_PRESET_LABELS[editingPrintingConfig.preset]}
+                    </dd>
+                  </div>
+                  {editingHasPrintedExpiry && (
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-[#5F6B70]">วันที่ EXP ที่พิมพ์</dt>
+                      <dd className="text-right font-bold text-[#00263A]">
+                        {editingPrintingConfig?.exp_offset_days === -1
+                          ? "ก่อนวันหมดอายุจริง 1 วัน"
+                          : "ตรงกับวันหมดอายุจริง"}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                {!editingCanonicalSnapshot?.valid && (
+                  <p className="mt-3 rounded-lg border border-[#C8102E]/25 bg-[#FCEAEC] px-2.5 py-2 font-semibold text-[#9B0B23]" role="alert">
+                    {editingCanonicalSnapshot?.message}
+                  </p>
+                )}
+                {!editingPrintingSnapshot?.valid && (
+                  <p className="mt-3 rounded-lg border border-[#C8102E]/25 bg-[#FCEAEC] px-2.5 py-2 font-semibold text-[#9B0B23]" role="alert">
+                    {editingPrintingSnapshot?.message}
+                  </p>
+                )}
+              </section>
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                   เลขลอตสินค้า (Lot Number)
@@ -2972,25 +3251,81 @@ export default function DashboardPage() {
                   type="date"
                   value={editingOrder.production_date || ""}
                   onChange={(e) => {
+                    if (!editingCanonicalSnapshot?.valid) return;
                     const newDate = e.target.value;
                     setEditingOrder({
                       ...editingOrder,
                       production_date: newDate,
-                      expiry_date: calculateExpiryDate(
+                      expiry_date: calculateSnapshotExpiryDate(
                         newDate,
-                        editingOrder.product_exp,
+                        editingOrder,
                       ),
                     });
                   }}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
+                  disabled={!editingCanonicalSnapshot?.valid}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                 />
+                {!editingCanonicalSnapshot?.valid && (
+                  <p className="mt-2 text-xs font-semibold text-[#C8102E]" role="alert">
+                    ไม่สามารถแก้ไขวันที่ผลิตได้จนกว่าจะตรวจสอบข้อมูลผลิตภัณฑ์ของ Order นี้
+                  </p>
+                )}
                 {editingOrder.expiry_date && (
                   <p className="mt-2 text-xs text-[#C8102E] font-bold flex items-center gap-1">
                     <span>💡</span> วันหมดอายุใหม่:{" "}
-                    {editingOrder.expiry_date.split("-").reverse().join("/")}
+                    {formatCalendarDateForSummary(editingOrder.expiry_date)}
                   </p>
                 )}
               </div>
+
+              {editingOrder.production_date && editingOrder.expiry_date && (
+                <section className="rounded-xl border border-[#0057B8]/15 bg-[#EAF3FC] p-3 text-[12px]" aria-live="polite">
+                  <h3 className="font-black uppercase tracking-wider text-[#00263A]">
+                    วันที่และข้อความสำหรับพิมพ์
+                  </h3>
+                  <dl className="mt-2 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-[#5F6B70]">วันที่ผลิต</dt>
+                      <dd className="text-right font-bold text-[#00263A]">
+                        {formatCalendarDateForSummary(editingOrder.production_date)}
+                      </dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="text-[#5F6B70]">วันหมดอายุจริง</dt>
+                      <dd className="text-right font-bold text-[#00263A]">
+                        {formatCalendarDateForSummary(editingOrder.expiry_date)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 border-t border-[#0057B8]/15 pt-3">
+                    <p className="font-semibold text-[#5F6B70]">รูปแบบที่ต้องพิมพ์</p>
+                    {!editingPrintingSnapshot?.valid && (
+                      <p className="mt-1 font-semibold text-[#C8102E]">
+                        ไม่สามารถสร้างตัวอย่างการพิมพ์ได้ กรุณาตรวจสอบข้อมูลผลิตภัณฑ์ของ Order นี้
+                      </p>
+                    )}
+                    {editingPrintingPreview?.status === "ready" && (
+                      <p className="mt-1 whitespace-pre-wrap break-words rounded-lg bg-white px-3 py-2 font-mono text-[13px] text-[#00263A]">
+                        {editingPrintingPreview.text}
+                      </p>
+                    )}
+                    {editingPrintingPreview?.status === "not_configured" && (
+                      <p className="mt-1 text-[#5F6B70]">ยังไม่ได้กำหนดรูปแบบการพิมพ์</p>
+                    )}
+                    {editingPrintingPreview?.status === "incomplete" && (
+                      <p className="mt-1 font-semibold text-[#A88700]">
+                        กรุณากรอก LOT เพื่อดูข้อความสำหรับพิมพ์
+                      </p>
+                    )}
+                    {(editingPrintingPreview?.status === "invalid_config" ||
+                      editingPrintingPreview?.status === "invalid_input") && (
+                      <p className="mt-1 font-semibold text-[#C8102E]">
+                        ไม่สามารถสร้างตัวอย่างการพิมพ์ได้ กรุณาตรวจสอบข้อมูลผลิตภัณฑ์ของ Order นี้
+                      </p>
+                    )}
+                  </div>
+                </section>
+              )}
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
