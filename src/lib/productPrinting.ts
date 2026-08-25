@@ -2,7 +2,9 @@ import { addCalendarDays, parseCalendarDate } from "./productDate";
 
 export const PRODUCT_DATE_FORMATS = [
   "DD/MM/YYYY",
+  "DDMMYYYY",
   "DD/MM/YY",
+  "DDMMYY",
   "YYYY/MM/DD",
   "YYYY/M/D",
   "YYYY-MM-DD",
@@ -193,7 +195,9 @@ export function formatProductDate(canonicalDate: string, format: DateFormatSpec)
 
   switch (format.pattern) {
     case "DD/MM/YYYY": return `${dd}/${mm}/${yyyy}`;
+    case "DDMMYYYY": return `${dd}${mm}${yyyy}`;
     case "DD/MM/YY": return `${dd}/${mm}/${yy}`;
+    case "DDMMYY": return `${dd}${mm}${yy}`;
     case "YYYY/MM/DD": return `${yyyy}/${mm}/${dd}`;
     case "YYYY/M/D": return `${yyyy}/${month}/${day}`;
     case "YYYY-MM-DD": return `${yyyy}-${mm}-${dd}`;

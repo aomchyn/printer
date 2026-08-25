@@ -10,6 +10,8 @@ import {
   type ActualExpiryOffsetDays,
 } from "@/lib/productDate";
 import {
+  type DateFormatSpec,
+  type PrintingConfigV1,
   type ProductPrintingConfig,
   validatePrintingConfig,
 } from "@/lib/productPrinting";
@@ -59,15 +61,6 @@ const ACTUAL_EXPIRY_OPTIONS: Array<{
   { value: -1, label: "ก่อนวันปกติ 1 วัน" },
 ];
 
-const PRINTING_PRESET_LABELS: Record<NonNullable<ProductPrintingConfig>["preset"], string> = {
-  date_only: "วันที่ผลิตอย่างเดียว",
-  date_and_lot: "วันที่ผลิต + LOT",
-  mfg_exp: "MFG + EXP",
-  mfg_exp_lot: "MFG + EXP + LOT",
-  mfg_exp_unlabeled: "MFG + EXP ไม่มี label",
-  custom: "กำหนดรูปแบบเอง",
-};
-
 function stableJsonStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableJsonStringify).join(",")}]`;
@@ -89,26 +82,33 @@ function actualExpiryRuleLabel(value: ActualExpiryOffsetDays): string {
   return ACTUAL_EXPIRY_OPTIONS.find((option) => option.value === value)?.label ?? "ไม่ระบุ";
 }
 
-function printingConfigLabel(config: ProductPrintingConfig): string {
-  return config === null ? "ยังไม่ได้กำหนดรูปแบบการพิมพ์" : PRINTING_PRESET_LABELS[config.preset];
+function isDateOnlyPrintingConfig(
+  config: ProductPrintingConfig,
+): config is PrintingConfigV1 {
+  return (
+    config !== null &&
+    config.preset === "date_only" &&
+    validatePrintingConfig(config).valid
+  );
 }
 
-function printingConfigSummary(config: ProductPrintingConfig): string {
-  if (config === null) return "ยังไม่ได้กำหนดรูปแบบการพิมพ์";
-  const formats = [
-    config.mfg_format ? `วันผลิต ${config.mfg_format.pattern}` : null,
-    config.exp_format ? `วันหมดอายุ ${config.exp_format.pattern}` : null,
-  ].filter((value): value is string => value !== null);
-  return formats.length > 0
-    ? `${printingConfigLabel(config)} — ${formats.join(" / ")}`
-    : printingConfigLabel(config);
+function calendarLabel(calendar: DateFormatSpec["calendar"]): string {
+  return calendar === "buddhist" ? "พ.ศ." : "ค.ศ.";
 }
 
-function printedExpiryRuleLabel(config: ProductPrintingConfig): string {
-  if (config === null || !config.template.includes("{EXP_DATE}")) return "ไม่ใช้วันหมดอายุในการพิมพ์";
-  return config.exp_offset_days === -1
-    ? "ก่อนวันหมดอายุจริง 1 วัน"
-    : "ตรงกับวันหมดอายุจริง";
+function monthCaseLabel(monthCase: DateFormatSpec["monthCase"] | undefined): string {
+  return monthCase === "upper" ? "ตัวพิมพ์ใหญ่" : "ตัวพิมพ์ปกติ";
+}
+
+function printingConfigModeLabel(config: ProductPrintingConfig): string {
+  if (config === null) return "ไม่มีรูปแบบพิเศษ";
+  return isDateOnlyPrintingConfig(config)
+    ? "พิมพ์วันที่ผลิต"
+    : "รูปแบบการพิมพ์เดิม";
+}
+
+function dateOnlyFormat(config: ProductPrintingConfig): DateFormatSpec | null {
+  return isDateOnlyPrintingConfig(config) ? config.mfg_format : null;
 }
 
 function formatThaiDate(canonicalDate: string): string {
@@ -161,14 +161,9 @@ export default function FgcodeManagement() {
           shelfLifeMonths: exp,
           actualExpiryOffsetDays: expiryOffsetDays,
         }),
-        printing: calculateProductExpiryDate({
-          productionDate: "2025-06-18",
-          shelfLifeMonths: exp,
-          actualExpiryOffsetDays: expiryOffsetDays,
-        }),
       };
     } catch {
-      return { actual: null, printing: null };
+      return { actual: null };
     }
   }, [exp, expiryOffsetDays]);
 
@@ -364,16 +359,53 @@ export default function FgcodeManagement() {
       }
       const currentPrintingConfig = currentEditing.printing_config ?? null;
       if (!hasSamePrintingConfig(printingConfig, currentPrintingConfig)) {
-        changes.push({
-          label: "รูปแบบการพิมพ์",
-          from: printingConfigSummary(currentPrintingConfig),
-          to: printingConfigSummary(printingConfig),
-        });
-        changes.push({
-          label: "วันที่ EXP ที่พิมพ์",
-          from: printedExpiryRuleLabel(currentPrintingConfig),
-          to: printedExpiryRuleLabel(printingConfig),
-        });
+        const currentDateOnlyFormat = dateOnlyFormat(currentPrintingConfig);
+        const nextDateOnlyFormat = dateOnlyFormat(printingConfig);
+
+        if (currentDateOnlyFormat && nextDateOnlyFormat) {
+          if (currentDateOnlyFormat.pattern !== nextDateOnlyFormat.pattern) {
+            changes.push({
+              label: "รูปแบบวันที่ผลิต",
+              from: currentDateOnlyFormat.pattern,
+              to: nextDateOnlyFormat.pattern,
+            });
+          }
+          if (currentDateOnlyFormat.calendar !== nextDateOnlyFormat.calendar) {
+            changes.push({
+              label: "ปฏิทิน",
+              from: calendarLabel(currentDateOnlyFormat.calendar),
+              to: calendarLabel(nextDateOnlyFormat.calendar),
+            });
+          }
+          if (currentDateOnlyFormat.monthCase !== nextDateOnlyFormat.monthCase) {
+            changes.push({
+              label: "ตัวพิมพ์ชื่อเดือน",
+              from: monthCaseLabel(currentDateOnlyFormat.monthCase),
+              to: monthCaseLabel(nextDateOnlyFormat.monthCase),
+            });
+          }
+        } else {
+          changes.push({
+            label: "รูปแบบการพิมพ์",
+            from: printingConfigModeLabel(currentPrintingConfig),
+            to: printingConfigModeLabel(printingConfig),
+          });
+
+          if (nextDateOnlyFormat) {
+            changes.push({
+              label: "รูปแบบวันที่ผลิต",
+              from: currentDateOnlyFormat?.pattern || "ไม่ระบุ",
+              to: nextDateOnlyFormat.pattern,
+            });
+            changes.push({
+              label: "ปฏิทิน",
+              from: currentDateOnlyFormat
+                ? calendarLabel(currentDateOnlyFormat.calendar)
+                : "ไม่ระบุ",
+              to: calendarLabel(nextDateOnlyFormat.calendar),
+            });
+          }
+        }
       }
       if (isAdminRole && (cleanQtyPerA3 ?? "") !== (currentQtyPerA3 ?? "")) {
         changes.push({
@@ -482,6 +514,8 @@ export default function FgcodeManagement() {
                 <tr><td style="padding:5px 8px; color:#6b7280;">🏷️ รหัสสินค้า</td><td style="padding:5px 8px; font-weight:700;">${cleanId}</td></tr>
                 <tr style="background:#f9fafb;"><td style="padding:5px 8px; color:#6b7280;">📝 ชื่อสินค้า</td><td style="padding:5px 8px; font-weight:700;">${cleanName}</td></tr>
                 <tr><td style="padding:5px 8px; color:#6b7280;">⏳ อายุผลิตภัณฑ์</td><td style="padding:5px 8px; font-weight:700;">${cleanExp} เดือน</td></tr>
+                <tr style="background:#f9fafb;"><td style="padding:5px 8px; color:#6b7280;">🖨️ รูปแบบการพิมพ์</td><td style="padding:5px 8px; font-weight:700;">${printingConfigModeLabel(printingConfig)}</td></tr>
+                ${dateOnlyFormat(printingConfig) ? `<tr><td style="padding:5px 8px; color:#6b7280;">📅 รูปแบบวันที่ผลิต</td><td style="padding:5px 8px; font-weight:700;">${dateOnlyFormat(printingConfig)?.pattern} (${calendarLabel(dateOnlyFormat(printingConfig)!.calendar)})</td></tr>` : ""}
             </table>
         `,
           showCancelButton: true,
@@ -1054,7 +1088,6 @@ export default function FgcodeManagement() {
               <PrintingConfigBuilder
                 value={printingConfig}
                 onChange={setPrintingConfig}
-                canonicalExpiryDate={previewDates.printing}
               />
               {isAdminRole && (
                 <div className="border-t border-[#D9E1E2] pt-4 space-y-4">

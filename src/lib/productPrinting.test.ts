@@ -39,6 +39,23 @@ describe("productPrinting", () => {
     expect(formatProductDate("2025-07-02", { pattern: "YYYY/MM/DD", calendar: "gregorian" })).toBe("2025/07/02");
   });
 
+  it("formats compact DDMMYY and DDMMYYYY dates across Gregorian and Buddhist calendars", () => {
+    expect(formatProductDate("2025-06-18", { pattern: "DDMMYY", calendar: "gregorian" })).toBe("180625");
+    expect(formatProductDate("2025-06-18", { pattern: "DDMMYYYY", calendar: "gregorian" })).toBe("18062025");
+    expect(formatProductDate("2025-01-03", { pattern: "DDMMYY", calendar: "gregorian" })).toBe("030125");
+    expect(formatProductDate("2025-01-03", { pattern: "DDMMYYYY", calendar: "gregorian" })).toBe("03012025");
+    expect(formatProductDate("2025-06-18", { pattern: "DDMMYY", calendar: "buddhist" })).toBe("180668");
+    expect(formatProductDate("2025-06-18", { pattern: "DDMMYYYY", calendar: "buddhist" })).toBe("18062568");
+    for (const pattern of ["DDMMYY", "DDMMYYYY"] as const) {
+      expect(validatePrintingConfig(config({
+        preset: "date_only",
+        template: "{MFG_DATE}",
+        mfg_format: { pattern, calendar: "gregorian" },
+        exp_format: null,
+      }))).toEqual({ valid: true });
+    }
+  });
+
   it("renders date-only labels", () => {
     expect(renderPrintingTemplate({
       config: config({ preset: "date_only", template: "พิมพ์วันที่ {MFG_DATE}", exp_format: null }),
@@ -57,6 +74,30 @@ describe("productPrinting", () => {
       productionDate: "2025-08-25",
       canonicalExpiryDate: "2026-08-25",
     })).toEqual({ status: "ready", text: "พิมพ์วันที่ AUG 2025" });
+  });
+
+  it("renders compact MFG-only formats", () => {
+    expect(renderPrintingTemplate({
+      config: config({
+        preset: "date_only",
+        template: "{MFG_DATE}",
+        mfg_format: { pattern: "DDMMYY", calendar: "gregorian" },
+        exp_format: null,
+      }),
+      productionDate: "2025-06-18",
+      canonicalExpiryDate: "2026-06-18",
+    })).toEqual({ status: "ready", text: "180625" });
+
+    expect(renderPrintingTemplate({
+      config: config({
+        preset: "date_only",
+        template: "{MFG_DATE}",
+        mfg_format: { pattern: "DDMMYYYY", calendar: "gregorian" },
+        exp_format: null,
+      }),
+      productionDate: "2025-06-18",
+      canonicalExpiryDate: "2026-06-18",
+    })).toEqual({ status: "ready", text: "18062025" });
   });
 
   it("supports different MFG and EXP punctuation formats", () => {
