@@ -228,6 +228,25 @@ function ProductAuditDetail({ action, details, changes }: Pick<AuditLog, 'action
         : <span className="text-xs text-[#101820]/30">ไม่มีรายละเอียดการเปลี่ยนแปลง</span>
 }
 
+function ProductRenameAuditDetail({ details, changes }: Pick<AuditLog, 'details' | 'changes'>) {
+    const payload = isJsonRecord(details) ? details : {}
+    const idChange = getFieldChange(changes, 'id')
+    const oldId = payload.old_product_id ?? idChange?.old
+    const newId = payload.new_product_id ?? idChange?.new
+
+    if (oldId === undefined && newId === undefined && Object.keys(payload).length === 0) {
+        return <span className="text-xs text-[#101820]/30">ไม่มีรายละเอียดการเปลี่ยนแปลง</span>
+    }
+
+    return (
+        <div className="space-y-0.5 text-xs">
+            <div><span className="text-[#5F6B70]">รหัสสินค้า:</span> <span className="text-[#9B0B23]">{displayValue(oldId)}</span> <span className="text-[#5F6B70]">➡️</span> <span className="font-semibold text-[#008C78]">{displayValue(newId)}</span></div>
+            {payload.product_name !== undefined && <div><span className="text-[#5F6B70]">สินค้า:</span> <span className="font-semibold text-[#101820]">{displayValue(payload.product_name)}</span></div>}
+            {payload.affected_orders !== undefined && <div><span className="text-[#5F6B70]">Order ที่อ้างอิง:</span> <span className="text-[#101820]">{displayValue(payload.affected_orders)} รายการ</span></div>}
+        </div>
+    )
+}
+
 function PrintingDateFormatAuditDetail({ action, details, changes }: Pick<AuditLog, 'action' | 'details' | 'changes'>) {
     const payload = isJsonRecord(details) ? details : {}
     if (action === 'CREATE_PRINTING_DATE_FORMAT') {
@@ -376,6 +395,9 @@ export default function LogsManagement() {
         if (log.action === 'CREATE_PRODUCT' || log.action === 'UPDATE_PRODUCT') {
             return <ProductAuditDetail action={log.action} details={log.details} changes={log.changes} />
         }
+        if (log.action === 'RENAME_PRODUCT') {
+            return <ProductRenameAuditDetail details={log.details} changes={log.changes} />
+        }
         if (log.action === 'CREATE_PRINTING_DATE_FORMAT' || log.action === 'UPDATE_PRINTING_DATE_FORMAT') {
             return <PrintingDateFormatAuditDetail action={log.action} details={log.details} changes={log.changes} />
         }
@@ -470,6 +492,7 @@ export default function LogsManagement() {
             case 'LOGIN': return <span className={`${base} bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20`}>เข้าสู่ระบบ</span>
             case 'CREATE_PRODUCT': return <span className={`${base} bg-[#E6F8F4] text-[#008C78] border border-[#00B398]/20`}>เพิ่มสินค้า</span>
             case 'UPDATE_PRODUCT': return <span className={`${base} bg-[#FFF8D6] text-[#A88700] border border-[#F1C400]/30`}>แก้ไขสินค้า</span>
+            case 'RENAME_PRODUCT': return <span className={`${base} bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20`}>เปลี่ยนรหัสสินค้า</span>
             case 'CREATE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#E6F8F4] text-[#008C78] border border-[#00B398]/20`}>เพิ่มรูปแบบวันที่</span>
             case 'UPDATE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#FFF8D6] text-[#A88700] border border-[#F1C400]/30`}>แก้ไขรูปแบบวันที่</span>
             case 'DELETE_PRODUCT': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>ลบสินค้า</span>

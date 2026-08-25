@@ -257,6 +257,8 @@ export default function FgcodeManagement() {
     const cleanId = id.trim();
     const cleanName = name.trim();
     const cleanExp = exp.trim();
+    const productIdChanged =
+      currentEditing !== null && cleanId !== currentEditing.id;
     if (!cleanId || !cleanName || !cleanExp) {
       AppSwal.fire({
         icon: "warning",
@@ -327,10 +329,39 @@ export default function FgcodeManagement() {
         ((cleanQtyPerA3 ?? "") === (currentQtyPerA3 ?? "") &&
           (defaultPaperType || "") ===
             (currentEditing.default_paper_type || ""));
+      const hasOtherProductFieldChange =
+        cleanName !== (currentEditing.name || "") ||
+        cleanExp !== (currentEditing.exp || "") ||
+        expiryOffsetDays !== (currentEditing.expiry_offset_days ?? 0) ||
+        !hasSamePrintingConfig(
+          printingConfig,
+          currentEditing.printing_config ?? null,
+        ) ||
+        !noAdminFieldChange;
+
+      if (productIdChanged && !isAdminRole) {
+        await AppSwal.fire({
+          icon: "error",
+          title: "ไม่มีสิทธิ์เปลี่ยนรหัสสินค้า",
+          text: "เฉพาะ Moderator และ Assistant Moderator เท่านั้น",
+        });
+        setShowModal(true);
+        return;
+      }
+
+      if (productIdChanged && hasOtherProductFieldChange) {
+        await AppSwal.fire({
+          icon: "warning",
+          title: "บันทึกพร้อมกันไม่ได้",
+          text: "กรุณาบันทึกการเปลี่ยนรหัสสินค้าก่อน แล้วจึงแก้ไขข้อมูลสินค้าอื่น",
+        });
+        setShowModal(true);
+        return;
+      }
       if (
         cleanName === (currentEditing.name || "") &&
         cleanExp === (currentEditing.exp || "") &&
-        cleanId === currentEditing.id &&
+        !productIdChanged &&
         expiryOffsetDays === (currentEditing.expiry_offset_days ?? 0) &&
         hasSamePrintingConfig(
           printingConfig,
@@ -361,6 +392,13 @@ export default function FgcodeManagement() {
             })[character] || character,
         );
       const changes: Array<{ label: string; from: string; to: string }> = [];
+      if (productIdChanged) {
+        changes.push({
+          label: "รหัสสินค้า",
+          from: currentEditing.id,
+          to: cleanId,
+        });
+      }
       if (cleanName !== (currentEditing.name || "")) {
         changes.push({
           label: "ชื่อสินค้า",
@@ -493,28 +531,35 @@ export default function FgcodeManagement() {
     setSaving(true);
     try {
       if (currentEditing) {
-        if (cleanId !== currentEditing.id) {
-          throw new Error("รหัสสินค้าไม่สามารถแก้ไขได้");
+        if (productIdChanged) {
+          const { error: renameError } = await supabase.rpc(
+            "rename_fgcode_manager",
+            {
+              p_old_id: currentEditing.id,
+              p_new_id: cleanId,
+            },
+          );
+          if (renameError) throw renameError;
+        } else {
+          const updatePayload: Record<string, unknown> = {
+            name: cleanName,
+            exp: cleanExp,
+            expiry_offset_days: expiryOffsetDays,
+            printing_config: printingConfig,
+          };
+
+          if (isAdminRole) {
+            updatePayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3, 10) : null;
+            updatePayload.default_paper_type = defaultPaperType || null;
+          }
+
+          const { error: updateError } = await supabase
+            .from("fgcode")
+            .update(updatePayload)
+            .eq("id", currentEditing.id);
+
+          if (updateError) throw updateError;
         }
-
-        const updatePayload: Record<string, unknown> = {
-          name: cleanName,
-          exp: cleanExp,
-          expiry_offset_days: expiryOffsetDays,
-          printing_config: printingConfig,
-        };
-
-        if (isAdminRole) {
-          updatePayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3, 10) : null;
-          updatePayload.default_paper_type = defaultPaperType || null;
-        }
-
-        const { error: updateError } = await supabase
-          .from("fgcode")
-          .update(updatePayload)
-          .eq("id", currentEditing.id);
-
-        if (updateError) throw updateError;
       } else {
         const { data: existing } = await supabase
           .from("fgcode")
@@ -575,7 +620,11 @@ export default function FgcodeManagement() {
       AppSwal.fire({
         icon: "success",
         title: "สำเร็จ",
-        text: `${currentEditing ? "แก้ไข" : "สร้าง"}รหัสสินค้าสำเร็จ`,
+        text: currentEditing
+          ? productIdChanged
+            ? "เปลี่ยนรหัสสินค้าสำเร็จ"
+            : "แก้ไขรหัสสินค้าสำเร็จ"
+          : "สร้างรหัสสินค้าสำเร็จ",
         timer: 1500,
         showConfirmButton: false,
       });
@@ -1040,11 +1089,13 @@ export default function FgcodeManagement() {
                   onChange={(e) => setId(e.target.value.toUpperCase())}
                   placeholder="เช่น 01-1-001 หรือ FG-001"
                   required
-                  disabled={!!editingFgcode}
+                  disabled={!!editingFgcode && !isAdminRole}
                 />
                 {editingFgcode && (
                   <small className="text-[#8A9498] mt-1 block">
-                    รหัสสินค้าไม่สามารถแก้ไขได้
+                    {isAdminRole
+                      ? "เปลี่ยนได้เฉพาะรหัสสินค้าเท่านั้นในหนึ่งครั้ง"
+                      : "รหัสสินค้าไม่สามารถแก้ไขได้"}
                   </small>
                 )}
               </div>

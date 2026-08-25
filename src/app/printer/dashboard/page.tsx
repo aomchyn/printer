@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
@@ -282,6 +282,7 @@ export default function DashboardPage() {
   }>({});
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const productMetaMapRef = useRef(productMetaMap);
 
   const router = useRouter();
 
@@ -383,6 +384,51 @@ export default function DashboardPage() {
       });
     }
   };
+  const fetchProductMeta = useCallback(async () => {
+    let allData: {
+      id: string;
+      qty_per_a3: number | null;
+      default_paper_type: string | null;
+    }[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data } = await supabase
+        .from("fgcode")
+        .select("id, qty_per_a3, default_paper_type")
+        .range(from, from + pageSize - 1);
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    setProductMetaMap(
+      Object.fromEntries(
+        allData.map((p) => [
+          p.id,
+          {
+            qtyPerA3:
+              typeof p.qty_per_a3 === "number" && p.qty_per_a3 > 0
+                ? p.qty_per_a3
+                : 0,
+            paperType: p.default_paper_type?.trim() || "",
+          },
+        ]),
+      ),
+    );
+  }, []);
+
+  useEffect(() => {
+    productMetaMapRef.current = productMetaMap;
+  }, [productMetaMap]);
+
   useEffect(() => {
     fetchUserInfo();
 
@@ -454,6 +500,11 @@ export default function DashboardPage() {
             }
           } else if (payload.eventType === "UPDATE" && payload.new) {
             const newData = payload.new as Record<string, unknown>;
+            const nextProductId =
+              typeof newData.product_id === "string" ? newData.product_id : null;
+            if (nextProductId && !productMetaMapRef.current[nextProductId]) {
+              void fetchProductMeta();
+            }
             if (newData.updated_at) {
               const updateTS = new Date(newData.updated_at as string).getTime();
               if (nowTS - updateTS < 10000) {
@@ -492,52 +543,12 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchProductMeta]);
 
   // ✅ ดึง qty_per_a3 + default_paper_type แยกต่างหาก ไม่ยุ่งกับ fetch เดิมที่ใช้ sync ชื่อสินค้า
   useEffect(() => {
-    const fetchProductMeta = async () => {
-      let allData: {
-        id: string;
-        qty_per_a3: number | null;
-        default_paper_type: string | null;
-      }[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data } = await supabase
-          .from("fgcode")
-          .select("id, qty_per_a3, default_paper_type")
-          .range(from, from + pageSize - 1);
-
-        if (data && data.length > 0) {
-          allData = [...allData, ...data];
-          from += pageSize;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      setProductMetaMap(
-        Object.fromEntries(
-          allData.map((p) => [
-            p.id,
-            {
-              qtyPerA3:
-                typeof p.qty_per_a3 === "number" && p.qty_per_a3 > 0
-                  ? p.qty_per_a3
-                  : 0,
-              paperType: p.default_paper_type?.trim() || "",
-            },
-          ]),
-        ),
-      );
-    };
-    fetchProductMeta();
-  }, []);
+    void fetchProductMeta();
+  }, [fetchProductMeta]);
 
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => {
