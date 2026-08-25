@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDateOnlyPrintingConfig,
   isPrintingDateFormatEnabled,
+  isPrintingDateFormatDeletable,
   isRetiredPrintingDatePattern,
   sortPrintingDateFormats,
   usesMonthNameInPrintingDatePattern,
@@ -36,5 +37,11 @@ describe("printingDateFormatRegistry", () => {
       exp_format: null,
       exp_offset_days: 0,
     });
+  });
+
+  it("allows permanent deletion only when no current Product uses the pattern", () => {
+    expect(isPrintingDateFormatDeletable({ product_usage_count: 0 })).toBe(true);
+    expect(isPrintingDateFormatDeletable({ product_usage_count: 1 })).toBe(false);
+    expect(isPrintingDateFormatDeletable({ product_usage_count: 12 })).toBe(false);
   });
 });

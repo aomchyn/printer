@@ -8,9 +8,13 @@ export interface PrintingDateFormatRegistryRow {
   sort_order: number;
 }
 
-export function sortPrintingDateFormats(
-  formats: readonly PrintingDateFormatRegistryRow[],
-): PrintingDateFormatRegistryRow[] {
+export interface PrintingDateFormatManagementRow extends PrintingDateFormatRegistryRow {
+  product_usage_count: number;
+}
+
+export function sortPrintingDateFormats<T extends PrintingDateFormatRegistryRow>(
+  formats: readonly T[],
+): T[] {
   return [...formats].sort((left, right) => (
     left.sort_order - right.sort_order || left.id.localeCompare(right.id)
   ));
@@ -32,6 +36,12 @@ export function isRetiredPrintingDatePattern(
 
 export function usesMonthNameInPrintingDatePattern(pattern: string): boolean {
   return pattern.includes("MMM");
+}
+
+export function isPrintingDateFormatDeletable(
+  format: Pick<PrintingDateFormatManagementRow, "product_usage_count">,
+): boolean {
+  return format.product_usage_count === 0;
 }
 
 export function buildDateOnlyPrintingConfig(format: DateFormatSpec): PrintingConfigV1 {

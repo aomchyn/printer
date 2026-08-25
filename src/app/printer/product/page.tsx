@@ -1278,9 +1278,6 @@ export default function FgcodeManagement() {
       {isAdminRole && (
         <PrintingDateFormatManager
           open={showPrintingDateFormatManager}
-          formats={printingDateFormats}
-          loading={printingDateFormatStatus === "loading"}
-          loadError={printingDateFormatStatus === "error"}
           onClose={() => setShowPrintingDateFormatManager(false)}
           onRefresh={fetchPrintingDateFormats}
         />

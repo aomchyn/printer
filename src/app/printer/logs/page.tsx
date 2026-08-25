@@ -260,6 +260,17 @@ function PrintingDateFormatAuditDetail({ action, details, changes }: Pick<AuditL
         )
     }
 
+    if (action === 'DELETE_PRINTING_DATE_FORMAT') {
+        return (
+            <div className="space-y-0.5 text-xs">
+                <div><span className="text-[#5F6B70]">Pattern:</span> <span className="font-mono text-[#101820]">{displayValue(payload.pattern)}</span></div>
+                <div><span className="text-[#5F6B70]">ชื่อที่แสดง:</span> <span className="font-semibold text-[#101820]">{displayValue(payload.display_label)}</span></div>
+                <div><span className="text-[#5F6B70]">สถานะก่อนลบ:</span> <span className="text-[#101820]">{payload.enabled === true ? 'เปิดใช้งาน' : payload.enabled === false ? 'ปิดใช้งาน' : 'ไม่ระบุ'}</span></div>
+                <div><span className="text-[#5F6B70]">ลำดับก่อนลบ:</span> <span className="text-[#101820]">{displayValue(payload.sort_order)}</span></div>
+            </div>
+        )
+    }
+
     const rows: ReactNode[] = []
     const label = getFieldChange(changes, 'display_label')
     const enabled = getFieldChange(changes, 'enabled')
@@ -398,7 +409,7 @@ export default function LogsManagement() {
         if (log.action === 'RENAME_PRODUCT') {
             return <ProductRenameAuditDetail details={log.details} changes={log.changes} />
         }
-        if (log.action === 'CREATE_PRINTING_DATE_FORMAT' || log.action === 'UPDATE_PRINTING_DATE_FORMAT') {
+        if (log.action === 'CREATE_PRINTING_DATE_FORMAT' || log.action === 'UPDATE_PRINTING_DATE_FORMAT' || log.action === 'DELETE_PRINTING_DATE_FORMAT') {
             return <PrintingDateFormatAuditDetail action={log.action} details={log.details} changes={log.changes} />
         }
 
@@ -495,6 +506,7 @@ export default function LogsManagement() {
             case 'RENAME_PRODUCT': return <span className={`${base} bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20`}>เปลี่ยนรหัสสินค้า</span>
             case 'CREATE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#E6F8F4] text-[#008C78] border border-[#00B398]/20`}>เพิ่มรูปแบบวันที่</span>
             case 'UPDATE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#FFF8D6] text-[#A88700] border border-[#F1C400]/30`}>แก้ไขรูปแบบวันที่</span>
+            case 'DELETE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>ลบรูปแบบวันที่</span>
             case 'DELETE_PRODUCT': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>ลบสินค้า</span>
             case 'CREATE_ORDER': return <span className={`${base} bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20`}>สั่งพิมพ์ฉลาก</span>
             case 'DELETE_ORDER': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>🗑️ ลบคำสั่งพิมพ์</span>
