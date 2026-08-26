@@ -579,6 +579,7 @@ export default function LogsManagement() {
             case 'PERMANENT_DELETE_ORDER': return <span className={`${base} bg-[#FCEAEC] text-[#9B0B23] border border-[#C8102E]/30`}>🗑️ ลบถาวร</span>
             case 'RESTORE_FROM_TRASH': return <span className={`${base} bg-[#E6F8F4] text-[#008C78] border border-[#00B398]/20`}>♻️ กู้คืนจากถังขยะ</span>
             case 'UPDATE': return <span className={`${base} bg-[#FFF8D6] text-[#A88700] border border-[#F1C400]/30`}>✏️ แก้ไขคำสั่งพิมพ์</span>
+            case 'UPDATE_ORDER_IMAGE': return <span className={`${base} bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20`}>🖼️ อัปเดตรูปคำสั่งพิมพ์</span>
             case 'VERIFY': return <span className={`${base} bg-emerald-500/25 text-[#008C78] border border-[#00B398]/20`}>✅ ยืนยันตรวจสอบ</span>
             case 'CANCEL': return <span className={`${base} bg-[#FFF0E7] text-[#C45A12] border border-[#FF6A13]/25`}>❌ ยกเลิกคำสั่งพิมพ์</span>
             case 'CREATE_USER': return <span className={`${base} bg-[#E5F8FB] text-[#00AEC7] border border-[#00AEC7]/20`}>เพิ่มผู้ใช้</span>

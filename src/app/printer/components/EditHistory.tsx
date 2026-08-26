@@ -2,26 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  isVisibleHistoryEntry,
+  type HistoryEntry,
+} from "@/lib/orderEditHistory";
 import { UserCircle } from "lucide-react"; // อย่าลืม import
-
-interface HistoryEntry {
-  id: number;
-  action: string;
-  user_name: string;
-  summary: string;
-  created_at: string;
-}
-
-const isVisibleHistoryEntry = (entry: HistoryEntry) => {
-  if (entry.action === "CANCEL" || entry.action === "RESTORE_FROM_TRASH") {
-    return true;
-  }
-
-  return (
-    entry.action === "UPDATE" &&
-    (entry.summary.startsWith("แก้ไข:") || entry.summary === "แก้ไขคำสั่งพิมพ์")
-  );
-};
 
 interface Props {
   orderId: number;
