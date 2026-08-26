@@ -3165,14 +3165,14 @@ export default function DashboardPage() {
 
       {/* Editing Dialog Modal */}
       {editingOrder && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md animate-slide-up relative overflow-hidden">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="relative w-full min-w-0 max-w-full animate-slide-up overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:max-w-md sm:rounded-3xl sm:p-6">
+            <div className="mb-4 flex min-w-0 items-center justify-between gap-3 border-b border-slate-100 pb-4 sm:mb-6">
+              <div className="flex min-w-0 items-center gap-2">
                 <span className="p-2 rounded-xl bg-[#EAF3FC] text-[#0057B8]">
                   <Edit2 className="w-5 h-5" />
                 </span>
-                <h2 className="text-lg font-black text-[#00263A] tracking-tight">
+                <h2 className="min-w-0 text-lg font-black tracking-tight text-[#00263A]">
                   แก้ไขข้อมูลคำสั่งชิ้นงาน
                 </h2>
               </div>
@@ -3185,23 +3185,23 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <section className="rounded-xl border border-[#00AEC7]/20 bg-[#EAF8FA] p-3 text-[12px]">
+            <div className="min-w-0 space-y-4">
+              <section className="w-full min-w-0 rounded-xl border border-[#00AEC7]/20 bg-[#EAF8FA] p-3 text-[12px]">
                 <h3 className="font-black uppercase tracking-wider text-[#00263A]">
                   ข้อมูลผลิตภัณฑ์ของ Order นี้
                 </h3>
                 <dl className="mt-2 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <dt className="text-[#5F6B70]">อายุผลิตภัณฑ์</dt>
-                    <dd className="text-right font-bold text-[#00263A]">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+                    <dt className="min-w-0 text-[#5F6B70]">อายุผลิตภัณฑ์</dt>
+                    <dd className="min-w-0 text-right font-bold text-[#00263A]">
                       {editingCanonicalSnapshot?.valid
                         ? `${editingOrder.product_exp} เดือน`
                         : "ข้อมูลไม่ถูกต้อง"}
                     </dd>
                   </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <dt className="text-[#5F6B70]">รูปแบบวันหมดอายุจริง</dt>
-                    <dd className="text-right font-bold text-[#00263A]">
+                  <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3">
+                    <dt className="min-w-0 text-[#5F6B70]">รูปแบบวันหมดอายุจริง</dt>
+                    <dd className="min-w-0 break-words font-bold text-[#00263A] sm:text-right">
                       {editingCanonicalSnapshot?.valid
                         ? editingCanonicalSnapshot.actualExpiryOffsetDays === -1
                           ? "ก่อนวันปกติ 1 วัน"
@@ -3209,9 +3209,9 @@ export default function DashboardPage() {
                         : "ข้อมูลไม่ถูกต้อง"}
                     </dd>
                   </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <dt className="text-[#5F6B70]">รูปแบบการพิมพ์</dt>
-                    <dd className="text-right font-bold text-[#00263A]">
+                  <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3">
+                    <dt className="min-w-0 text-[#5F6B70]">รูปแบบการพิมพ์</dt>
+                    <dd className="min-w-0 break-words font-bold text-[#00263A] sm:text-right">
                       {!editingPrintingSnapshot?.valid
                         ? "ข้อมูลไม่ถูกต้อง"
                         : editingPrintingConfig === null
@@ -3220,9 +3220,9 @@ export default function DashboardPage() {
                     </dd>
                   </div>
                   {editingHasPrintedExpiry && (
-                    <div className="flex items-start justify-between gap-3">
-                      <dt className="text-[#5F6B70]">วันที่ EXP ที่พิมพ์</dt>
-                      <dd className="text-right font-bold text-[#00263A]">
+                    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3">
+                      <dt className="min-w-0 text-[#5F6B70]">วันที่ EXP ที่พิมพ์</dt>
+                      <dd className="min-w-0 break-words font-bold text-[#00263A] sm:text-right">
                         {editingPrintingConfig?.exp_offset_days === -1
                           ? "ก่อนวันหมดอายุจริง 1 วัน"
                           : "ตรงกับวันหมดอายุจริง"}
@@ -3242,8 +3242,8 @@ export default function DashboardPage() {
                 )}
               </section>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <div className="min-w-0 space-y-1.5">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                   เลขลอตสินค้า (Lot Number)
                 </label>
                 <input
@@ -3255,18 +3255,18 @@ export default function DashboardPage() {
                       lot_number: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
+                  className="min-h-11 w-full min-w-0 px-4 py-3 text-base font-medium text-[#101820] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
                 />
               </div>
 
               {/* ประเภทคำสั่ง */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <div className="min-w-0 space-y-1.5">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                   ประเภทคำสั่ง (Order Type)
                 </label>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <label
-                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "พิมพ์ฉลาก" ? "bg-[#0057B8] text-white border-[#0057B8] shadow-md shadow-[#0057B8]/15" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
+                    className={`flex min-h-11 w-full min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-all ${editingOrder.order_type === "พิมพ์ฉลาก" ? "bg-[#0057B8] text-white border-[#0057B8] shadow-md shadow-[#0057B8]/15" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
                   >
                     <input
                       type="radio"
@@ -3284,7 +3284,7 @@ export default function DashboardPage() {
                     🖨️ พิมพ์ฉลาก
                   </label>
                   <label
-                    className={`flex-1 flex cursor-pointer items-center justify-center py-3 px-4 border rounded-xl font-bold transition-all text-xs gap-2 ${editingOrder.order_type === "ปั๊มถุง" ? "bg-[#00263A] text-white border-[#00263A] shadow-md shadow-[#00263A]/15" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
+                    className={`flex min-h-11 w-full min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-all ${editingOrder.order_type === "ปั๊มถุง" ? "bg-[#00263A] text-white border-[#00263A] shadow-md shadow-[#00263A]/15" : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100/50"}`}
                   >
                     <input
                       type="radio"
@@ -3304,8 +3304,8 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <div className="min-w-0 space-y-1.5">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                   จำนวนสั่งทำ (Quantity)
                 </label>
                 <input
@@ -3314,12 +3314,12 @@ export default function DashboardPage() {
                   value={editingQuantity}
                   onChange={(e) => setEditingQuantity(e.target.value)}
                   onWheel={(e) => e.currentTarget.blur()}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
+                  className="min-h-11 w-full min-w-0 px-4 py-3 text-base font-medium text-[#101820] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <div className="min-w-0 space-y-1.5">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                   วันที่ผลิต (Production Date)
                 </label>
                 <input
@@ -3338,7 +3338,7 @@ export default function DashboardPage() {
                     });
                   }}
                   disabled={!editingCanonicalSnapshot?.valid}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                  className="min-h-11 w-full min-w-0 px-4 py-3 text-base font-medium text-[#101820] bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                 />
                 {!editingCanonicalSnapshot?.valid && (
                   <p className="mt-2 text-xs font-semibold text-[#C8102E]" role="alert">
@@ -3346,7 +3346,7 @@ export default function DashboardPage() {
                   </p>
                 )}
                 {editingOrder.expiry_date && (
-                  <p className="mt-2 text-xs text-[#C8102E] font-bold flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-xs font-bold text-[#C8102E]">
                     <span>💡</span> วันหมดอายุใหม่:{" "}
                     {formatCalendarDateForSummary(editingOrder.expiry_date)}
                   </p>
@@ -3354,20 +3354,20 @@ export default function DashboardPage() {
               </div>
 
               {editingOrder.production_date && editingOrder.expiry_date && (
-                <section className="rounded-xl border border-[#0057B8]/15 bg-[#EAF3FC] p-3 text-[12px]" aria-live="polite">
+                <section className="w-full min-w-0 rounded-xl border border-[#0057B8]/15 bg-[#EAF3FC] p-3 text-[12px]" aria-live="polite">
                   <h3 className="font-black uppercase tracking-wider text-[#00263A]">
                     วันที่และข้อความสำหรับพิมพ์
                   </h3>
                   <dl className="mt-2 space-y-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <dt className="text-[#5F6B70]">วันที่ผลิต</dt>
-                      <dd className="text-right font-bold text-[#00263A]">
+                    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3">
+                      <dt className="min-w-0 text-[#5F6B70]">วันที่ผลิต</dt>
+                      <dd className="min-w-0 break-words font-bold text-[#00263A] sm:text-right">
                         {formatCalendarDateForSummary(editingOrder.production_date)}
                       </dd>
                     </div>
-                    <div className="flex items-start justify-between gap-3">
-                      <dt className="text-[#5F6B70]">วันหมดอายุจริง</dt>
-                      <dd className="text-right font-bold text-[#00263A]">
+                    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3">
+                      <dt className="min-w-0 text-[#5F6B70]">วันหมดอายุจริง</dt>
+                      <dd className="min-w-0 break-words font-bold text-[#00263A] sm:text-right">
                         {formatCalendarDateForSummary(editingOrder.expiry_date)}
                       </dd>
                     </div>
@@ -3380,7 +3380,7 @@ export default function DashboardPage() {
                       </p>
                     )}
                     {editingPrintingPreview?.status === "ready" && (
-                      <p className="mt-1 whitespace-pre-wrap break-words rounded-lg bg-white px-3 py-2 font-mono text-[13px] text-[#00263A]">
+                      <p className="mt-1 min-w-0 whitespace-pre-wrap break-words rounded-lg bg-white px-3 py-2 font-mono text-[13px] text-[#00263A]">
                         {editingPrintingPreview.text}
                       </p>
                     )}
@@ -3402,8 +3402,8 @@ export default function DashboardPage() {
                 </section>
               )}
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <div className="min-w-0 space-y-1.5">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                   หมายเหตุ (Notes)
                 </label>
                 <textarea
@@ -3411,17 +3411,17 @@ export default function DashboardPage() {
                   onChange={(e) =>
                     setEditingOrder({ ...editingOrder, notes: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[#101820] text-[13.5px] font-medium focus:bg-white focus:outline-none focus:border-[#0057B8] focus:ring-4 focus:ring-[#0057B8]/10 transition-all duration-200 resize-none shadow-sm"
+                  className="min-h-24 w-full min-w-0 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-[#101820] shadow-sm transition-all duration-200 focus:border-[#0057B8] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0057B8]/10"
                   rows={3}
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6 border-t border-slate-100 pt-4">
+            <div className="mt-5 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4 sm:mt-6 sm:grid-cols-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setEditingOrder(null)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold text-xs transition duration-300"
+                className="min-h-11 w-full rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 transition duration-300 hover:bg-slate-200"
               >
                 ยกเลิก
               </button>
@@ -3429,7 +3429,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={saveEdit}
                 disabled={isSaving}
-                className="flex-1 bg-[#0057B8] hover:bg-[#004A9F] text-white py-3 rounded-xl font-bold text-xs shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
+                className="min-h-11 w-full rounded-xl bg-[#0057B8] py-3 text-sm font-bold text-white shadow-md transition duration-300 hover:bg-[#004A9F] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSaving ? "กำลังบันทึก..." : "💾 บันทึกการแก้ไข"}
               </button>
