@@ -105,9 +105,9 @@ type PrintingSnapshotValidation =
 type OrderPrintingDisplay =
   | { state: "invalid_config" }
   | { state: "not_configured" }
-  | { state: "incomplete"; presetLabel: string }
-  | { state: "unavailable"; presetLabel: string }
-  | { state: "ready"; presetLabel: string; text: string };
+  | { state: "incomplete"; formatDescription: string }
+  | { state: "unavailable"; formatDescription: string }
+  | { state: "ready"; formatDescription: string; text: string };
 
 const PRINTING_PRESET_LABELS: Record<
   NonNullable<ProductPrintingConfig>["preset"],
@@ -173,6 +173,25 @@ function validatePrintingSnapshot(
   return { valid: true, config: value as ProductPrintingConfig };
 }
 
+function describeSnapshotPrintingFormat(
+  config: NonNullable<ProductPrintingConfig>,
+): string {
+  const mfgPattern = config.template.includes("{MFG_DATE}")
+    ? config.mfg_format?.pattern
+    : null;
+  const expPattern = config.template.includes("{EXP_DATE}")
+    ? config.exp_format?.pattern
+    : null;
+
+  if (mfgPattern && expPattern) {
+    return `MFG: ${mfgPattern}\nEXP: ${expPattern}`;
+  }
+  if (mfgPattern) return mfgPattern;
+  if (expPattern) return `EXP: ${expPattern}`;
+
+  return "ไม่มีรูปแบบวันที่";
+}
+
 function deriveOrderPrintingDisplay(
   order: Pick<
     OrderInterface,
@@ -183,7 +202,7 @@ function deriveOrderPrintingDisplay(
   if (!snapshot.valid) return { state: "invalid_config" };
   if (snapshot.config === null) return { state: "not_configured" };
 
-  const presetLabel = PRINTING_PRESET_LABELS[snapshot.config.preset];
+  const formatDescription = describeSnapshotPrintingFormat(snapshot.config);
   const preview = renderPrintingTemplate({
     config: snapshot.config,
     productionDate: order.production_date,
@@ -192,13 +211,13 @@ function deriveOrderPrintingDisplay(
   });
 
   if (preview.status === "ready") {
-    return { state: "ready", presetLabel, text: preview.text };
+    return { state: "ready", formatDescription, text: preview.text };
   }
   if (preview.status === "incomplete") {
-    return { state: "incomplete", presetLabel };
+    return { state: "incomplete", formatDescription };
   }
 
-  return { state: "unavailable", presetLabel };
+  return { state: "unavailable", formatDescription };
 }
 
 function calculateSnapshotExpiryDate(
@@ -2909,8 +2928,8 @@ export default function DashboardPage() {
                       </span>
                     ) : (
                       <div className="min-w-0 space-y-1 sm:justify-self-end sm:text-right">
-                        <div className="min-w-0 text-xs font-medium leading-snug text-slate-500">
-                          {printingDisplay.presetLabel}
+                        <div className="min-w-0 whitespace-pre-line text-xs font-medium leading-snug text-slate-500">
+                          {printingDisplay.formatDescription}
                         </div>
                         {printingDisplay.state === "ready" ? (
                           <div className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
