@@ -245,6 +245,9 @@ export default function DashboardPage() {
   const [employeeId, setEmployeeId] = useState("");
   const [currentUserId, setCurrentUserId] = useState(""); // ✅ เก็บ UUID ของ user ปัจจุบัน
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedPrintTextId, setCopiedPrintTextId] = useState<number | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [countdown, setCountdown] = useState(240);
@@ -559,6 +562,24 @@ export default function DashboardPage() {
   }, [orders]);
 
   const isAdmin = role === "moderator" || role === "assistant_moderator";
+  const copyPrintText = async (orderId: number, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPrintTextId(orderId);
+      window.setTimeout(() => setCopiedPrintTextId(null), 2000);
+    } catch {
+      AppSwal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "error",
+        title: "คัดลอกข้อความสำหรับพิมพ์ไม่สำเร็จ",
+        text: "กรุณาลองใหม่อีกครั้ง",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    }
+  };
   const pendingFileOrders = useMemo(
     () =>
       sortedOrders.filter((order) => order.is_no_file && !order.is_cancelled),
@@ -2870,55 +2891,79 @@ export default function DashboardPage() {
                     <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       วันหมดอายุ (Exp Date):
                     </span>
-                    <span className="font-bold text-[#C8102E] bg-[#FCEAEC] px-2.5 py-0.5 rounded-lg border border-[#C8102E]/15 sm:text-right shrink-0">
+                    <span className="font-bold text-[#C8102E] sm:text-right shrink-0">
                       {formatToThaiDate(order.expiry_date)}
                     </span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                    <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
+                  <div className="grid w-full grid-cols-1 gap-y-1 text-[13px] sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-6">
+                    <span className="block text-[#5F6B70] font-bold uppercase tracking-wider text-[11px]">
                       รูปแบบการพิมพ์ (Print Format):
                     </span>
                     {printingDisplay.state === "invalid_config" ? (
-                      <span className="font-bold text-[#C8102E] sm:text-right">
+                      <span className="block font-bold text-[#C8102E] sm:justify-self-end sm:text-right">
                         รูปแบบการพิมพ์ที่บันทึกไว้ไม่ถูกต้อง
                       </span>
                     ) : printingDisplay.state === "not_configured" ? (
-                      <span className="font-bold text-slate-500 sm:text-right">
+                      <span className="block font-bold text-slate-500 sm:justify-self-end sm:text-right">
                         ยังไม่ได้กำหนด
                       </span>
                     ) : (
-                      <span className="font-bold text-[#0057B8] bg-[#EAF3FC] px-2.5 py-0.5 rounded-lg border border-[#0057B8]/15 sm:text-right shrink-0">
-                        {printingDisplay.presetLabel}
-                      </span>
-                    )}
-                  </div>
-                  {printingDisplay.state !== "invalid_config" &&
-                    printingDisplay.state !== "not_configured" && (
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4 text-[13px]">
-                        <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
-                          ข้อความสำหรับพิมพ์ (Print Text):
-                        </span>
+                      <div className="min-w-0 space-y-1 sm:justify-self-end sm:text-right">
+                        <div className="min-w-0 text-xs font-medium leading-snug text-slate-500">
+                          {printingDisplay.presetLabel}
+                        </div>
                         {printingDisplay.state === "ready" ? (
-                          <span className="min-w-0 whitespace-pre-wrap break-words font-mono font-bold text-slate-700 sm:text-right">
-                            {printingDisplay.text}
-                          </span>
+                          <div className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="flex min-w-0 max-w-full flex-col">
+                              {printingDisplay.text.split(/\r?\n/).map((line, index) => (
+                                <span
+                                  key={`${order.id}-${index}`}
+                                  className="max-w-full whitespace-pre-wrap break-normal font-sans text-lg font-bold leading-tight tabular-nums text-[#101820]"
+                                >
+                                  {line}
+                                </span>
+                              ))}
+                            </span>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void copyPrintText(order.id, printingDisplay.text)
+                                }
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent text-[#0057B8]/60 transition-all duration-200 hover:border-[#0057B8]/15 hover:bg-[#EAF3FC] hover:text-[#0057B8]"
+                                aria-label="คัดลอกข้อความสำหรับพิมพ์"
+                                title={
+                                  copiedPrintTextId === order.id
+                                    ? "คัดลอกแล้ว"
+                                    : "คัดลอกข้อความสำหรับพิมพ์"
+                                }
+                              >
+                                {copiedPrintTextId === order.id ? (
+                                  <Check className="h-4 w-4 text-[#00B398]" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         ) : printingDisplay.state === "incomplete" ? (
-                          <span className="font-semibold text-[#A88700] sm:text-right">
+                          <div className="mt-1 font-semibold text-[#A88700]">
                             กรุณากรอก LOT เพื่อดูข้อความสำหรับพิมพ์
-                          </span>
+                          </div>
                         ) : (
-                          <span className="font-semibold text-[#C8102E] sm:text-right">
+                          <div className="mt-1 font-semibold text-[#C8102E]">
                             ไม่สามารถสร้างข้อความสำหรับพิมพ์ได้
-                          </span>
+                          </div>
                         )}
                       </div>
                     )}
+                  </div>
                   <div className="my-3 border-t border-slate-100"></div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 text-[13px]">
                     <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       อายุผลิตภัณฑ์ (Shelf Life):
                     </span>
-                    <span className="font-bold text-[#0057B8] bg-[#EAF3FC] px-2.5 py-0.5 rounded-lg border border-[#0057B8]/15 shrink-0">
+                    <span className="font-bold text-[#0057B8] shrink-0">
                       {order.product_exp} เดือน
                     </span>
                   </div>
@@ -2926,7 +2971,7 @@ export default function DashboardPage() {
                     <span className="text-[#5F6B70] font-bold uppercase tracking-wider text-[11px] shrink-0">
                       จำนวน (Quantity):
                     </span>
-                    <span className="font-black text-xl text-[#00263A] bg-[#E5F8FB] px-3 py-1 rounded-xl border border-[#00AEC7]/20 shadow-sm shrink-0">
+                    <span className="font-black text-xl text-[#00263A] shrink-0">
                       {order.quantity}
                     </span>
                   </div>
