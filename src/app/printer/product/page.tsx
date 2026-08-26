@@ -13,6 +13,7 @@ import {
   type DateFormatSpec,
   type PrintingConfigV1,
   type ProductPrintingConfig,
+  describeProductPrintingConfig,
   validatePrintingConfig,
 } from "@/lib/productPrinting";
 import {
@@ -108,7 +109,7 @@ function monthCaseLabel(monthCase: DateFormatSpec["monthCase"] | undefined): str
 function printingConfigModeLabel(config: ProductPrintingConfig): string {
   if (config === null) return "ไม่มีรูปแบบพิเศษ";
   return isDateOnlyPrintingConfig(config)
-    ? "พิมพ์วันที่ผลิต"
+    ? "มีรูปแบบพิเศษ"
     : "รูปแบบการพิมพ์เดิม";
 }
 
@@ -1008,6 +1009,15 @@ export default function FgcodeManagement() {
                       {isAdminRole && fgcode.default_paper_type && (
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#FFF8D6] text-[#6E5B00] border border-[#F1C400]/30">
                           {fgcode.default_paper_type}
+                        </span>
+                      )}
+                      {fgcode.printing_config != null && (
+                        <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 rounded-md border border-[#00AEC7]/25 bg-[#E5F8FB] px-2 py-0.5 text-[11px] font-medium text-[#007C91]">
+                          <span>มีรูปแบบพิเศษ</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="min-w-0 break-words font-mono text-[10.5px] font-semibold">
+                            {describeProductPrintingConfig(fgcode.printing_config)}
+                          </span>
                         </span>
                       )}
                     </div>

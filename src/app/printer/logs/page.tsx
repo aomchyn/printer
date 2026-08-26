@@ -6,6 +6,7 @@ import Swal from "sweetalert2"
 import { useRouter } from "next/navigation"
 import { Search, History, RefreshCcw, ShieldAlert, X, ShieldOff } from "lucide-react"
 import {
+    describeProductPrintingConfig,
     type PrintingConfigV1,
     validatePrintingConfig,
 } from "@/lib/productPrinting"
@@ -47,7 +48,7 @@ interface AuditFieldChange {
 }
 
 const PRINTING_PRESET_LABELS: Record<PrintingConfigV1['preset'], string> = {
-    date_only: 'วันที่ผลิตอย่างเดียว',
+    date_only: 'มีรูปแบบพิเศษ',
     date_and_lot: 'วันที่ผลิต + LOT',
     mfg_exp: 'MFG + EXP',
     mfg_exp_lot: 'MFG + EXP + LOT',
@@ -59,12 +60,27 @@ function isJsonRecord(value: unknown): value is JsonRecord {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function isSameJsonValue(left: unknown, right: unknown): boolean {
+    if (Object.is(left, right)) return true
+    if (Array.isArray(left) && Array.isArray(right)) {
+        return left.length === right.length && left.every((value, index) => isSameJsonValue(value, right[index]))
+    }
+    if (isJsonRecord(left) && isJsonRecord(right)) {
+        const leftKeys = Object.keys(left).sort()
+        const rightKeys = Object.keys(right).sort()
+        return leftKeys.length === rightKeys.length
+            && leftKeys.every((key, index) => key === rightKeys[index] && isSameJsonValue(left[key], right[key]))
+    }
+    return false
+}
+
 function getFieldChange(changes: unknown, field: string): AuditFieldChange | null {
     if (!isJsonRecord(changes) || !isJsonRecord(changes[field])) return null
     const change = changes[field]
     if (!Object.prototype.hasOwnProperty.call(change, 'old') || !Object.prototype.hasOwnProperty.call(change, 'new')) {
         return null
     }
+    if (isSameJsonValue(change.old, change.new)) return null
     return { old: change.old, new: change.new }
 }
 
@@ -97,12 +113,6 @@ function readPrintingConfig(value: unknown): PrintingConfigV1 | null | undefined
     return validation.valid ? value as PrintingConfigV1 : undefined
 }
 
-function printingConfigLabel(config: PrintingConfigV1 | null | undefined): string {
-    if (config === null) return 'ยังไม่ได้กำหนด'
-    if (config === undefined) return 'รูปแบบการพิมพ์ที่บันทึกไว้ไม่ถูกต้อง'
-    return PRINTING_PRESET_LABELS[config.preset]
-}
-
 function formatPatternLabel(config: PrintingConfigV1, field: 'mfg_format' | 'exp_format'): string {
     return config[field]?.pattern ?? 'ไม่ใช้'
 }
@@ -127,28 +137,34 @@ function printedExpiryRuleLabel(config: PrintingConfigV1): string {
 
 function ProductChangeRow({ label, oldValue, newValue }: { label: string; oldValue: string; newValue: string }) {
     return (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 text-xs">
+        <div className="grid min-w-0 grid-cols-1 gap-x-3 gap-y-0.5 text-xs sm:grid-cols-[minmax(8rem,0.75fr)_minmax(0,1.5fr)]">
             <span className="font-semibold text-[#5F6B70]">{label}</span>
-            <span className="text-right text-[#101820]">{oldValue} <span className="mx-1 text-[#8A9498]">→</span> {newValue}</span>
+            <span className="min-w-0 break-words text-[#101820] sm:text-right">{oldValue} <span className="mx-1 text-[#8A9498]">→</span> {newValue}</span>
         </div>
     )
 }
 
 function ProductConfigChanges({ change }: { change: AuditFieldChange }) {
+    const oldDescription = describeProductPrintingConfig(change.old)
+    const newDescription = describeProductPrintingConfig(change.new)
+    if (oldDescription !== newDescription) {
+        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={oldDescription} newValue={newDescription} />
+    }
+
     const oldConfig = readPrintingConfig(change.old)
     const newConfig = readPrintingConfig(change.new)
 
     if (oldConfig === undefined || newConfig === undefined) {
-        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />
+        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={oldDescription} newValue={newDescription} />
     }
 
     if (oldConfig === null || newConfig === null) {
-        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />
+        return <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={oldDescription} newValue={newDescription} />
     }
 
     const rows: ReactNode[] = []
     if (oldConfig.preset !== newConfig.preset) {
-        rows.push(<ProductChangeRow key="preset" label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />)
+        rows.push(<ProductChangeRow key="preset" label="ประเภทการพิมพ์" oldValue={PRINTING_PRESET_LABELS[oldConfig.preset]} newValue={PRINTING_PRESET_LABELS[newConfig.preset]} />)
     }
 
     for (const [field, label] of [
@@ -181,29 +197,50 @@ function ProductConfigChanges({ change }: { change: AuditFieldChange }) {
     }
 
     if ((oldConfig.preset === 'custom' || newConfig.preset === 'custom') && oldConfig.template !== newConfig.template) {
-        rows.push(<ProductChangeRow key="template" label="Template" oldValue={oldConfig.template} newValue={newConfig.template} />)
+        rows.push(<ProductChangeRow key="template" label="ข้อความรูปแบบการพิมพ์" oldValue={oldConfig.template} newValue={newConfig.template} />)
     }
 
     return rows.length > 0
         ? <>{rows}</>
-        : <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={printingConfigLabel(oldConfig)} newValue={printingConfigLabel(newConfig)} />
+        : <ProductChangeRow label="รูปแบบการพิมพ์" oldValue={oldDescription} newValue={newDescription} />
+}
+
+function storedPrimitive(value: unknown): string | null {
+    if ((typeof value === 'string' && value !== '') || typeof value === 'number') return String(value)
+    return null
+}
+
+function productIdentityLabel(details: unknown): string {
+    const product = isJsonRecord(details) ? details : {}
+    const id = storedPrimitive(product.id ?? product.product_id)
+    const name = storedPrimitive(product.name ?? product.product_name)
+    if (id && name) return `${id} — ${name}`
+    return id ?? name ?? 'ไม่พบรหัสหรือชื่อสินค้าใน Audit เดิม'
+}
+
+function ProductIdentity({ details }: { details: unknown }) {
+    return (
+        <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#5F6B70]">สินค้า</p>
+            <p className="mt-0.5 break-words text-xs font-semibold text-[#101820]">{productIdentityLabel(details)}</p>
+        </div>
+    )
 }
 
 function ProductAuditDetail({ action, details, changes }: Pick<AuditLog, 'action' | 'details' | 'changes'>) {
     if (action === 'CREATE_PRODUCT') {
         const product = isJsonRecord(details) ? details : {}
-        const config = Object.prototype.hasOwnProperty.call(product, 'printing_config')
-            ? readPrintingConfig(product.printing_config)
-            : null
+        const hasPrintingConfig = Object.prototype.hasOwnProperty.call(product, 'printing_config')
         return (
-            <div className="space-y-0.5 text-xs">
-                <div><span className="text-[#5F6B70]">รหัสสินค้า:</span> <span className="font-semibold text-[#101820]">{displayValue(product.id)}</span></div>
-                <div><span className="text-[#5F6B70]">ชื่อสินค้า:</span> <span className="font-semibold text-[#101820]">{displayValue(product.name)}</span></div>
-                <div><span className="text-[#5F6B70]">อายุผลิตภัณฑ์:</span> <span className="text-[#101820]">{displayValue(product.exp)} เดือน</span></div>
-                <div><span className="text-[#5F6B70]">วันหมดอายุจริง:</span> <span className="text-[#101820]">{actualExpiryRuleLabel(product.expiry_offset_days)}</span></div>
-                <div><span className="text-[#5F6B70]">รูปแบบการพิมพ์:</span> <span className="text-[#101820]">{printingConfigLabel(config)}</span></div>
-                {product.default_paper_type != null && <div><span className="text-[#5F6B70]">ประเภทกระดาษ:</span> <span className="text-[#101820]">{displayValue(product.default_paper_type)}</span></div>}
-                {product.qty_per_a3 != null && <div><span className="text-[#5F6B70]">จำนวนชิ้นต่อแผ่น A3:</span> <span className="text-[#101820]">{displayValue(product.qty_per_a3)}</span></div>}
+            <div className="min-w-0 space-y-2.5 text-xs">
+                <ProductIdentity details={details} />
+                <div className="space-y-0.5 border-t border-[#D9E1E2] pt-2">
+                    {product.exp !== undefined && <div><span className="text-[#5F6B70]">อายุผลิตภัณฑ์:</span> <span className="text-[#101820]">{displayValue(product.exp)} เดือน</span></div>}
+                    {product.expiry_offset_days !== undefined && <div><span className="text-[#5F6B70]">รูปแบบวันหมดอายุจริง:</span> <span className="text-[#101820]">{actualExpiryRuleLabel(product.expiry_offset_days)}</span></div>}
+                    {hasPrintingConfig && <div><span className="text-[#5F6B70]">รูปแบบการพิมพ์:</span> <span className="break-words text-[#101820]">{describeProductPrintingConfig(product.printing_config)}</span></div>}
+                    {product.default_paper_type != null && <div><span className="text-[#5F6B70]">ประเภทกระดาษ:</span> <span className="text-[#101820]">{displayValue(product.default_paper_type)}</span></div>}
+                    {product.qty_per_a3 != null && <div><span className="text-[#5F6B70]">จำนวนชิ้นต่อแผ่น A3:</span> <span className="text-[#101820]">{displayValue(product.qty_per_a3)}</span></div>}
+                </div>
             </div>
         )
     }
@@ -220,12 +257,20 @@ function ProductAuditDetail({ action, details, changes }: Pick<AuditLog, 'action
     if (exp) rows.push(<ProductChangeRow key="exp" label="อายุผลิตภัณฑ์" oldValue={`${displayValue(exp.old)} เดือน`} newValue={`${displayValue(exp.new)} เดือน`} />)
     if (paperType) rows.push(<ProductChangeRow key="paper" label="ประเภทกระดาษ" oldValue={displayValue(paperType.old)} newValue={displayValue(paperType.new)} />)
     if (qtyPerA3) rows.push(<ProductChangeRow key="qty" label="จำนวนชิ้นต่อแผ่น A3" oldValue={displayValue(qtyPerA3.old)} newValue={displayValue(qtyPerA3.new)} />)
-    if (expiryOffset) rows.push(<ProductChangeRow key="expiry-offset" label="วันหมดอายุจริง" oldValue={actualExpiryRuleLabel(expiryOffset.old)} newValue={actualExpiryRuleLabel(expiryOffset.new)} />)
+    if (expiryOffset) rows.push(<ProductChangeRow key="expiry-offset" label="รูปแบบวันหมดอายุจริง" oldValue={actualExpiryRuleLabel(expiryOffset.old)} newValue={actualExpiryRuleLabel(expiryOffset.new)} />)
     if (printingConfig) rows.push(<ProductConfigChanges key="printing-config" change={printingConfig} />)
 
-    return rows.length > 0
-        ? <div className="space-y-1.5">{rows}</div>
-        : <span className="text-xs text-[#101820]/30">ไม่มีรายละเอียดการเปลี่ยนแปลง</span>
+    return (
+        <div className="min-w-0 space-y-2.5">
+            <ProductIdentity details={details} />
+            <div className="min-w-0 border-t border-[#D9E1E2] pt-2">
+                <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[#5F6B70]">สิ่งที่แก้ไข</p>
+                {rows.length > 0
+                    ? <div className="min-w-0 space-y-1.5">{rows}</div>
+                    : <span className="text-xs text-[#101820]/30">ไม่มีรายละเอียดการเปลี่ยนแปลง</span>}
+            </div>
+        </div>
+    )
 }
 
 function ProductRenameAuditDetail({ details, changes }: Pick<AuditLog, 'details' | 'changes'>) {
@@ -240,11 +285,28 @@ function ProductRenameAuditDetail({ details, changes }: Pick<AuditLog, 'details'
 
     return (
         <div className="space-y-0.5 text-xs">
-            <div><span className="text-[#5F6B70]">รหัสสินค้า:</span> <span className="text-[#9B0B23]">{displayValue(oldId)}</span> <span className="text-[#5F6B70]">➡️</span> <span className="font-semibold text-[#008C78]">{displayValue(newId)}</span></div>
+            <div><span className="text-[#5F6B70]">รหัสสินค้า:</span> <span className="text-[#9B0B23]">{displayValue(oldId)}</span> <span className="mx-1 text-[#5F6B70]">→</span> <span className="font-semibold text-[#008C78]">{displayValue(newId)}</span></div>
             {payload.product_name !== undefined && <div><span className="text-[#5F6B70]">สินค้า:</span> <span className="font-semibold text-[#101820]">{displayValue(payload.product_name)}</span></div>}
             {payload.affected_orders !== undefined && <div><span className="text-[#5F6B70]">Order ที่อ้างอิง:</span> <span className="text-[#101820]">{displayValue(payload.affected_orders)} รายการ</span></div>}
         </div>
     )
+}
+
+function ProductDeleteAuditDetail({ action, details }: Pick<AuditLog, 'action' | 'details'>) {
+    const payload = isJsonRecord(details) ? details : {}
+    if (action === 'DELETE_PRODUCTS') {
+        const ids = Array.isArray(payload.ids)
+            ? payload.ids.map(storedPrimitive).filter((id): id is string => id !== null)
+            : []
+        return (
+            <div className="min-w-0 space-y-1 text-xs">
+                <div><span className="text-[#5F6B70]">จำนวน:</span> <span className="font-semibold text-[#101820]">{displayValue(payload.count, String(ids.length))} รายการ</span></div>
+                <div><span className="text-[#5F6B70]">รหัสสินค้า:</span> <span className="break-words font-semibold text-[#101820]">{ids.length > 0 ? ids.join(', ') : 'ไม่พบรหัสสินค้าใน Audit เดิม'}</span></div>
+            </div>
+        )
+    }
+
+    return <ProductIdentity details={details} />
 }
 
 function PrintingDateFormatAuditDetail({ action, details, changes }: Pick<AuditLog, 'action' | 'details' | 'changes'>) {
@@ -409,6 +471,9 @@ export default function LogsManagement() {
         if (log.action === 'RENAME_PRODUCT') {
             return <ProductRenameAuditDetail details={log.details} changes={log.changes} />
         }
+        if (log.action === 'DELETE_PRODUCT' || log.action === 'DELETE_PRODUCTS') {
+            return <ProductDeleteAuditDetail action={log.action} details={log.details} />
+        }
         if (log.action === 'CREATE_PRINTING_DATE_FORMAT' || log.action === 'UPDATE_PRINTING_DATE_FORMAT' || log.action === 'DELETE_PRINTING_DATE_FORMAT') {
             return <PrintingDateFormatAuditDetail action={log.action} details={log.details} changes={log.changes} />
         }
@@ -508,6 +573,7 @@ export default function LogsManagement() {
             case 'UPDATE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#FFF8D6] text-[#A88700] border border-[#F1C400]/30`}>แก้ไขรูปแบบวันที่</span>
             case 'DELETE_PRINTING_DATE_FORMAT': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>ลบรูปแบบวันที่</span>
             case 'DELETE_PRODUCT': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>ลบสินค้า</span>
+            case 'DELETE_PRODUCTS': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>ลบสินค้าหลายรายการ</span>
             case 'CREATE_ORDER': return <span className={`${base} bg-[#EAF3FC] text-[#0057B8] border border-[#0057B8]/20`}>สั่งพิมพ์ฉลาก</span>
             case 'DELETE_ORDER': return <span className={`${base} bg-[#FCEAEC] text-[#C8102E] border border-[#C8102E]/20`}>🗑️ ลบคำสั่งพิมพ์</span>
             case 'PERMANENT_DELETE_ORDER': return <span className={`${base} bg-[#FCEAEC] text-[#9B0B23] border border-[#C8102E]/30`}>🗑️ ลบถาวร</span>

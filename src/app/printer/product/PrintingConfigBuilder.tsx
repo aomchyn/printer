@@ -155,7 +155,7 @@ export default function PrintingConfigBuilder({
               checked={mode === "date_only"}
               onChange={() => selectMode("date_only")}
             />
-            พิมพ์วันที่ผลิต
+            มีรูปแบบพิเศษ
           </label>
         </div>
       </div>
@@ -163,7 +163,7 @@ export default function PrintingConfigBuilder({
       {mode === "legacy" && (
         <div className="rounded-lg border border-[#F1C400]/30 bg-[#FFF8D6] px-3 py-2 text-[12px] text-[#6E5B00]" role="alert">
           <p className="font-bold">รูปแบบการพิมพ์เดิม</p>
-          <p className="mt-1">สินค้านี้มีรูปแบบการพิมพ์เดิมที่ไม่ได้ใช้ใน Product UI รุ่นปัจจุบัน หากเปลี่ยนการตั้งค่าการพิมพ์ ระบบจะเปลี่ยนเป็น “พิมพ์วันที่ผลิต” หรือ “ไม่มีรูปแบบพิเศษ”</p>
+          <p className="mt-1">สินค้านี้มีรูปแบบการพิมพ์เดิมที่ไม่ได้ใช้ใน Product UI รุ่นปัจจุบัน หากเปลี่ยนการตั้งค่าการพิมพ์ ระบบจะเปลี่ยนเป็น “มีรูปแบบพิเศษ” หรือ “ไม่มีรูปแบบพิเศษ”</p>
           {!configValidation.valid && (
             <p className="mt-1 font-semibold text-[#9B0B23]">รูปแบบการพิมพ์เดิมที่บันทึกไว้ไม่ถูกต้อง</p>
           )}

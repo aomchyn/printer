@@ -260,6 +260,36 @@ export function validatePrintingConfig(config: unknown): PrintingConfigValidatio
   return errors.length === 0 ? { valid: true } : { valid: false, errors };
 }
 
+/**
+ * Describes the formats stored in a Product printing snapshot without consulting
+ * the live date-format registry. This keeps Product lists and audit history
+ * accurate even when a format is later retired.
+ */
+export function describeProductPrintingConfig(config: unknown): string {
+  if (config === null) return "ไม่มีรูปแบบพิเศษ";
+
+  const validation = validatePrintingConfig(config);
+  if (!validation.valid) return "รูปแบบการพิมพ์ที่บันทึกไว้ไม่ถูกต้อง";
+
+  const storedConfig = config as PrintingConfigV1;
+  if (storedConfig.preset === "date_only" && storedConfig.mfg_format) {
+    return storedConfig.mfg_format.pattern;
+  }
+
+  const formats: string[] = [];
+  if (storedConfig.template.includes("{MFG_DATE}") && storedConfig.mfg_format) {
+    formats.push(`MFG ${storedConfig.mfg_format.pattern}`);
+  }
+  if (storedConfig.template.includes("{EXP_DATE}") && storedConfig.exp_format) {
+    formats.push(`EXP ${storedConfig.exp_format.pattern}`);
+  }
+  if (storedConfig.template.includes("{LOT}")) {
+    formats.push("LOT");
+  }
+
+  return formats.length > 0 ? formats.join(" · ") : "รูปแบบการพิมพ์เดิม";
+}
+
 /** Formats a canonical calendar date using a deterministic PrintingConfigV1 date format. */
 export function formatProductDate(canonicalDate: string, format: DateFormatSpec): string {
   const { year, month, day } = parseCalendarDate(canonicalDate);

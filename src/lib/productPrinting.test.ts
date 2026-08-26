@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PRODUCT_DATE_FORMATS,
+  describeProductPrintingConfig,
   formatProductDate,
   renderPrintingTemplate,
   tokenizeProductDatePattern,
@@ -24,6 +25,28 @@ function config(overrides: Partial<PrintingConfigV1> = {}): PrintingConfigV1 {
 }
 
 describe("productPrinting", () => {
+  it("describes stored Product printing formats without the live registry", () => {
+    expect(describeProductPrintingConfig(null)).toBe("ไม่มีรูปแบบพิเศษ");
+    expect(describeProductPrintingConfig(config({
+      preset: "date_only",
+      template: "{MFG_DATE}",
+      mfg_format: { pattern: "MM/YYYY", calendar: "gregorian" },
+      exp_format: null,
+    }))).toBe("MM/YYYY");
+    expect(describeProductPrintingConfig(config({
+      preset: "date_only",
+      template: "{MFG_DATE}",
+      mfg_format: { pattern: "DDMMYY", calendar: "gregorian" },
+      exp_format: null,
+    }))).toBe("DDMMYY");
+    expect(describeProductPrintingConfig(config({
+      preset: "mfg_exp",
+      template: "MFG {MFG_DATE} / EXP {EXP_DATE}",
+      mfg_format: { pattern: "DD/MM/YYYY", calendar: "gregorian" },
+      exp_format: { pattern: "MM/YYYY", calendar: "gregorian" },
+    }))).toBe("MFG DD/MM/YYYY · EXP MM/YYYY");
+  });
+
   it("matches the DB V1 validator for null, required fields, placeholders, and LOT context", () => {
     expect(validatePrintingConfig(null)).toEqual({ valid: true });
     expect(validatePrintingConfig(config({ template: "MFG {MFG_DATE} / Lot {LOT}" }))).toEqual({ valid: true });
