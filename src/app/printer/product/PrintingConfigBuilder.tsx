@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   type DateFormatSpec,
   type PrintingConfigV1,
@@ -16,6 +17,9 @@ import {
   usesMonthNameInPrintingDatePattern,
   type PrintingDateFormatRegistryRow,
 } from "@/lib/printingDateFormatRegistry";
+import SearchableSelect, {
+  type SearchableSelectOption,
+} from "../components/SearchableSelect";
 
 interface PrintingConfigBuilderProps {
   value: ProductPrintingConfig;
@@ -73,7 +77,10 @@ export default function PrintingConfigBuilder({
     value === null ? "none" : isDateOnlyConfig(value) ? "date_only" : "legacy";
   const dateOnlyConfig = mode === "date_only" ? value : null;
   const currentFormat = dateOnlyConfig?.mfg_format ?? DEFAULT_FORMAT;
-  const enabledFormats = sortPrintingDateFormats(formats.filter((format) => format.enabled));
+  const enabledFormats = useMemo(
+    () => sortPrintingDateFormats(formats.filter((format) => format.enabled)),
+    [formats],
+  );
   const registryReady = registryStatus === "loaded" && enabledFormats.length > 0;
   const unavailableCurrentPattern = mode === "date_only"
     && registryStatus === "loaded"
@@ -82,6 +89,23 @@ export default function PrintingConfigBuilder({
     && isRetiredPrintingDatePattern(formats, currentFormat.pattern);
   const currentPatternIsEnabled = registryStatus === "loaded"
     && isPrintingDateFormatEnabled(formats, currentFormat.pattern);
+  const formatOptions = useMemo<readonly SearchableSelectOption[]>(() => {
+    const enabledOptions = enabledFormats.map((format) => ({
+      value: format.pattern,
+      label: formatOptionLabel(format),
+    }));
+
+    if (!unavailableCurrentPattern) return enabledOptions;
+
+    return [
+      {
+        value: currentFormat.pattern,
+        label: `${currentFormat.pattern} — ไม่พร้อมเลือกใหม่`,
+        disabled: true,
+      },
+      ...enabledOptions,
+    ];
+  }, [currentFormat.pattern, enabledFormats, unavailableCurrentPattern]);
 
   const selectMode = (nextMode: Exclude<ProductPrintingMode, "legacy">) => {
     if (nextMode === "none") {
@@ -194,22 +218,26 @@ export default function PrintingConfigBuilder({
             </p>
           )}
           <div>
-            <label className="mb-1 block text-[11px] font-semibold text-slate-500">รูปแบบวันที่ผลิต</label>
-            <select
-              className="w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 text-[13px] text-[#101820] focus:border-[#0057B8] focus:outline-none focus:ring-2 focus:ring-[#0057B8]/10"
+            <label
+              htmlFor="product-printing-date-format"
+              className="mb-1 block text-[11px] font-semibold text-slate-500"
+            >
+              รูปแบบวันที่ผลิต
+            </label>
+            <SearchableSelect
+              id="product-printing-date-format"
               value={currentFormat.pattern}
               disabled={!registryReady}
-              onChange={(event) =>
+              options={formatOptions}
+              ariaLabel="รูปแบบวันที่ผลิต"
+              searchPlaceholder="ค้นหารูปแบบการพิมพ์..."
+              emptyMessage="ไม่พบรูปแบบการพิมพ์"
+              onChange={(pattern) =>
                 updateDateOnlyFormat({
-                  pattern: event.target.value,
+                  pattern,
                 })
               }
-            >
-              {unavailableCurrentPattern && <option value={currentFormat.pattern}>{currentFormat.pattern} — ไม่พร้อมเลือกใหม่</option>}
-              {enabledFormats.map((format) => (
-                <option key={format.id} value={format.pattern}>{formatOptionLabel(format)}</option>
-              ))}
-            </select>
+            />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
