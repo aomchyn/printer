@@ -8,6 +8,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { getStatisticsOrderNote } from '@/lib/statisticsExcel';
+import PeakTimeExplorer, { type PeakDayData } from './PeakTimeExplorer';
 import StatisticsSkeleton from './skeleton-loading-statistics';
 
 const bangkokDateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -238,6 +239,14 @@ export default function StatisticsPage() {
                 peakOrders: peak?.[1] || 0,
             };
         });
+    const peakDayData: PeakDayData[] = dailyOrderData.map(day => ({
+        ...day,
+        hourlyData: Array.from({ length: 24 }, (_, hour) => ({
+            hour,
+            label: `${String(hour).padStart(2, '0')}:00`,
+            orders: dailyOrderMap[day.key].hours[hour] || 0,
+        })),
+    }));
     const activeHourCount = hourlyOrderData.filter(item => item.orders > 0).length;
     const averageOrdersPerDay = dailyOrderData.length > 0 ? activeOrders.length / dailyOrderData.length : 0;
     const averageOrdersPerActiveHour = activeHourCount > 0 ? activeOrders.length / activeHourCount : 0;
@@ -825,52 +834,7 @@ export default function StatisticsPage() {
                                 </div>
                             )}
 
-                                               <div className="overflow-hidden rounded-2xl border border-[#D9E1E2] bg-white">
-                                <div className="hidden md:block overflow-x-auto">
-                                    <table className="w-full min-w-[620px] text-left text-sm">
-                                        <thead className="border-b border-[#D9E1E2] bg-white text-xs text-blue-200/70">
-                                            <tr>
-                                                <th className="px-4 py-3 font-bold">วันที่</th>
-                                                <th className="px-4 py-3 text-right font-bold">คำสั่ง</th>
-                                                <th className="px-4 py-3 text-right font-bold">ชิ้นงาน</th>
-                                                <th className="px-4 py-3 text-right font-bold">ช่วงที่พีค</th>
-                                                <th className="px-4 py-3 text-right font-bold">คำสั่งช่วงพีค</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-white/5">
-                                            {dailyOrderData.map(row => (
-                                                <tr key={row.key} className="text-[#5F6B70] transition-colors hover:bg-white">
-                                                    <td className="px-4 py-3 font-semibold">{row.date}</td>
-                                                    <td className="px-4 py-3 text-right font-black text-[#00AEC7]">{row.orders.toLocaleString()}</td>
-                                                    <td className="px-4 py-3 text-right">{row.quantity.toLocaleString()}</td>
-                                                    <td className="px-4 py-3 text-right text-[#0057B8]">{row.peakHour}</td>
-                                                    <td className="px-4 py-3 text-right font-bold">{row.peakOrders.toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                            {dailyOrderData.length === 0 && (
-                                                <tr><td colSpan={5} className="px-4 py-8 text-center text-[#8A9498]">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="block md:hidden divide-y divide-white/5">
-                                    {dailyOrderData.map(row => (
-                                        <div key={row.key} className="p-4 flex flex-col gap-2">
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-semibold text-[#00263A]">{row.date}</span>
-                                                <span className="font-black text-[#00AEC7] text-lg tabular-nums">{row.orders.toLocaleString()} คำสั่ง</span>
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs text-[#5F6B70]">
-                                                <span>ชิ้นงาน <span className="text-[#5F6B70] font-semibold">{row.quantity.toLocaleString()}</span></span>
-                                                <span>ช่วงพีค <span className="text-[#0057B8] font-semibold">{row.peakHour}</span> ({row.peakOrders.toLocaleString()} คำสั่ง)</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {dailyOrderData.length === 0 && (
-                                        <div className="px-4 py-8 text-center text-[#8A9498] text-sm">ไม่มีข้อมูลคำสั่งที่ใช้งานได้</div>
-                                    )}
-                                </div>
-                            </div>
+                            <PeakTimeExplorer days={peakDayData} />
                         </section>
 
                         {/* ── Section label helper ─────────────────────────────── */}
