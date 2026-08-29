@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
+import { getStatisticsOrderNote } from '@/lib/statisticsExcel';
 import StatisticsSkeleton from './skeleton-loading-statistics';
 
 const bangkokDateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -38,7 +39,7 @@ export interface OrderInterface {
     production_date: string;
     expiry_date: string;
     quantity: number;
-    notes?: string;
+    notes?: string | null;
     created_by: string;
     created_by_department?: string;
     order_type?: string;
@@ -312,6 +313,7 @@ export default function StatisticsPage() {
             { header: 'อายุผลิตภัณฑ์', key: 'shelf_life', width: 14 },
             { header: 'ผู้สั่ง', key: 'created_by', width: 20 },
             { header: 'หน่วยงาน', key: 'dept', width: 16 },
+            { header: 'หมายเหตุ', key: 'notes', width: 40 },
             { header: 'สถานะ', key: 'status', width: 16 },
             { header: 'ผู้ตรวจสอบ', key: 'verified_by', width: 20 },
             { header: 'เวลาตรวจสอบ', key: 'verified_at', width: 20 },
@@ -323,7 +325,7 @@ export default function StatisticsPage() {
             cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
         });
         orders.forEach((order, index) => {
-            ws1.addRow({
+            const row = ws1.addRow({
                 no: index + 1,
                 date: new Date(order.created_at).toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' }),
                 time: new Date(order.created_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' }),
@@ -337,10 +339,12 @@ export default function StatisticsPage() {
                 shelf_life: order.product_exp,
                 created_by: order.created_by,
                 dept: order.created_by_department || 'ไม่ระบุ',
+                notes: getStatisticsOrderNote(order),
                 status: order.is_verified ? 'ตรวจสอบแล้ว' : 'รอดำเนินการ',
                 verified_by: order.verified_by || '-',
                 verified_at: order.verified_at ? new Date(order.verified_at).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) : '-',
             });
+            row.getCell('notes').alignment = { vertical: 'top', wrapText: true };
         });
 
         // ✅ Sheet 2 — สรุปยอดตามหน่วยงาน (เหมือนเดิม)
@@ -545,6 +549,7 @@ export default function StatisticsPage() {
             { header: 'วันหมดอายุ', key: 'exp', width: 14 },
             { header: 'ผู้สั่ง', key: 'created_by', width: 20 },
             { header: 'หน่วยงาน', key: 'dept', width: 16 },
+            { header: 'หมายเหตุ', key: 'notes', width: 40 },
             { header: 'เหตุผลการยกเลิก', key: 'cancel_note', width: 40 },
             { header: 'ผู้ยกเลิก', key: 'cancelled_by', width: 20 },
             { header: 'เวลาที่ยกเลิก', key: 'cancelled_at', width: 20 },
@@ -577,6 +582,7 @@ export default function StatisticsPage() {
                 exp: order.expiry_date,
                 created_by: order.created_by,
                 dept: order.created_by_department || 'ไม่ระบุ',
+                notes: getStatisticsOrderNote(order),
                 cancel_note: cancelNote,
                 cancelled_by: order.updated_by || '-',
                 cancelled_at: order.updated_at
@@ -589,6 +595,7 @@ export default function StatisticsPage() {
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF1F2' } };
                 cell.border = { top: { style: 'thin', color: { argb: 'FFFECACA' } }, bottom: { style: 'thin', color: { argb: 'FFFECACA' } }, left: { style: 'thin', color: { argb: 'FFFECACA' } }, right: { style: 'thin', color: { argb: 'FFFECACA' } } };
             });
+            row.getCell('notes').alignment = { vertical: 'top', wrapText: true };
         });
 
         // summary row ท้าย sheet
