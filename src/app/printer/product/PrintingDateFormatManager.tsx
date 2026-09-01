@@ -1,16 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import Modal from "../components/Modal";
 import { supabase } from "@/lib/supabase";
-import { formatProductDate, tokenizeProductDatePattern } from "@/lib/productPrinting";
+import { formatProductDate } from "@/lib/productPrinting";
 import {
   isPrintingDateFormatDeletable,
   sortPrintingDateFormats,
   usesMonthNameInPrintingDatePattern,
   type PrintingDateFormatManagementRow,
 } from "@/lib/printingDateFormatRegistry";
+import {
+  canSubmitPrintingDateFormatDraft,
+  canonicalizePrintingDateFormatDraftPattern,
+  createPrintingDateFormatDraft,
+  PrintingDatePatternExamples,
+  PrintingDateTokenHelp,
+  previewPrintingDatePattern,
+  safePatternError,
+  updatePrintingDateFormatDraftLabel,
+  updatePrintingDateFormatDraftPattern,
+} from "./PrintingDatePatternHelp";
 
 interface PrintingDateFormatManagerProps {
   open: boolean;
@@ -26,15 +37,6 @@ const ManagerSwal = Swal.mixin({
   cancelButtonText: "ยกเลิก",
 });
 
-function safePatternError(pattern: string): string | null {
-  try {
-    tokenizeProductDatePattern(pattern);
-    return null;
-  } catch {
-    return "รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้เฉพาะ token วันที่และตัวคั่นที่ระบบรองรับ";
-  }
-}
-
 function safeMutationError(error: { message?: string | null } | null, fallback: string): string {
   const message = error?.message ?? "";
   if (message.includes("still used by")) return "ไม่สามารถลบรูปแบบนี้ได้ เนื่องจากยังมี Product ใช้งานอยู่ กรุณาปิดใช้งานแทน";
@@ -48,16 +50,18 @@ function usageLabel(productUsageCount: number): string {
 }
 
 export default function PrintingDateFormatManager({ open, onClose, onRefresh }: PrintingDateFormatManagerProps) {
-  const [newPattern, setNewPattern] = useState("");
-  const [newLabel, setNewLabel] = useState("");
+  const [newFormatDraft, setNewFormatDraft] = useState(createPrintingDateFormatDraft);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({});
   const [formats, setFormats] = useState<PrintingDateFormatManagementRow[]>([]);
   const [registryStatus, setRegistryStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const newPattern = newFormatDraft.pattern;
+  const newLabel = newFormatDraft.displayLabel;
   const orderedFormats = useMemo(() => sortPrintingDateFormats(formats), [formats]);
   const patternError = safePatternError(newPattern);
-  const canCreate = newPattern.trim() !== "" && newLabel.trim() !== "" && patternError === null && !saving;
+  const patternPreview = previewPrintingDatePattern(newPattern, SAMPLE_DATE);
+  const canCreate = canSubmitPrintingDateFormatDraft(newFormatDraft) && !saving;
 
   const fetchManagedFormats = useCallback(async () => {
     setRegistryStatus("loading");
@@ -72,7 +76,11 @@ export default function PrintingDateFormatManager({ open, onClose, onRefresh }: 
   }, []);
 
   useEffect(() => {
-    if (open) void fetchManagedFormats();
+    if (open) {
+      // Opening the modal intentionally resets loading state before the registry request.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void fetchManagedFormats();
+    }
   }, [open, fetchManagedFormats]);
 
   const refreshAfterMutation = async () => {
@@ -103,8 +111,7 @@ export default function PrintingDateFormatManager({ open, onClose, onRefresh }: 
       setActionError(safeMutationError(error, "ไม่สามารถเพิ่มรูปแบบวันที่ได้ กรุณาตรวจสอบข้อมูลหรือสิทธิ์ของคุณ"));
       return;
     }
-    setNewPattern("");
-    setNewLabel("");
+    setNewFormatDraft(createPrintingDateFormatDraft());
     await refreshAfterMutation();
     await ManagerSwal.fire({ icon: "success", title: "เพิ่มรูปแบบวันที่แล้ว", timer: 1400, showConfirmButton: false });
   };
@@ -241,23 +248,67 @@ export default function PrintingDateFormatManager({ open, onClose, onRefresh }: 
 
   if (!open) return null;
 
+  const closeManager = () => {
+    setNewFormatDraft(createPrintingDateFormatDraft());
+    onClose();
+  };
+
+  const updateNewPattern = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const pattern = input.value;
+    const selectionStart = input.selectionStart;
+    const selectionEnd = input.selectionEnd;
+    setNewFormatDraft((draft) => updatePrintingDateFormatDraftPattern(draft, pattern, SAMPLE_DATE));
+    if (selectionStart === null || selectionEnd === null) return;
+    requestAnimationFrame(() => {
+      if (document.activeElement === input) input.setSelectionRange(selectionStart, selectionEnd);
+    });
+  };
+
   return (
-    <Modal id="printing-date-format-manager" title="จัดการรูปแบบวันที่" size="xl" onClose={onClose}>
+    <Modal id="printing-date-format-manager" title="จัดการรูปแบบวันที่" size="xl" onClose={closeManager}>
       <div className="space-y-4">
         <p className="text-sm text-slate-600">ปิดใช้งานเป็นวิธีเลิกใช้ตามปกติ: จะไม่ให้เลือกกับสินค้าใหม่ แต่จะไม่เปลี่ยน Product และ Order เดิม ลบถาวรได้เฉพาะรูปแบบที่ไม่มี Product ใช้งาน</p>
 
         <section className="rounded-xl border border-[#D9E1E2] bg-[#F5F7F8] p-3 space-y-3">
           <h4 className="text-sm font-black text-[#00263A]">เพิ่มรูปแบบวันที่</h4>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-semibold text-slate-600">Pattern
-              <input value={newPattern} onChange={(event) => setNewPattern(event.target.value)} placeholder="เช่น YY-MM-DD" className="mt-1 w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 font-mono text-sm" />
-            </label>
-            <label className="text-xs font-semibold text-slate-600">ชื่อที่แสดง
-              <input value={newLabel} onChange={(event) => setNewLabel(event.target.value)} placeholder="เช่น ปี-เดือน-วัน (2 หลัก)" className="mt-1 w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 text-sm" />
-            </label>
+            <div>
+              <label htmlFor="printing-date-pattern" className="text-xs font-semibold text-slate-600">Pattern</label>
+              <input
+                id="printing-date-pattern"
+                value={newPattern}
+                onChange={updateNewPattern}
+                onBlur={() => setNewFormatDraft((draft) => (
+                  canonicalizePrintingDateFormatDraftPattern(draft, SAMPLE_DATE)
+                ))}
+                placeholder="เช่น DD/MM/YYYY หรือ MMM.Do,YYYY"
+                aria-describedby={`printing-date-pattern-examples printing-date-token-help${newPattern.trim() && patternError ? " printing-date-pattern-error" : ""}`}
+                aria-invalid={newPattern.trim() !== "" && patternError !== null}
+                className="mt-1 w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 font-mono text-sm"
+              />
+              <PrintingDatePatternExamples sampleDate={SAMPLE_DATE} />
+            </div>
+            <div>
+              <label htmlFor="printing-date-display-label" className="text-xs font-semibold text-slate-600">ชื่อที่แสดง</label>
+              <input
+                id="printing-date-display-label"
+                value={newLabel}
+                onChange={(event) => setNewFormatDraft((draft) => (
+                  updatePrintingDateFormatDraftLabel(draft, event.target.value)
+                ))}
+                placeholder="เช่น Jun.29th,2026"
+                aria-describedby="printing-date-display-label-help"
+                className="mt-1 w-full rounded-lg border border-[#D9E1E2] bg-white px-3 py-2 text-sm"
+              />
+              <p id="printing-date-display-label-help" className="mt-1.5 text-[11px] text-slate-500">
+                ระบบสร้างชื่อจากตัวอย่างให้อัตโนมัติ และสามารถแก้ไขเองได้
+              </p>
+            </div>
           </div>
-          {newPattern.trim() && patternError && <p className="text-xs text-[#C8102E]" role="alert">{patternError}</p>}
-          {newPattern.trim() && !patternError && <p className="text-xs text-[#008C78]" aria-live="polite">ตัวอย่าง: <span className="font-mono">{formatProductDate(SAMPLE_DATE, { pattern: newPattern, calendar: "gregorian", monthCase: "title" })}</span></p>}
+          {newPattern.trim() && patternError && <p id="printing-date-pattern-error" className="text-xs text-[#C8102E]" role="alert">{patternError}</p>}
+          {patternPreview !== null && <p className="text-xs text-[#008C78]" aria-live="polite">ตัวอย่างผลลัพธ์: <span className="font-mono">{patternPreview}</span></p>}
+          <PrintingDateTokenHelp />
           <button type="button" onClick={createFormat} disabled={!canCreate} className="rounded-lg bg-[#0057B8] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{saving ? "กำลังบันทึก..." : "เพิ่มรูปแบบ"}</button>
         </section>
 

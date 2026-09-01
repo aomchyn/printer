@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   PRODUCT_DATE_FORMATS,
   describeProductPrintingConfig,
+  formatEnglishOrdinalDay,
   formatProductDate,
   renderPrintingTemplate,
   tokenizeProductDatePattern,
@@ -64,6 +65,49 @@ describe("productPrinting", () => {
     expect(formatProductDate("2025-07-02", { pattern: "YYYY/MM/DD", calendar: "gregorian" })).toBe("2025/07/02");
   });
 
+  it.each([
+    [1, "1st"],
+    [2, "2nd"],
+    [3, "3rd"],
+    [4, "4th"],
+    [10, "10th"],
+    [11, "11th"],
+    [12, "12th"],
+    [13, "13th"],
+    [20, "20th"],
+    [21, "21st"],
+    [22, "22nd"],
+    [23, "23rd"],
+    [28, "28th"],
+    [29, "29th"],
+    [30, "30th"],
+    [31, "31st"],
+  ])("formats day %i with the English ordinal suffix %s", (day, expected) => {
+    expect(formatEnglishOrdinalDay(day)).toBe(expected);
+  });
+
+  it("formats full English month and ordinal-day patterns", () => {
+    const format: DateFormatSpec = {
+      pattern: "MMM.Do,YYYY",
+      calendar: "gregorian",
+      monthCase: "title",
+    };
+
+    expect(formatProductDate("2026-06-29", format)).toBe("Jun.29th,2026");
+    expect(formatProductDate("2027-06-28", format)).toBe("Jun.28th,2027");
+    expect(formatProductDate("2026-06-01", format)).toBe("Jun.1st,2026");
+    expect(formatProductDate("2026-06-02", format)).toBe("Jun.2nd,2026");
+    expect(formatProductDate("2026-06-03", format)).toBe("Jun.3rd,2026");
+    expect(formatProductDate("2026-06-04", format)).toBe("Jun.4th,2026");
+    expect(formatProductDate("2026-06-11", format)).toBe("Jun.11th,2026");
+    expect(formatProductDate("2026-06-12", format)).toBe("Jun.12th,2026");
+    expect(formatProductDate("2026-06-13", format)).toBe("Jun.13th,2026");
+    expect(formatProductDate("2026-06-21", format)).toBe("Jun.21st,2026");
+    expect(formatProductDate("2026-06-22", format)).toBe("Jun.22nd,2026");
+    expect(formatProductDate("2026-06-23", format)).toBe("Jun.23rd,2026");
+    expect(formatProductDate("2026-01-31", format)).toBe("Jan.31st,2026");
+  });
+
   it("formats compact DDMMYY and DDMMYYYY dates across Gregorian and Buddhist calendars", () => {
     expect(formatProductDate("2025-06-18", { pattern: "DDMMYY", calendar: "gregorian" })).toBe("180625");
     expect(formatProductDate("2025-06-18", { pattern: "DDMMYYYY", calendar: "gregorian" })).toBe("18062025");
@@ -101,6 +145,7 @@ describe("productPrinting", () => {
       "DD MMM.,YYYY",
       "DD,MMM.,YYYY",
       "MMM,DD,YYYY",
+      "MMM.Do,YYYY",
     ]);
 
     for (const pattern of PRODUCT_DATE_FORMATS) {
@@ -214,6 +259,27 @@ describe("productPrinting", () => {
       productionDate: "2026-06-03",
       canonicalExpiryDate: "2027-06-03",
     })).toEqual({ status: "ready", text: "03 JUN,2026 / 03 JUN.,2027" });
+  });
+
+  it("renders ordinal-day formats through the shared MFG and EXP formatter", () => {
+    const ordinalFormat: DateFormatSpec = {
+      pattern: "MMM.Do,YYYY",
+      calendar: "gregorian",
+      monthCase: "title",
+    };
+
+    expect(renderPrintingTemplate({
+      config: config({
+        template: "Mfg.date: {MFG_DATE}\nExp.date: {EXP_DATE}",
+        mfg_format: ordinalFormat,
+        exp_format: ordinalFormat,
+      }),
+      productionDate: "2026-06-29",
+      canonicalExpiryDate: "2027-06-28",
+    })).toEqual({
+      status: "ready",
+      text: "Mfg.date: Jun.29th,2026\nExp.date: Jun.28th,2027",
+    });
   });
 
   it("uses a printing-only EXP offset without mutating canonical expiry", () => {

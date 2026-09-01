@@ -19,6 +19,7 @@ export const PRODUCT_DATE_FORMATS = [
   "DD MMM.,YYYY",
   "DD,MMM.,YYYY",
   "MMM,DD,YYYY",
+  "MMM.Do,YYYY",
 ] as const;
 
 export type ProductDateFormat = (typeof PRODUCT_DATE_FORMATS)[number];
@@ -99,7 +100,7 @@ const TEMPLATE_MAX_LENGTH = 1000;
 const UPPERCASE_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const TITLECASE_SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const TITLECASE_LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const DATE_PATTERN_TOKENS = ["MMMM", "YYYY", "MMM", "DD", "MM", "YY", "D", "M"] as const;
+const DATE_PATTERN_TOKENS = ["MMMM", "YYYY", "MMM", "DD", "Do", "MM", "YY", "D", "M"] as const;
 const DATE_PATTERN_LITERALS = [" ", "/", "-", ".", ","] as const;
 
 export type ProductDatePatternToken = (typeof DATE_PATTERN_TOKENS)[number];
@@ -107,6 +108,23 @@ export type ProductDatePatternLiteral = (typeof DATE_PATTERN_LITERALS)[number];
 export type ProductDatePatternSegment =
   | { type: "token"; value: ProductDatePatternToken }
   | { type: "literal"; value: ProductDatePatternLiteral };
+
+/** Formats a calendar day using English ordinal suffix rules. */
+export function formatEnglishOrdinalDay(day: number): string {
+  const teenRemainder = day % 100;
+  if (teenRemainder >= 11 && teenRemainder <= 13) return `${day}th`;
+
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -306,6 +324,7 @@ export function formatProductDate(canonicalDate: string, format: DateFormatSpec)
   const tokenOutput: Record<ProductDatePatternToken, string> = {
     D: String(day),
     DD: dd,
+    Do: formatEnglishOrdinalDay(day),
     M: String(month),
     MM: mm,
     MMM: shortMonth,
