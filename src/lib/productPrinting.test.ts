@@ -54,6 +54,12 @@ describe("productPrinting", () => {
     expect(validatePrintingConfig(config({ template: "{UNKNOWN}", exp_format: null }))).toMatchObject({ valid: false });
     expect(validatePrintingConfig(config({ template: "{MFG_DATE}", exp_offset_days: -1 }))).toMatchObject({ valid: false });
     expect(validatePrintingConfig(config({ template: "{EXP_DATE}", exp_format: null }))).toMatchObject({ valid: false });
+    expect(validatePrintingConfig(config({
+      preset: "date_only",
+      template: "{MFG_DATE}",
+      mfg_format: { pattern: "MMM.Do,YYYY", calendar: "gregorian", monthCase: "lower" },
+      exp_format: null,
+    }))).toEqual({ valid: true });
   });
 
   it("formats supported deterministic Gregorian and Buddhist formats", () => {
@@ -200,8 +206,10 @@ describe("productPrinting", () => {
     expect(formatProductDate("2025-06-18", { pattern: "D/M/YYYY", calendar: "buddhist" })).toBe("18/6/2568");
     expect(formatProductDate("2025-06-18", { pattern: "YY,MMM.D", calendar: "gregorian", monthCase: "upper" })).toBe("25,JUN.18");
     expect(formatProductDate("2025-06-18", { pattern: "YY,MMM.D", calendar: "gregorian", monthCase: "title" })).toBe("25,Jun.18");
+    expect(formatProductDate("2026-06-29", { pattern: "MMM.Do,YYYY", calendar: "gregorian", monthCase: "lower" })).toBe("jun.29th,2026");
     expect(formatProductDate("2025-06-18", { pattern: "MMMM YYYY", calendar: "gregorian", monthCase: "upper" })).toBe("JUNE 2025");
     expect(formatProductDate("2025-06-18", { pattern: "MMMM YYYY", calendar: "gregorian", monthCase: "title" })).toBe("June 2025");
+    expect(formatProductDate("2025-06-18", { pattern: "MMMM YYYY", calendar: "gregorian", monthCase: "lower" })).toBe("june 2025");
   });
 
   it("renders date-only labels", () => {

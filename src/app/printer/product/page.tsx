@@ -103,7 +103,11 @@ function calendarLabel(calendar: DateFormatSpec["calendar"]): string {
 }
 
 function monthCaseLabel(monthCase: DateFormatSpec["monthCase"] | undefined): string {
-  return monthCase === "upper" ? "ตัวพิมพ์ใหญ่" : "ตัวพิมพ์ปกติ";
+  return monthCase === "upper"
+    ? "ตัวพิมพ์ใหญ่ทั้งหมด"
+    : monthCase === "lower"
+      ? "ตัวพิมพ์เล็กทั้งหมด"
+      : "ตัวแรกพิมพ์ใหญ่";
 }
 
 function printingConfigModeLabel(config: ProductPrintingConfig): string {

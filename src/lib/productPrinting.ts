@@ -25,7 +25,7 @@ export const PRODUCT_DATE_FORMATS = [
 export type ProductDateFormat = (typeof PRODUCT_DATE_FORMATS)[number];
 export type ProductDatePattern = string;
 export type ProductDateCalendar = "gregorian" | "buddhist";
-export type ProductDateMonthCase = "upper" | "title";
+export type ProductDateMonthCase = "upper" | "title" | "lower";
 export type PrintingPresetV1 =
   | "date_only"
   | "date_and_lot"
@@ -229,7 +229,7 @@ function validateDateFormatSpec(value: unknown, fieldName: string): string[] {
       errors.push(`${fieldName} has an unsupported calendar`);
     }
   }
-  if ("monthCase" in value && value.monthCase !== "upper" && value.monthCase !== "title") {
+  if ("monthCase" in value && value.monthCase !== "upper" && value.monthCase !== "title" && value.monthCase !== "lower") {
     errors.push(`${fieldName} has an unsupported monthCase`);
   }
   return errors;
@@ -317,9 +317,8 @@ export function formatProductDate(canonicalDate: string, format: DateFormatSpec)
   const yy = yyyy.slice(-2);
   const mm = String(month).padStart(2, "0");
   const dd = String(day).padStart(2, "0");
-  const titleMonths = format.monthCase === "upper" ? UPPERCASE_MONTHS : TITLECASE_SHORT_MONTHS;
-  const shortMonth = titleMonths[month - 1];
-  const longMonth = format.monthCase === "upper" ? TITLECASE_LONG_MONTHS[month - 1].toUpperCase() : TITLECASE_LONG_MONTHS[month - 1];
+  const shortMonth = format.monthCase === "upper" ? UPPERCASE_MONTHS[month - 1] : format.monthCase === "lower" ? TITLECASE_SHORT_MONTHS[month - 1].toLowerCase() : TITLECASE_SHORT_MONTHS[month - 1];
+  const longMonth = format.monthCase === "upper" ? TITLECASE_LONG_MONTHS[month - 1].toUpperCase() : format.monthCase === "lower" ? TITLECASE_LONG_MONTHS[month - 1].toLowerCase() : TITLECASE_LONG_MONTHS[month - 1];
 
   const tokenOutput: Record<ProductDatePatternToken, string> = {
     D: String(day),

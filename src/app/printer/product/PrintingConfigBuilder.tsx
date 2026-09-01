@@ -269,8 +269,9 @@ export default function PrintingConfigBuilder({
                     })
                   }
                 >
-                  <option value="upper">ตัวพิมพ์ใหญ่</option>
-                  <option value="title">ตัวพิมพ์ปกติ</option>
+                  <option value="title">Jun — ตัวแรกพิมพ์ใหญ่</option>
+                  <option value="upper">JUN — ตัวพิมพ์ใหญ่ทั้งหมด</option>
+                  <option value="lower">jun — ตัวพิมพ์เล็กทั้งหมด</option>
                 </select>
               </div>
             )}
