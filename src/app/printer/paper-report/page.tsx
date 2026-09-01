@@ -1274,6 +1274,19 @@ export default function PaperReportPage() {
           records,
         );
       }
+
+      void Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: "ดาวน์โหลดรายงานเรียบร้อยแล้ว",
+        text: "สร้างเอกสารและเริ่มดาวน์โหลดเรียบร้อย",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
+
+      setShowReportModal(false);
     } catch (error) {
       const errorWithMessage = error as { message?: string };
       console.error(error);
