@@ -1276,14 +1276,11 @@ export default function PaperReportPage() {
       }
 
       void Swal.fire({
-        toast: true,
-        position: "top-end",
         icon: "success",
-        title: "ดาวน์โหลดรายงานเรียบร้อยแล้ว",
-        text: "สร้างเอกสารและเริ่มดาวน์โหลดเรียบร้อย",
+        title: "ดาวน์โหลดสำเร็จ",
+        text: "ดาวน์โหลดรายงานทำความสะอาดเรียบร้อยแล้ว",
+        timer: 2000,
         showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
       });
 
       setShowReportModal(false);
