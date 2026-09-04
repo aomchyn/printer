@@ -6,6 +6,7 @@ import { Menu, Printer, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import Swal from "sweetalert2";
+import { isCareerMetricsModerator } from "@/lib/careerMetricsAccess";
 
 type PrinterLayoutProps = {
   children: React.ReactNode;
@@ -98,6 +99,17 @@ export default function PrinterLayout({ children }: PrinterLayoutProps) {
 
         router.replace("/login");
         return;
+      } else if (
+        pathname.startsWith("/printer/career-metrics") &&
+        !isCareerMetricsModerator(data.role)
+      ) {
+        await Swal.fire({
+          icon: "warning",
+          title: "ไม่มีสิทธิ์เข้าถึง",
+          text: "หน้าตัวชี้วัดสายอาชีพสงวนสิทธิ์สำหรับ Moderator เท่านั้น",
+          confirmButtonColor: "#0057B8",
+        });
+        router.replace("/printer/dashboard");
       } else if (
         pathname === "/printer/stability" &&
         !isQaUser &&

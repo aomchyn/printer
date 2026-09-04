@@ -8,25 +8,9 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { getStatisticsOrderNote } from '@/lib/statisticsExcel';
-import PeakTimeExplorer, { type PeakDayData } from './PeakTimeExplorer';
+import { calculateStatisticsMetrics } from '@/lib/statisticsMetrics';
+import PeakTimeExplorer from './PeakTimeExplorer';
 import StatisticsSkeleton from './skeleton-loading-statistics';
-
-const bangkokDateFormatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    hourCycle: 'h23',
-});
-
-const getBangkokDateParts = (value: string) => {
-    const parts = bangkokDateFormatter.formatToParts(new Date(value));
-    return parts.reduce<Record<string, string>>((result, part) => {
-        if (part.type !== 'literal') result[part.type] = part.value;
-        return result;
-    }, {});
-};
 
 export interface OrderInterface {
     id: number;
@@ -198,60 +182,19 @@ export default function StatisticsPage() {
     };
 
     const quantityChartData = getQuantityChartData();
-    const totalQuantity = orders.reduce((sum, o) => sum + (o.quantity || 0), 0);
-
-    const activeOrders = orders.filter(order => !order.is_cancelled);
-    const hourlyOrderData = Array.from({ length: 24 }, (_, hour) => ({
-        hour,
-        label: `${String(hour).padStart(2, '0')}:00`,
-        orders: 0,
-        quantity: 0,
-    }));
-    const dailyOrderMap: Record<string, { date: string; orders: number; quantity: number; hours: Record<number, number> }> = {};
-
-    activeOrders.forEach(order => {
-        const parts = getBangkokDateParts(order.created_at);
-        const hour = Number(parts.hour);
-        const dateKey = `${parts.year}-${parts.month}-${parts.day}`;
-        const dateLabel = `${parts.day}/${parts.month}/${Number(parts.year) + 543}`;
-
-        hourlyOrderData[hour].orders += 1;
-        hourlyOrderData[hour].quantity += order.quantity || 0;
-
-        if (!dailyOrderMap[dateKey]) {
-            dailyOrderMap[dateKey] = { date: dateLabel, orders: 0, quantity: 0, hours: {} };
-        }
-        dailyOrderMap[dateKey].orders += 1;
-        dailyOrderMap[dateKey].quantity += order.quantity || 0;
-        dailyOrderMap[dateKey].hours[hour] = (dailyOrderMap[dateKey].hours[hour] || 0) + 1;
-    });
-
-    const dailyOrderData = Object.entries(dailyOrderMap)
-        .sort(([first], [second]) => first.localeCompare(second))
-        .map(([key, value]) => {
-            const peak = Object.entries(value.hours).sort(([, first], [, second]) => second - first)[0];
-            return {
-                key,
-                date: value.date,
-                orders: value.orders,
-                quantity: value.quantity,
-                peakHour: peak ? `${String(peak[0]).padStart(2, '0')}:00` : '-',
-                peakOrders: peak?.[1] || 0,
-            };
-        });
-    const peakDayData: PeakDayData[] = dailyOrderData.map(day => ({
-        ...day,
-        hourlyData: Array.from({ length: 24 }, (_, hour) => ({
-            hour,
-            label: `${String(hour).padStart(2, '0')}:00`,
-            orders: dailyOrderMap[day.key].hours[hour] || 0,
-        })),
-    }));
-    const activeHourCount = hourlyOrderData.filter(item => item.orders > 0).length;
-    const averageOrdersPerDay = dailyOrderData.length > 0 ? activeOrders.length / dailyOrderData.length : 0;
-    const averageOrdersPerActiveHour = activeHourCount > 0 ? activeOrders.length / activeHourCount : 0;
-    const busiestDay = [...dailyOrderData].sort((first, second) => second.orders - first.orders)[0];
-    const busiestHour = [...hourlyOrderData].sort((first, second) => second.orders - first.orders)[0];
+    const {
+        totalQuantity,
+        activeOrderCount,
+        hourlyOrderData,
+        dailyOrderData,
+        peakDayData,
+        averageOrdersPerDay,
+        averageOrdersPerActiveHour,
+        busiestDay,
+        busiestHour,
+        totalCancelled,
+        cancellationRate,
+    } = calculateStatisticsMetrics(orders);
 
     const getCancelChartData = () => {
         const cancelledOrders = orders.filter(o => o.is_cancelled);
@@ -270,8 +213,7 @@ export default function StatisticsPage() {
     };
 
     const cancelChartData = getCancelChartData();
-    const totalCancelled = orders.filter(o => o.is_cancelled).length;
-    const cancelRate = orders.length > 0 ? ((totalCancelled / orders.length) * 100).toFixed(1) : '0';
+    const cancelRate = cancellationRate.toFixed(1);
 
     const chartData = getChartData();
     const COLORS = ['#0057B8', '#00B398', '#F1C400', '#C8102E', '#00AEC7', '#00AEC7', '#FF6A13'];
@@ -804,7 +746,7 @@ export default function StatisticsPage() {
                                 </div>
                             </div>
 
-                            {activeOrders.length > 0 && (
+                            {activeOrderCount > 0 && (
                                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                                     <div className="rounded-2xl border border-[#D9E1E2] bg-white p-4 sm:p-6">
                                         <h3 className="mb-5 text-sm font-black text-[#00263A]">จำนวนคำสั่งแยกตามวัน</h3>

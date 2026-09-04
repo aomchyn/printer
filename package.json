@@ -7,7 +7,8 @@
     "build": "NODE_OPTIONS='--max-old-space-size=4096' next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "career-history:import": "node scripts/import-career-history.mjs"
   },
   "dependencies": {
     "@spfxappdev/docxmerger": "^1.0.3",

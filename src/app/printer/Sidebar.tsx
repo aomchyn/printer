@@ -20,11 +20,14 @@ import {
   Layers,
   Eye,
   EyeOff,
+  BriefcaseBusiness,
 } from "lucide-react";
 import {
   PASSWORD_POLICY_MESSAGE,
   validatePassword,
 } from "@/lib/passwordPolicy";
+import { shouldShowCareerMetricsNavigation } from "@/lib/careerMetricsAccess";
+import { CAREER_METRICS_COPY } from "./career-metrics/copy";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -580,6 +583,13 @@ border-r border-white/10 shadow-2xl
                     "/printer/logs",
                     <ShieldAlert className="w-4 h-4" />,
                     "Audit Logs",
+                    "bg-[#0057B8] text-white border-[#00AEC7]/40",
+                  )}
+                {shouldShowCareerMetricsNavigation(role) &&
+                  navItem(
+                    "/printer/career-metrics",
+                    <BriefcaseBusiness className="w-4 h-4" />,
+                    CAREER_METRICS_COPY.sidebarLabel,
                     "bg-[#0057B8] text-white border-[#00AEC7]/40",
                   )}
                 {navItem(
