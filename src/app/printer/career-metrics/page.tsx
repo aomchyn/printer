@@ -38,6 +38,7 @@ import type {
 import type { PaperWasteMetrics } from "@/lib/paperWasteMetrics";
 import { CAREER_METRICS_COPY, THAI_MONTHS } from "./copy";
 import { CareerChartContainer, CareerChartTooltip, MetricValue } from "./presentation";
+import { CareerNavigation } from "./CareerNavigation";
 
 type AvailablePeriod = {
   year: number;
@@ -354,6 +355,7 @@ export default function CareerMetricsPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl">
+      {status === "ready" && <CareerNavigation current="overview" />}
       <header className="relative mb-6 overflow-hidden rounded-3xl bg-[#00263A] px-5 py-7 text-white shadow-xl sm:px-8 sm:py-9">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#00AEC7]/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-1/3 h-52 w-52 rounded-full bg-[#00B398]/15 blur-3xl" />
