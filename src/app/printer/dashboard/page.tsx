@@ -604,6 +604,8 @@ export default function DashboardPage() {
       sortedOrders.filter((order) => order.is_no_file && !order.is_cancelled),
     [sortedOrders],
   );
+  const shouldShowPendingFileOrders =
+    isAdmin && pendingFileOrders.length > 0;
   const filteredOrders = sortedOrders.filter(
     (order) =>
       searchTerm.trim() === "" ||
@@ -2505,7 +2507,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {isAdmin && (
+          {shouldShowPendingFileOrders && (
             <div className="w-full rounded-2xl border border-white/10 bg-[#00263A]/20 text-left">
               <button
                 type="button"
