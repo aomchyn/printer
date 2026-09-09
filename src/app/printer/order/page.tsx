@@ -10,6 +10,7 @@ import {
   type ActualExpiryOffsetDays,
 } from "@/lib/productDate";
 import {
+  describeProductPrintingConfig,
   formatProductDate,
   renderPrintingTemplate,
   type ProductPrintingConfig,
@@ -62,18 +63,6 @@ interface InsertedOrderSnapshot {
   expiry_date: string;
 }
 
-const PRINTING_PRESET_LABELS: Record<
-  NonNullable<ProductPrintingConfig>["preset"],
-  string
-> = {
-  date_only: "วันที่ผลิตอย่างเดียว",
-  date_and_lot: "วันที่ผลิต + LOT",
-  mfg_exp: "MFG + EXP",
-  mfg_exp_lot: "MFG + EXP + LOT",
-  mfg_exp_unlabeled: "MFG + EXP ไม่มี label",
-  custom: "กำหนดรูปแบบเอง",
-};
-
 function isActualExpiryOffsetDays(
   value: unknown,
 ): value is ActualExpiryOffsetDays {
@@ -87,7 +76,7 @@ function actualExpiryRuleLabel(value: ActualExpiryOffsetDays): string {
 function printingConfigLabel(config: ProductPrintingConfig): string {
   return config === null
     ? "ยังไม่ได้กำหนด"
-    : PRINTING_PRESET_LABELS[config.preset];
+    : describeProductPrintingConfig(config);
 }
 
 function printedExpiryRuleLabel(config: ProductPrintingConfig): string | null {
