@@ -20,6 +20,7 @@ import {
   sortPrintingDateFormats,
   type PrintingDateFormatRegistryRow,
 } from "@/lib/printingDateFormatRegistry";
+import { isProductMonthlyJobType, SPECIAL_MONTHLY_JOB_LABELS, type ProductMonthlyJobType } from "@/lib/specialMonthlyPaper";
 import PrintingConfigBuilder from "./PrintingConfigBuilder";
 import PrintingDateFormatManager from "./PrintingDateFormatManager";
 import {
@@ -57,6 +58,8 @@ export interface FgcodeInterface {
   default_paper_type?: string | null;
   expiry_offset_days?: ActualExpiryOffsetDays | null;
   printing_config?: ProductPrintingConfig;
+  special_monthly_report_enabled?: boolean;
+  special_monthly_job_type?: ProductMonthlyJobType | null;
 }
 
 const ACTUAL_EXPIRY_OPTIONS: Array<{
@@ -138,6 +141,8 @@ export default function FgcodeManagement() {
   const [exp, setExp] = useState("");
   const [qtyPerA3, setQtyPerA3] = useState("");
   const [defaultPaperType, setDefaultPaperType] = useState("");
+  const [specialMonthlyEnabled, setSpecialMonthlyEnabled] = useState(false);
+  const [specialMonthlyJobType, setSpecialMonthlyJobType] = useState<ProductMonthlyJobType | "">("");
   const [expiryOffsetDays, setExpiryOffsetDays] = useState<ActualExpiryOffsetDays>(0);
   const [printingConfig, setPrintingConfig] = useState<ProductPrintingConfig>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -161,6 +166,8 @@ export default function FgcodeManagement() {
     setExp("");
     setQtyPerA3("");
     setDefaultPaperType("");
+    setSpecialMonthlyEnabled(false);
+    setSpecialMonthlyJobType("");
     setExpiryOffsetDays(0);
     setPrintingConfig(null);
   };
@@ -292,6 +299,10 @@ export default function FgcodeManagement() {
       });
       return;
     }
+    if (isAdminRole && specialMonthlyEnabled && !isProductMonthlyJobType(specialMonthlyJobType)) {
+      await AppSwal.fire({ icon: "warning", title: "กรุณาเลือกประเภทงานสำหรับสรุปรายเดือน" });
+      return;
+    }
     const printingConfigValidation = validatePrintingConfig(printingConfig);
     if (!printingConfigValidation.valid) {
       await AppSwal.fire({
@@ -333,7 +344,9 @@ export default function FgcodeManagement() {
         !isAdminRole ||
         ((cleanQtyPerA3 ?? "") === (currentQtyPerA3 ?? "") &&
           (defaultPaperType || "") ===
-            (currentEditing.default_paper_type || ""));
+            (currentEditing.default_paper_type || "") &&
+          specialMonthlyEnabled === (currentEditing.special_monthly_report_enabled ?? false) &&
+          (specialMonthlyEnabled ? specialMonthlyJobType : null) === (currentEditing.special_monthly_job_type ?? null));
       const hasOtherProductFieldChange =
         cleanName !== (currentEditing.name || "") ||
         cleanExp !== (currentEditing.exp || "") ||
@@ -493,6 +506,16 @@ export default function FgcodeManagement() {
           to: defaultPaperType || "ไม่ระบุ",
         });
       }
+      if (isAdminRole && (specialMonthlyEnabled !== (currentEditing.special_monthly_report_enabled ?? false) ||
+          (specialMonthlyEnabled ? specialMonthlyJobType : null) !== (currentEditing.special_monthly_job_type ?? null))) {
+        changes.push({
+          label: "สรุปกระดาษรายเดือนพิเศษ",
+          from: currentEditing.special_monthly_report_enabled && currentEditing.special_monthly_job_type
+            ? SPECIAL_MONTHLY_JOB_LABELS[currentEditing.special_monthly_job_type] : "ไม่รวม",
+          to: specialMonthlyEnabled && isProductMonthlyJobType(specialMonthlyJobType)
+            ? SPECIAL_MONTHLY_JOB_LABELS[specialMonthlyJobType] : "ไม่รวม",
+        });
+      }
       const changesHtml = changes
         .map(
           ({ label, from, to }) => `
@@ -556,6 +579,8 @@ export default function FgcodeManagement() {
           if (isAdminRole) {
             updatePayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3, 10) : null;
             updatePayload.default_paper_type = defaultPaperType || null;
+            updatePayload.special_monthly_report_enabled = specialMonthlyEnabled;
+            updatePayload.special_monthly_job_type = specialMonthlyEnabled ? specialMonthlyJobType : null;
           }
 
           const { error: updateError } = await supabase
@@ -618,6 +643,8 @@ export default function FgcodeManagement() {
         if (isAdminRole) {
           createPayload.qty_per_a3 = qtyPerA3 ? parseInt(qtyPerA3) : null;
           createPayload.default_paper_type = defaultPaperType || null;
+          createPayload.special_monthly_report_enabled = specialMonthlyEnabled;
+          createPayload.special_monthly_job_type = specialMonthlyEnabled ? specialMonthlyJobType : null;
         }
         const { error } = await supabase.from("fgcode").insert(createPayload);
         if (error) throw error;
@@ -656,6 +683,8 @@ export default function FgcodeManagement() {
     setExp(fgcode.exp || "");
     setQtyPerA3(fgcode.qty_per_a3 != null ? String(fgcode.qty_per_a3) : "");
     setDefaultPaperType(fgcode.default_paper_type || "");
+    setSpecialMonthlyEnabled(fgcode.special_monthly_report_enabled ?? false);
+    setSpecialMonthlyJobType(fgcode.special_monthly_job_type ?? "");
     setExpiryOffsetDays(fgcode.expiry_offset_days ?? 0);
     setPrintingConfig(fgcode.printing_config ?? null);
     setShowModal(true);
@@ -1240,6 +1269,26 @@ export default function FgcodeManagement() {
                     </small>
                   </div>
                 </div>
+              )}
+              {isAdminRole && (
+                <fieldset className="border-t border-[#D9E1E2] pt-4 space-y-3">
+                  <legend className="text-sm font-bold text-[#00263A]">สรุปกระดาษรายเดือนพิเศษ</legend>
+                  <p className="text-xs text-slate-500">กลุ่มรายงานนี้แสดงในชื่อ งานคุณมิ้นท์</p>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={specialMonthlyEnabled} onChange={(event) => setSpecialMonthlyEnabled(event.target.checked)} />
+                    รวมสินค้านี้ในสรุปรายเดือน
+                  </label>
+                  {specialMonthlyEnabled && (
+                    <label className="block text-sm">ประเภทงาน
+                      <select className={inputCls} value={specialMonthlyJobType} required
+                        onChange={(event) => setSpecialMonthlyJobType(isProductMonthlyJobType(event.target.value) ? event.target.value : "")}>
+                        <option value="">เลือกประเภทงาน</option>
+                        <option value="business_card">นามบัตร</option>
+                        <option value="brochure">Brochure</option>
+                      </select>
+                    </label>
+                  )}
+                </fieldset>
               )}
               <div className="border-t border-[#D9E1E2] pt-4 flex justify-end gap-3">
                 <button

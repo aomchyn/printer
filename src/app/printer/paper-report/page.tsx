@@ -26,6 +26,7 @@ import {
   generateMergedDocumentsToSingleDocx,
 } from "@/lib/docxExport";
 import PaperReportSkeleton from "./skeleton-loading-paper-report";
+import SpecialMonthlySummary from "./SpecialMonthlySummary";
 import { getSignatureStoragePath } from "@/lib/signatureStorage";
 
 interface DashboardOrderGroup {
@@ -93,6 +94,7 @@ export default function PaperReportPage() {
   const [accessStatus, setAccessStatus] = useState<
     "checking" | "allowed" | "denied"
   >("checking");
+  const [monthlyRevision, setMonthlyRevision] = useState(0);
   const [printOrders, setPrintOrders] = useState<DashboardOrderGroup[]>([]);
   const [rawOrders, setRawOrders] = useState<PaperReportRecord[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
@@ -383,6 +385,7 @@ export default function PaperReportPage() {
       const formattedOrders = Array.from(groupedOrders.values());
       setRawOrders(allData);
       setPrintOrders(formattedOrders);
+      setMonthlyRevision((value) => value + 1);
     } catch (error) {
       const errorWithMessage = error as { message?: string };
       console.error("Error fetching print orders:", error);
@@ -648,23 +651,12 @@ export default function PaperReportPage() {
     if (!result.isConfirmed) return;
 
     const idsToDelete = group.entries.map((e) => e.id);
-    const orderIdsToDelete = group.entries
-      .map((e) => e.order_id)
-      .filter(Boolean);
-    const allTxRefIds = [...idsToDelete, ...orderIdsToDelete];
     if (idsToDelete.length === 0) return;
 
     try {
-      const { error: txErr } = await supabase
-        .from("paper_transactions")
-        .delete()
-        .in("reference_id", allTxRefIds);
-      if (txErr) console.error("Failed to delete tx:", txErr);
-
-      const { error: repErr } = await supabase
-        .from("paper_reports")
-        .delete()
-        .in("id", idsToDelete);
+      const { error: repErr } = await supabase.rpc("delete_paper_reports_individually", {
+        p_report_ids: idsToDelete,
+      });
       if (repErr) throw repErr;
 
       Swal.fire({
@@ -2260,7 +2252,16 @@ export default function PaperReportPage() {
                 )}
               </div>
             </div>
+          </>
+        )}
 
+        <SpecialMonthlySummary
+          allowed={accessStatus === "allowed"}
+          revision={monthlyRevision}
+        />
+
+        {!isLoadingOrders && !ordersError && printOrders.length > 0 && (
+          <>
             {/* ── Weekly Summary (By Dept) ── */}
             <div className="mb-8">
               <h2 className="text-[15px] font-black text-[#00263A] mb-4 flex items-center gap-2">
