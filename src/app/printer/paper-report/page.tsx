@@ -28,6 +28,11 @@ import {
 import PaperReportSkeleton from "./skeleton-loading-paper-report";
 import SpecialMonthlySummary from "./SpecialMonthlySummary";
 import { getSignatureStoragePath } from "@/lib/signatureStorage";
+import {
+  getDepartmentShortCode,
+  type Department,
+} from "@/lib/departments";
+import { useDepartments } from "@/lib/useDepartments";
 
 interface DashboardOrderGroup {
   id: string;
@@ -91,6 +96,10 @@ interface CurrentUser {
 
 export default function PaperReportPage() {
   const router = useRouter();
+  const {
+    departments,
+    error: departmentsError,
+  } = useDepartments();
   const [accessStatus, setAccessStatus] = useState<
     "checking" | "allowed" | "denied"
   >("checking");
@@ -155,6 +164,27 @@ export default function PaperReportPage() {
   const [mdDept, setMdDept] = useState("");
   const [mdProductSearch, setMdProductSearch] = useState("");
   const [showMdDropdown, setShowMdDropdown] = useState(false);
+
+  const manualDepartmentOptions = useMemo<Department[]>(() => {
+    if (
+      mdDept &&
+      !departments.some((department) => department.value === mdDept)
+    ) {
+      return [
+        ...departments,
+        {
+          id: `legacy-${mdDept}`,
+          code: getDepartmentShortCode(mdDept),
+          name: mdDept,
+          value: mdDept,
+          is_active: false,
+          is_system: false,
+          sort_order: Number.MAX_SAFE_INTEGER,
+        },
+      ];
+    }
+    return departments;
+  }, [departments, mdDept]);
 
   useEffect(() => {
     if (mdProduct) {
@@ -2872,12 +2902,21 @@ export default function PaperReportPage() {
                       className={`w-full border rounded-lg p-2.5 text-[13px] focus:ring-2 ${mdDept ? "bg-[#E6F8F4] border-[#00B398]/20 text-[#003B32] focus:ring-emerald-500/20 focus:border-[#00B398]" : "border-[#C8102E]/20 text-[#9B0B23] bg-[#FCEAEC] focus:ring-rose-500/20 focus:border-[#C8102E]"}`}
                     >
                       <option value="">-- เลือกหน่วยงาน --</option>
-                      <option value="QA ประกันคุณภาพ">QA — ประกันคุณภาพ</option>
-                      <option value="PD ฝ่ายผลิต">PD — ฝ่ายผลิต</option>
-                      <option value="WH คลังสินค้า">WH — คลังสินค้า</option>
-                      <option value="VD ผลิตยาสัตว์">VD — ผลิตยาสัตว์</option>
-                      <option value="หน่วยงานอื่นๆ">หน่วยงานอื่นๆ</option>
+                      {manualDepartmentOptions.map((department) => (
+                        <option
+                          key={department.id}
+                          value={department.value}
+                        >
+                          {department.code} — {department.name}
+                          {!department.is_active ? " (ปิดใช้งาน)" : ""}
+                        </option>
+                      ))}
                     </select>
+                    {departmentsError && (
+                      <p className="mt-1 text-[11px] text-rose-600">
+                        ไม่สามารถโหลดรายการหน่วยงานได้
+                      </p>
+                    )}
                   </div>
                 </div>
 

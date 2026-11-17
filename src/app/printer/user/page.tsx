@@ -5,7 +5,15 @@ import Swal from "sweetalert2";
 import Modal from "../components/Modal";
 import { supabase } from "@/lib/supabase";
 import QaApprovalPanel from "./QaApprovalPanel";
+import DepartmentManagement from "./DepartmentManagement";
 import { getSignatureStoragePath } from "@/lib/signatureStorage";
+import {
+  getDepartmentDisplay,
+  getDepartmentShortCode,
+  mapUserSaveError,
+  type Department,
+} from "@/lib/departments";
+import { useDepartments } from "@/lib/useDepartments";
 import {
   Edit2,
   Trash2,
@@ -119,13 +127,6 @@ const SECTION_GROUPS: {
   },
 ];
 
-const DEPARTMENTS = [
-  { value: "QA ประกันคุณภาพ", short: "QA", label: "ประกันคุณภาพ" },
-  { value: "PD ฝ่ายผลิต", short: "PD", label: "ฝ่ายผลิต" },
-  { value: "WH คลังสินค้า", short: "WH", label: "คลังสินค้า" },
-  { value: "VD ผลิตยาสัตว์", short: "VD", label: "ผลิตยาสัตว์" },
-];
-
 function MetaChip({
   icon: Icon,
   value,
@@ -151,11 +152,13 @@ function UserCard({
   onEdit,
   onDelete,
   currentUserId,
+  departments,
 }: {
   user: User;
   onEdit: (u: User) => void;
   onDelete: (u: User) => void;
   currentUserId: string | null;
+  departments: Department[];
 }) {
   const role = (user.role ?? "user") as RoleKey;
   const cfg = ROLE_CONFIG[role];
@@ -203,8 +206,8 @@ function UserCard({
               icon={Building2}
               value={
                 user.department
-                  ? (DEPARTMENTS.find((d) => d.value === user.department)
-                      ?.short ?? user.department)
+                  ? getDepartmentDisplay(departments, user.department).code ||
+                    user.department
                   : null
               }
             />
@@ -243,6 +246,11 @@ const labelCls =
   "block mb-1.5 text-[12px] font-semibold text-slate-500 uppercase tracking-wider";
 
 export default function UserManagement() {
+  const {
+    departments,
+    error: departmentsError,
+    reload: reloadDepartments,
+  } = useDepartments({ includeInactive: true });
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -579,11 +587,10 @@ export default function UserManagement() {
         resetForm();
         fetchUsers();
       } catch (error) {
-        const errorWithMessage = error as { message?: string };
         Swal.fire({
           icon: "error",
           title: "ข้อผิดพลาด",
-          text: errorWithMessage.message || "Failed to save user",
+          text: mapUserSaveError(error),
         });
       }
     } else {
@@ -657,14 +664,10 @@ export default function UserManagement() {
         resetForm();
         fetchUsers();
       } catch (error) {
-        const errorWithMessage = error as { message?: string };
-        let msg = errorWithMessage.message;
-        if (msg?.includes("users_id_fkey"))
-          msg = "ไม่สามารถสร้างผู้ใช้ได้ เนื่องจากอีเมลนี้ถูกใช้งานไปแล้ว";
         Swal.fire({
           icon: "error",
           title: "ข้อผิดพลาด",
-          text: msg || "Failed to save user",
+          text: mapUserSaveError(error),
         });
       }
     }
@@ -879,6 +882,15 @@ export default function UserManagement() {
 
       <div className="p-3 sm:p-5 max-w-7xl mx-auto w-full">
         <QaApprovalPanel currentUserRole={currentUserRole} />
+        {currentUserRole === "moderator" ||
+        currentUserRole === "assistant_moderator" ? (
+          <DepartmentManagement
+            currentUserRole={currentUserRole}
+            departments={departments}
+            departmentsError={departmentsError}
+            reloadDepartments={reloadDepartments}
+          />
+        ) : null}
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -950,6 +962,7 @@ export default function UserManagement() {
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       currentUserId={currentUserId}
+                      departments={departments}
                     />
                   ))}
                 </div>
@@ -1031,11 +1044,22 @@ export default function UserManagement() {
                     onChange={(e) => setDepartment(e.target.value)}
                   >
                     <option value="">— เลือกหน่วยงาน —</option>
-                    {DEPARTMENTS.map((d) => (
+                    {departments
+                      .filter(
+                        (d) => d.is_active || d.value === department,
+                      )
+                      .map((d) => (
                       <option key={d.value} value={d.value}>
-                        [{d.short}] {d.label}
+                        [{d.code}] {d.name}
+                        {!d.is_active ? " (ปิดใช้งาน)" : ""}
                       </option>
-                    ))}
+                      ))}
+                    {department &&
+                    !departments.some((d) => d.value === department) ? (
+                      <option value={department}>
+                        [{getDepartmentShortCode(department)}] {department} (ข้อมูลเดิม)
+                      </option>
+                    ) : null}
                   </select>
                   <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
                     <svg
@@ -1055,16 +1079,16 @@ export default function UserManagement() {
                 </div>
                 {department &&
                   (() => {
-                    const found = DEPARTMENTS.find(
+                    const found = departments.find(
                       (d) => d.value === department,
                     );
                     return found ? (
                       <div className="mt-1.5 flex items-center gap-2">
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#EAF3FC] text-[#0057B8] tracking-wider">
-                          {found.short}
+                          {found.code}
                         </span>
                         <span className="text-[12px] text-slate-500">
-                          {found.label}
+                          {found.name}
                         </span>
                       </div>
                     ) : null;

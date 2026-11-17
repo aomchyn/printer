@@ -3,20 +3,23 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-const NORMAL_DEPARTMENTS = [
-  "PD ฝ่ายผลิต",
-  "WH คลังสินค้า",
-  "VD ผลิตยาสัตว์",
-] as const;
+import { useDepartments } from "@/lib/useDepartments";
 
 export default function SelectDepartmentPage() {
   const router = useRouter();
+  const {
+    departments,
+    loading: departmentsLoading,
+    error: departmentsError,
+  } = useDepartments();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingQa, setPendingQa] = useState(false);
   const [message, setMessage] = useState("");
+  const normalDepartments = departments.filter(
+    (department) => !department.is_system,
+  );
 
   useEffect(() => {
     let active = true;
@@ -150,21 +153,29 @@ export default function SelectDepartmentPage() {
           </div>
         ) : (
           <div style={styles.list}>
-            {NORMAL_DEPARTMENTS.map((department) => (
+            {departmentsError ? (
+              <p style={styles.error}>
+                ไม่สามารถโหลดรายการหน่วยงานได้ กรุณาลองใหม่อีกครั้ง
+              </p>
+            ) : departmentsLoading ? (
+              <p>กำลังโหลดรายการหน่วยงาน...</p>
+            ) : (
+              normalDepartments.map((department) => (
               <button
-                key={department}
+                key={department.id}
                 type="button"
-                disabled={saving}
-                onClick={() => chooseDepartment(department)}
+                disabled={saving || departmentsError !== null}
+                onClick={() => chooseDepartment(department.value)}
                 style={styles.button}
               >
-                {department}
+                [{department.code}] {department.name}
               </button>
-            ))}
+              ))
+            )}
 
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || departmentsLoading || departmentsError !== null}
               onClick={requestQa}
               style={styles.qaButton}
             >

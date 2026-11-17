@@ -148,6 +148,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (department !== null) {
+      const { data: activeDepartment, error: departmentError } =
+        await supabaseAdmin
+          .from("departments")
+          .select("id")
+          .eq("value", department)
+          .eq("is_active", true)
+          .maybeSingle();
+
+      if (departmentError) {
+        return NextResponse.json(
+          { error: "Unable to validate department" },
+          { status: 500 },
+        );
+      }
+
+      if (!activeDepartment) {
+        return NextResponse.json({ error: "Invalid department" }, { status: 400 });
+      }
+    }
+
     // ========================================================
     // DUPLICATE NAME CHECK
     // ========================================================
@@ -222,9 +243,15 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          error: profileError.message,
+          error: profileError.message.includes("Invalid active department")
+            ? "Invalid department"
+            : profileError.message,
         },
-        { status: 500 },
+        {
+          status: profileError.message.includes("Invalid active department")
+            ? 400
+            : 500,
+        },
       );
     }
 
